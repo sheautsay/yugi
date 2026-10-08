@@ -1,0 +1,145 @@
+<div class="stack">
+  <p class="muted">
+    上傳、拖放或按 Ctrl+V 貼上 Master Duel 起手畫面截圖。截圖只在此頁記憶體中處理，不會儲存或上傳。辨識只從目前牌組的主牌中比對，結果必須由你確認後才會套用。
+  </p>
+
+  <div class="drop-zone" (dragover)="$event.preventDefault()" (drop)="onDrop($event)" aria-label="截圖拖放區">
+    <label class="button">
+      選擇截圖檔
+      <input type="file" accept="image/png,image/jpeg,image/webp" class="visually-hidden" (change)="onFile($event)" />
+    </label>
+    <span class="muted">或把圖片拖到這裡，或按 Ctrl+V 貼上</span>
+  </div>
+
+  @if (error()) {
+    <p class="notice bad" role="alert">{{ error() }}</p>
+  }
+  @if (message()) {
+    <p class="notice" role="status">{{ message() }}</p>
+  }
+
+  @if (previewUrl(); as url) {
+    <div class="row">
+      <span>框選方式：</span>
+      <label class="choice"><input type="radio" name="boxMode" [checked]="mode() === 'row'" (change)="mode.set('row')" /> 框住整排手牌（自動均分 {{ handSize() }} 格）</label>
+      <label class="choice"><input type="radio" name="boxMode" [checked]="mode() === 'single'" (change)="mode.set('single')" /> 逐張框選</label>
+    </div>
+    <div class="row">
+      <button type="button" (click)="useDefaultRow()">使用預設位置</button>
+      <button type="button" (click)="clearRegions()" [disabled]="regions().length === 0">清除框線</button>
+      @if (usablePresets().length) {
+        <label>
+          套用版型
+          <select (change)="applyPreset($any($event.target).value)">
+            <option value="">選擇版型…</option>
+            @for (p of usablePresets(); track p.id) {
+              <option [value]="p.id">{{ p.name }}</option>
+            }
+          </select>
+        </label>
+      }
+      <button type="button" (click)="release()">移除截圖</button>
+    </div>
+
+    <div class="shot">
+      <img [src]="url" alt="起手截圖預覽" />
+      <div
+        #overlay
+        class="overlay"
+        aria-label="在截圖上拖曳框選手牌"
+        (pointerdown)="pointerDown($event)"
+        (pointermove)="pointerMove($event)"
+        (pointerup)="pointerUp()"
+      >
+        @for (r of regions(); track $index) {
+          <div class="box" [style.left.%]="r.x * 100" [style.top.%]="r.y * 100" [style.width.%]="r.w * 100" [style.height.%]="r.h * 100">
+            <span>{{ $index + 1 }}</span>
+          </div>
+        }
+        @if (drag(); as d) {
+          <div class="box drawing" [style.left.%]="d.x * 100" [style.top.%]="d.y * 100" [style.width.%]="d.w * 100" [style.height.%]="d.h * 100"></div>
+        }
+      </div>
+    </div>
+
+    <p>
+      已框選 <strong>{{ regions().length }}</strong> / {{ handSize() }} 張
+      @if (!boxesReady()) {
+        <span class="muted">— 框數必須等於手牌張數才能辨識</span>
+      }
+    </p>
+    @if (regions().length && mode() === 'single') {
+      <div class="row">
+        @for (r of regions(); track $index) {
+          <button type="button" (click)="removeRegion($index)">刪除第 {{ $index + 1 }} 框</button>
+        }
+      </div>
+    }
+
+    <div class="row">
+      <button type="button" class="primary" (click)="recognize()" [disabled]="!boxesReady() || busy()">開始辨識</button>
+      @if (boxesReady()) {
+        <label>
+          版型名稱
+          <input [value]="presetName()" (input)="presetName.set($any($event.target).value)" maxlength="40" />
+        </label>
+        <button type="button" (click)="savePreset()" [disabled]="!presetName().trim()">儲存框線為版型</button>
+      }
+    </div>
+  }
+
+  @if (missingRefs().length) {
+    <div class="notice warn">
+      牌組主牌中有 {{ missingRefs().length }} 種卡還沒有辨識用卡圖；缺圖時所有結果都不會標為高信心。
+      <button type="button" (click)="downloadReferences()" [disabled]="busy()">下載辨識用卡圖（YGOPRODeck）</button>
+    </div>
+  }
+
+  @if (slots(); as list) {
+    <h3>辨識結果（請逐張確認）</h3>
+    <ol class="plain slots">
+      @for (slot of list; track slot.index) {
+        <li class="slot" [attr.data-status]="slot.status">
+          <div class="row">
+            <strong>第 {{ slot.index + 1 }} 張</strong>
+            @if (thumbs()[slot.index]; as t) {
+              <img class="thumb" [src]="t" [alt]="'第 ' + (slot.index + 1) + ' 張截圖裁切'" />
+            }
+            @if (slot.chosenCardId !== undefined) {
+              <app-card-tile [cardId]="slot.chosenCardId" [card]="cards().get(slot.chosenCardId)" size="s" [caption]="true" />
+            }
+            <span class="badge" [class.ok]="slot.status === 'confident' || slot.status === 'user-selected'" [class.warn]="slot.status === 'uncertain'" [class.bad]="slot.status === 'unrecognized'">
+              {{ statusText[slot.status] }}
+            </span>
+          </div>
+          @if (slot.candidates.length) {
+            <div class="row">
+              <span class="muted">候選：</span>
+              @for (c of slot.candidates; track c.cardId) {
+                <button type="button" (click)="choose(slot.index, '' + c.cardId)">{{ displayName(cards().get(c.cardId)) }}（{{ percent(c.score) }}）</button>
+              }
+            </div>
+          }
+          <label>
+            從牌組選擇
+            <select (change)="choose(slot.index, $any($event.target).value)">
+              <option value="">選擇正確的卡…</option>
+              @for (o of mainOptions(); track o.cardId) {
+                <option [value]="o.cardId" [selected]="o.cardId === slot.chosenCardId">{{ o.label }}</option>
+              }
+            </select>
+          </label>
+        </li>
+      }
+    </ol>
+    @for (e of handErrors(); track $index) {
+      <p class="notice bad" role="alert">{{ e }}</p>
+    }
+    <div class="row">
+      <button type="button" class="primary" (click)="confirm()" [disabled]="!canConfirm()">確認手牌並查詢</button>
+      @if (!hand()) {
+        <span class="muted">還有未確認的卡，請先為每張「不確定／無法辨識」的卡選擇正確的卡。</span>
+      }
+    </div>
+  }
+</div>

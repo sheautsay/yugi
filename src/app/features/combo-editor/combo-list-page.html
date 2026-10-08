@@ -1,0 +1,100 @@
+<div class="page">
+  <h1>Combo 管理</h1>
+  @if (message()) {
+    <p class="notice ok" role="status">{{ message() }}</p>
+  }
+
+  <div class="split">
+    <section class="card" aria-labelledby="list-heading">
+      <h2 id="list-heading">已收錄的 Combo（{{ combos().length }}）</h2>
+      <div class="row">
+        <a class="button primary" routerLink="/combos/new">新增 Combo</a>
+        <button type="button" (click)="exportAll()" [disabled]="combos().length === 0">匯出全部（JSON）</button>
+      </div>
+      @if (combos().length === 0) {
+        <p class="muted">尚未收錄任何 Combo。</p>
+      }
+      <ul class="plain stack">
+        @for (c of combos(); track c.id) {
+          <li class="card combo-row">
+            <div class="row">
+              <strong>{{ c.name || '（未命名）' }}</strong>
+              <span class="badge" [class.ok]="c.verification.status === 'verified'" [class.warn]="c.verification.status !== 'verified'">{{ statusLabel[c.verification.status] }}</span>
+              <span class="muted">{{ c.archetype }}・{{ c.steps.length }} 步・版本 {{ c.version }}</span>
+            </div>
+            <div class="row">
+              <a class="button" [routerLink]="['/combos', c.id]">查看</a>
+              <a class="button" [routerLink]="['/combos', c.id, 'edit']">編輯</a>
+              <button type="button" (click)="copy(c)">複製</button>
+              <button type="button" (click)="exportOne(c)">匯出</button>
+              <button type="button" class="danger" (click)="remove(c)">刪除</button>
+            </div>
+          </li>
+        }
+      </ul>
+    </section>
+
+    <section class="card" aria-labelledby="import-heading">
+      <h2 id="import-heading">匯入 Combo JSON</h2>
+      <p class="muted">會先完整檢查格式、卡片 ID 與引用，預覽後才寫入。標示為「已驗證」的路線匯入後會改為「未驗證」，需在本機重新實測。</p>
+      <label>
+        JSON 內容
+        <textarea rows="6" spellcheck="false" [value]="importText()" (input)="importText.set($any($event.target).value)"></textarea>
+      </label>
+      <div class="row">
+        <button type="button" class="primary" (click)="check()" [disabled]="!importText().trim()">檢查</button>
+        <label class="button">
+          選擇 JSON 檔
+          <input type="file" accept=".json,application/json" class="visually-hidden" (change)="onFile($event)" />
+        </label>
+      </div>
+
+      @if (importErrors().length) {
+        <div class="notice bad" role="alert">
+          <strong>無法匯入（未寫入任何資料）：</strong>
+          <ul>
+            @for (e of importErrors(); track $index) {
+              <li>{{ e }}</li>
+            }
+          </ul>
+          @if (missingCardIds().length) {
+            <button type="button" (click)="downloadMissing()" [disabled]="busy()">從 YGOPRODeck 下載缺少的 {{ missingCardIds().length }} 張卡片資料後重新檢查</button>
+          }
+        </div>
+      }
+
+      @if (importItems(); as items) {
+        <div class="stack" aria-live="polite">
+          <h3>預覽（尚未寫入）：{{ items.length }} 條</h3>
+          <ul>
+            @for (item of items; track item.route.id) {
+              <li>
+                {{ item.route.name }}（{{ statusLabel[item.route.verification.status] }}，{{ item.route.steps.length }} 步）
+                @if (item.conflict) {
+                  <span class="badge warn">ID 已存在</span>
+                }
+                @for (n of item.notes; track $index) {
+                  <div class="muted">{{ n }}</div>
+                }
+              </li>
+            }
+          </ul>
+          @if (conflicts()) {
+            <label>
+              {{ conflicts() }} 條與現有 Combo 的 ID 相同時：
+              <select [value]="conflictChoice()" (change)="conflictChoice.set($any($event.target).value)">
+                <option value="keep-both">保留兩者（匯入的另存新 ID）</option>
+                <option value="overwrite">以匯入內容覆蓋</option>
+                <option value="skip">略過這些</option>
+              </select>
+            </label>
+          }
+          <div class="row">
+            <button type="button" class="primary" (click)="confirmImport()">確認匯入</button>
+            <button type="button" (click)="cancelImport()">取消</button>
+          </div>
+        </div>
+      }
+    </section>
+  </div>
+</div>

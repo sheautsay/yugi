@@ -1,0 +1,113 @@
+<div class="page">
+  @if (notFound()) {
+    <h1>找不到牌組</h1>
+    <p>此牌組可能已被刪除。</p>
+    <a routerLink="/decks">返回牌組列表</a>
+  } @else if (draft(); as deck) {
+    <h1>編輯牌組</h1>
+    <div class="row">
+      <a routerLink="/decks">← 返回牌組列表</a>
+      <a [routerLink]="['/decks', deck.id, 'hand']">起手查詢</a>
+    </div>
+
+    @if (message()) {
+      <p class="notice" role="status">{{ message() }}</p>
+    }
+
+    <div class="split">
+      <div>
+        <section class="card">
+          <label>
+            牌組名稱
+            <input [value]="deck.name" (input)="rename($any($event.target).value)" maxlength="80" />
+          </label>
+          @if (check(); as c) {
+            <p>
+              主牌 <strong>{{ c.totals.main }}</strong>／額外 <strong>{{ c.totals.extra }}</strong>／備牌
+              <strong>{{ c.totals.side }}</strong> · 已儲存版本 {{ saved()?.version }}
+            </p>
+            @if (c.queryable) {
+              <p class="notice ok">牌表檢核通過，可用於起手查詢。</p>
+            } @else {
+              <div class="notice warn">
+                <strong>草稿：尚未通過牌表檢核，不能用於正式查詢</strong>
+                <ul>
+                  @for (e of c.errors; track $index) {
+                    <li>{{ e }}</li>
+                  }
+                </ul>
+              </div>
+            }
+          }
+          <p class="muted">禁限表尚未進行當期核對，不作為阻擋條件。</p>
+          <div class="row">
+            <button type="button" class="primary" (click)="save()" [disabled]="!dirty() || !deck.name.trim()">儲存</button>
+            <button type="button" (click)="discard()" [disabled]="!dirty()">放棄變更</button>
+            @if (dirty()) {
+              <span class="badge warn">有未儲存的變更</span>
+            }
+          </div>
+        </section>
+
+        <section class="card">
+          <h2>卡片資料與卡圖</h2>
+          <p class="muted">需要網路，資料來自 YGOPRODeck；下載後存在本機，離線也能查看。</p>
+          <div class="row">
+            <button type="button" (click)="downloadCardData()" [disabled]="busy() || !check()?.unresolvedIds?.length">下載缺少的卡片資料</button>
+            <button type="button" (click)="downloadImages()" [disabled]="busy()">下載此牌組卡圖</button>
+          </div>
+        </section>
+
+        <section class="card">
+          <h2>加入卡片</h2>
+          <label>
+            加入到
+            <select [value]="addZone()" (change)="addZone.set($any($event.target).value)">
+              @for (zone of zones; track zone) {
+                <option [value]="zone">{{ zoneLabel[zone] }}</option>
+              }
+            </select>
+          </label>
+          <app-card-search actionLabel="加入" (picked)="addCard($event)" />
+        </section>
+
+        <section class="card">
+          <h2>匯出</h2>
+          <div class="row">
+            <button type="button" (click)="exportJson()" [disabled]="dirty()">下載牌組 JSON 備份</button>
+            <button type="button" (click)="copyYdke()">複製 ydke:// 代碼</button>
+          </div>
+          <label>
+            ydke:// 代碼（依目前編輯內容）
+            <textarea rows="3" readonly [value]="ydke()"></textarea>
+          </label>
+        </section>
+      </div>
+
+      <div>
+        @for (zone of zones; track zone) {
+          <section class="card" [attr.aria-label]="zoneLabel[zone]">
+            <h2>{{ zoneLabel[zone] }}（{{ check()?.totals?.[zone] }} 張）</h2>
+            @if (deck[zone].length === 0) {
+              <p class="muted">沒有卡片。</p>
+            }
+            <ul class="plain stack">
+              @for (c of deck[zone]; track c.cardId) {
+                <li class="row">
+                  <app-card-tile [cardId]="c.cardId" [card]="cards().get(c.cardId)" size="s" />
+                  <span class="grow">{{ displayName(cards().get(c.cardId)) }} <span class="muted">（ID {{ c.cardId }}）</span></span>
+                  <button type="button" (click)="changeCount(zone, c.cardId, -1)" [attr.aria-label]="'減少一張 ' + c.cardId">−1</button>
+                  <span aria-live="polite">×{{ c.count }}</span>
+                  <button type="button" (click)="changeCount(zone, c.cardId, 1)" [disabled]="c.count >= 3" [attr.aria-label]="'增加一張 ' + c.cardId">+1</button>
+                  <button type="button" class="danger" (click)="removeCard(zone, c.cardId)">移除</button>
+                </li>
+              }
+            </ul>
+          </section>
+        }
+      </div>
+    </div>
+  } @else {
+    <p class="muted">載入中…</p>
+  }
+</div>

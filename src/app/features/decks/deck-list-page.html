@@ -1,0 +1,63 @@
+<div class="page">
+  <h1>牌組</h1>
+
+  @if (loadError()) {
+    <p class="notice bad" role="alert">{{ loadError() }}</p>
+  }
+  @if (message()) {
+    <p class="notice ok" role="status">{{ message() }}</p>
+  }
+
+  <div class="split">
+    <section class="card" aria-labelledby="list-heading">
+      <h2 id="list-heading">我的牌組</h2>
+      @if (rows().length === 0) {
+        <p class="muted">尚未建立任何牌組。請匯入 ydke:// 或 YDK，或建立空白牌組。</p>
+      } @else {
+        <ul class="plain stack">
+          @for (row of rows(); track row.deck.id) {
+            <li class="deck-row card">
+              <div class="row">
+                <strong>{{ row.deck.name }}</strong>
+                @if (row.check.queryable) {
+                  <span class="badge ok">可查詢</span>
+                } @else {
+                  <span class="badge warn">草稿</span>
+                }
+              </div>
+              <p class="muted">
+                主牌 {{ row.check.totals.main }}／額外 {{ row.check.totals.extra }}／備牌 {{ row.check.totals.side }}
+                · 版本 {{ row.deck.version }}
+              </p>
+              @if (!row.check.queryable) {
+                <p class="muted">原因：{{ row.check.errors[0] }}@if (row.check.errors.length > 1) {（另有 {{ row.check.errors.length - 1 }} 項）}</p>
+              }
+              <div class="row">
+                <a class="button primary" [routerLink]="['/decks', row.deck.id, 'hand']">起手查詢</a>
+                <a class="button" [routerLink]="['/decks', row.deck.id]">編輯</a>
+                <button type="button" (click)="copy(row.deck)">複製</button>
+                <button type="button" class="danger" (click)="remove(row.deck)">刪除</button>
+              </div>
+            </li>
+          }
+        </ul>
+      }
+      <p class="muted">禁限表尚未進行當期核對，不作為阻擋條件；請自行確認牌組符合 Master Duel 當期規定。</p>
+    </section>
+
+    <div>
+      <app-deck-import-panel [decks]="decks()" (imported)="onImported($event)" />
+
+      <section class="card" aria-labelledby="create-heading">
+        <h2 id="create-heading">建立空白牌組</h2>
+        <form class="row" (submit)="$event.preventDefault(); create()">
+          <label>
+            牌組名稱
+            <input name="deckName" [value]="newName()" (input)="newName.set($any($event.target).value)" maxlength="80" />
+          </label>
+          <button type="submit" [disabled]="!newName().trim()">建立</button>
+        </form>
+      </section>
+    </div>
+  </div>
+</div>

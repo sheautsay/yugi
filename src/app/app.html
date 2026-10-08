@@ -1,0 +1,14 @@
+<header class="app-header">
+  <a class="brand" routerLink="/decks">YGO Combo 助手</a>
+  <nav aria-label="主要導覽">
+    <a routerLink="/decks" routerLinkActive="active">牌組</a>
+    <a routerLink="/combos" routerLinkActive="active">Combo 管理</a>
+    <a routerLink="/settings" routerLinkActive="active">設定</a>
+  </nav>
+</header>
+<main id="main">
+  <router-outlet />
+</main>
+<footer class="app-footer muted">
+  獨立查詢工具：不連接遊戲、不讀取遊戲資料、不自動操作。固定展開皆假設無干擾。
+</footer>

@@ -1,0 +1,148 @@
+<div class="page">
+  <h1>起手與 Combo 查詢</h1>
+
+  @if (!loaded()) {
+    <p class="muted">載入中…</p>
+  } @else if (!deck()) {
+    <p class="notice bad" role="alert">找不到此牌組，可能已被刪除。</p>
+    <a routerLink="/decks">返回牌組列表</a>
+  } @else if (!deckCheck()?.queryable) {
+    <p>牌組：<strong>{{ deck()!.name }}</strong></p>
+    <div class="notice warn" role="alert">
+      <strong>此牌組是草稿，不能用於正式查詢。請先修正：</strong>
+      <ul>
+        @for (e of deckCheck()!.errors; track $index) {
+          <li>{{ e }}</li>
+        }
+      </ul>
+    </div>
+    <a class="button primary" [routerLink]="['/decks', deck()!.id]">前往編輯牌組</a>
+  } @else {
+    <p class="row">
+      <span>牌組：<strong>{{ deck()!.name }}</strong>（主牌 {{ deckCheck()!.totals.main }}／額外 {{ deckCheck()!.totals.extra }}）</span>
+      <a [routerLink]="['/decks', deck()!.id]">編輯牌組</a>
+    </p>
+    @if (notice()) {
+      <p class="notice warn" role="status">{{ notice() }}</p>
+    }
+
+    <div class="split">
+      <div>
+        <section class="card" aria-labelledby="ctx-heading">
+          <h2 id="ctx-heading">情境</h2>
+          <div class="row" role="radiogroup" aria-label="先後攻">
+            <label class="choice"><input type="radio" name="turn" [checked]="turnOrder() === 'first'" (change)="setTurnOrder('first')" /> 先攻（5 張）</label>
+            <label class="choice"><input type="radio" name="turn" [checked]="turnOrder() === 'second'" (change)="setTurnOrder('second')" /> 後攻（6 張）</label>
+          </div>
+          <div class="row">
+            <label class="choice"><input type="checkbox" [checked]="emptyBoard()" (change)="emptyBoard.set($any($event.target).checked)" /> 雙方場上為空</label>
+            <label class="choice"><input type="checkbox" [checked]="normalSummonAvailable()" (change)="normalSummonAvailable.set($any($event.target).checked)" /> 通常召喚權可用</label>
+            <label class="choice"><input type="checkbox" [checked]="noInterruption()" (change)="noInterruption.set($any($event.target).checked)" /> 假設對手不干擾</label>
+          </div>
+        </section>
+
+        <section class="card" aria-labelledby="hand-heading">
+          <h2 id="hand-heading">起手（{{ hand().length }} / {{ handSize() }} 張）</h2>
+          <ol class="plain hand-slots">
+            @for (id of hand(); track $index) {
+              <li>
+                <app-card-tile [cardId]="id" [card]="cards().get(id)" size="s" [caption]="true" />
+                <button type="button" (click)="removeAt($index)" [attr.aria-label]="'移除第 ' + ($index + 1) + ' 張：' + name(id)">移除</button>
+              </li>
+            }
+          </ol>
+          @for (e of handCheck().errors; track $index) {
+            <p class="notice bad" role="alert">{{ e }}</p>
+          }
+          @if (!handCheck().complete && handCheck().errors.length === 0) {
+            <p class="notice">尚未選滿（{{ hand().length }} / {{ handSize() }} 張），選滿後才會查詢 Combo。</p>
+          }
+          <div class="row">
+            <button type="button" class="primary" (click)="draw()">隨機抽 {{ handSize() }} 張</button>
+            <label>
+              種子（選填，可重現）
+              <input inputmode="numeric" [value]="seedInput()" (input)="seedInput.set($any($event.target).value)" size="10" />
+            </label>
+            <button type="button" (click)="clear()" [disabled]="hand().length === 0">清除</button>
+            <button type="button" (click)="undo()" [disabled]="history().length === 0">復原上一手</button>
+          </div>
+          @if (seed() !== null) {
+            <p class="muted">最近一次隨機抽牌種子：{{ seed() }}</p>
+          }
+        </section>
+
+        <section class="card" aria-labelledby="shot-heading">
+          <h2 id="shot-heading">截圖辨識（實驗性）</h2>
+          @if (showRecognizer()) {
+            <app-screenshot-recognizer [main]="deck()!.main" [cards]="cards()" [handSize]="handSize()" (confirmed)="applyRecognized($event)" />
+            <button type="button" (click)="showRecognizer.set(false)">關閉截圖辨識</button>
+          } @else {
+            <p class="muted">用起手截圖自動帶入手牌；辨識準確率尚未以實際截圖驗證，結果一律需由你確認。</p>
+            <button type="button" (click)="showRecognizer.set(true)">開啟截圖辨識</button>
+          }
+        </section>
+
+        <section class="card" aria-labelledby="pool-heading">
+          <h2 id="pool-heading">從主牌組選牌</h2>
+          <label>
+            篩選
+            <input [value]="poolFilter()" (input)="poolFilter.set($any($event.target).value)" placeholder="卡名或 ID" />
+          </label>
+          <ul class="plain pool">
+            @for (c of pool(); track c.cardId) {
+              <li>
+                <button
+                  type="button"
+                  class="pool-card"
+                  (click)="add(c.cardId)"
+                  [disabled]="c.left <= 0 || hand().length >= handSize()"
+                  [attr.aria-label]="'加入 ' + displayName(c.card) + '（剩 ' + c.left + ' 張）'"
+                >
+                  <app-card-tile [cardId]="c.cardId" [card]="c.card" size="s" />
+                  <span>剩 {{ c.left }}/{{ c.count }}</span>
+                </button>
+              </li>
+            }
+          </ul>
+        </section>
+      </div>
+
+      <section class="card" aria-labelledby="results-heading" aria-live="polite">
+        <h2 id="results-heading">符合的固定展開</h2>
+        @if (routes().length === 0) {
+          <p class="notice">尚未收錄任何 Combo。可到「Combo 管理」新增或匯入路線。</p>
+        } @else if (results() === null) {
+          <p class="muted">選滿 {{ handSize() }} 張有效手牌後顯示結果。</p>
+        } @else {
+          @if (grouped()[0].items.length === 0) {
+            <p class="notice warn">沒有收錄符合目前起手的固定展開（僅表示資料庫中尚無符合的已驗證路線）。</p>
+          }
+          @for (group of grouped(); track group.kind) {
+            @if (group.items.length) {
+              @if (group.kind === 'unavailable') {
+                <details class="group">
+                  <summary>{{ kindLabel[group.kind] }}（{{ group.items.length }}）— 點開看原因</summary>
+                  <app-route-result-list [items]="group.items" [cards]="cards()" [deckId]="deck()?.id" />
+                </details>
+              } @else {
+                <div class="group">
+                  <h3>
+                    {{ kindLabel[group.kind] }}（{{ group.items.length }}）
+                    @if (group.kind === 'unverified') {
+                      <span class="muted">— 符合起手條件，但尚未經人工實測，僅供參考</span>
+                    }
+                  </h3>
+                  <app-route-result-list [items]="group.items" [cards]="cards()" [deckId]="deck()?.id" />
+                </div>
+              }
+            }
+          }
+        }
+        @if (otherDeckRouteCount() > 0) {
+          <p class="muted">另有 {{ otherDeckRouteCount() }} 條其他牌組的路線（起手卡不在此牌組），未列出。</p>
+        }
+        <p class="muted">「可用」只代表符合該固定教學的前置假設，不代表受干擾時也能完成。</p>
+      </section>
+    </div>
+  }
+</div>

@@ -1,0 +1,79 @@
+<div class="page">
+  <h1>設定</h1>
+
+  @if (message()) {
+    <p class="notice" role="status">{{ message() }}</p>
+  }
+
+  <section class="card" aria-labelledby="backup-heading">
+    <h2 id="backup-heading">備份與還原</h2>
+    <p class="notice warn">
+      所有牌組與 Combo 只存在這個瀏覽器的本機資料庫（IndexedDB）。清除瀏覽器資料、使用無痕模式或更換瀏覽器都可能讓資料消失，請定期匯出備份。
+    </p>
+    <div class="row">
+      <button type="button" class="primary" (click)="exportBackup()">匯出完整備份（JSON）</button>
+      <label class="button">
+        從備份檔還原…
+        <input type="file" accept=".json,application/json" class="visually-hidden" (change)="onBackupFile($event)" />
+      </label>
+    </div>
+    <p class="muted">備份包含牌組、Combo 與截圖框選版型；不含卡圖與卡片資料快取。</p>
+
+    @if (restoreErrors().length) {
+      <div class="notice bad" role="alert">
+        <strong>無法還原（未寫入任何資料）：</strong>
+        <ul>
+          @for (e of restoreErrors(); track $index) {
+            <li>{{ e }}</li>
+          }
+        </ul>
+      </div>
+    }
+
+    @if (incoming(); as inc) {
+      <div class="stack" aria-live="polite">
+        <h3>還原預覽（尚未寫入）</h3>
+        <p>
+          檔案「{{ inc.fileName }}」（匯出時間 {{ inc.exportedAt }}）：牌組 {{ inc.data.decks.length }}、Combo {{ inc.data.combos.length }}、版型
+          {{ inc.data.layouts.length }}
+        </p>
+        <label>
+          與現有資料 ID 相同但內容不同時：
+          <select [value]="strategy()" (change)="strategy.set($any($event.target).value)">
+            <option value="keep-both">保留兩者（還原的另存新 ID）</option>
+            <option value="overwrite">以備份內容覆蓋</option>
+            <option value="skip">略過</option>
+          </select>
+        </label>
+        @if (plan(); as p) {
+          <p>將會：新增 {{ p.added }}、覆蓋 {{ p.overwritten }}、另存副本 {{ p.copied }}、略過 {{ p.skipped }}、內容相同不變 {{ p.unchanged }}。</p>
+          @if (p.renamed.length) {
+            <p class="muted">重名改名：{{ p.renamed.join('；') }}</p>
+          }
+        }
+        <div class="row">
+          <button type="button" class="primary" (click)="confirmRestore()" [disabled]="busy()">確認還原</button>
+          <button type="button" (click)="cancelRestore()">取消</button>
+        </div>
+      </div>
+    }
+  </section>
+
+  <section class="card">
+    <h2>卡片資料</h2>
+    <table>
+      <tbody>
+        <tr><th scope="row">連線狀態</th><td>{{ online() ? '線上' : '離線（只能使用已快取的資料）' }}</td></tr>
+        <tr><th scope="row">已快取卡片資料</th><td>{{ cardCount() ?? '—' }} 張</td></tr>
+        <tr><th scope="row">已快取卡圖</th><td>{{ imageCount() ?? '—' }} 張</td></tr>
+        <tr><th scope="row">資料來源</th><td>YGOPRODeck API v7（卡名為英文；尚無可信的繁體中文卡名來源）</td></tr>
+        <tr><th scope="row">本機資料庫版本</th><td>{{ dbVersion }}</td></tr>
+      </tbody>
+    </table>
+    <div class="row">
+      <button type="button" (click)="refreshCards()" [disabled]="busy() || !cardCount()">更新已快取的卡片資料</button>
+      <button type="button" class="danger" (click)="clearImages()" [disabled]="!imageCount()">清除卡圖快取</button>
+    </div>
+    <p class="muted">只有按下按鈕時才會連線；開啟頁面不會自動下載。卡圖下載需以 <code>npm start</code> 啟動本機伺服器。</p>
+  </section>
+</div>

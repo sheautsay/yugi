@@ -1,0 +1,210 @@
+<div class="page">
+  @if (notFound()) {
+    <h1>找不到 Combo</h1>
+    <p>此 Combo 可能已被刪除。</p>
+    <a routerLink="/combos">返回 Combo 管理</a>
+  } @else if (draft(); as d) {
+    <h1>{{ saved() ? '編輯 Combo' : '新增 Combo' }}</h1>
+    <div class="row">
+      <a routerLink="/combos">← 返回 Combo 管理</a>
+      @if (saved()) {
+        <a [routerLink]="['/combos', d.id]">查看展開</a>
+      }
+    </div>
+
+    @if (message()) {
+      <p class="notice ok" role="status">{{ message() }}</p>
+    }
+    @if (errors().length) {
+      <div class="notice bad" role="alert">
+        <strong>無法儲存，請修正：</strong>
+        <ul>
+          @for (e of errors(); track $index) {
+            <li>{{ e }}</li>
+          }
+        </ul>
+      </div>
+    }
+
+    <section class="card">
+      <h2>基本資料</h2>
+      <div class="grid">
+        <label>名稱（必填）<input [value]="d.name" (input)="d.name = $any($event.target).value; touch()" maxlength="120" /></label>
+        <label>系列（必填）<input [value]="d.archetype" (input)="d.archetype = $any($event.target).value; touch()" maxlength="60" /></label>
+        <label>固定排序權重（數字越大越前面，非勝率）<input type="number" [value]="d.rankingWeight ?? ''" (input)="d.rankingWeight = optInt($any($event.target).value); touch()" /></label>
+      </div>
+      <label>說明<textarea rows="2" [value]="d.description ?? ''" (input)="d.description = opt($any($event.target).value); touch()"></textarea></label>
+      <label>提醒／備註<textarea rows="2" [value]="d.notes ?? ''" (input)="d.notes = opt($any($event.target).value); touch()"></textarea></label>
+      <div class="grid">
+        <label>來源標題<input [value]="d.source?.title ?? ''" (input)="setSource(d, { title: opt($any($event.target).value) })" /></label>
+        <label>來源網址（https，限白名單網站）<input type="url" [value]="d.source?.url ?? ''" (input)="setSource(d, { url: opt($any($event.target).value) })" /></label>
+        <label>影片時間點（秒）<input type="number" min="0" [value]="d.source?.timeSeconds ?? ''" (input)="setSource(d, { timeSeconds: optInt($any($event.target).value) })" /></label>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>前提</h2>
+      <div class="row">
+        <label>
+          先後攻
+          <select [value]="d.conditions.setup.turnOrder" (change)="d.conditions.setup.turnOrder = $any($event.target).value; touch()">
+            <option value="first">先攻</option>
+            <option value="second">後攻</option>
+            <option value="either">先後攻皆可</option>
+          </select>
+        </label>
+        <label class="choice"><input type="checkbox" [checked]="d.conditions.setup.emptyBoard" (change)="d.conditions.setup.emptyBoard = $any($event.target).checked; touch()" /> 假設雙方空場</label>
+        <label class="choice"><input type="checkbox" [checked]="d.conditions.setup.normalSummonAvailable" (change)="d.conditions.setup.normalSummonAvailable = $any($event.target).checked; touch()" /> 需要通常召喚權</label>
+        <label class="choice"><input type="checkbox" [checked]="d.conditions.setup.noInterruption" (change)="d.conditions.setup.noInterruption = $any($event.target).checked; touch()" /> 假設無干擾</label>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>起手條件（每一組都要滿足；組內任選）</h2>
+      @for (clause of d.conditions.handAllOf; track $index; let i = $index) {
+        <div class="clause">
+          <app-card-id-list [label]="'第 ' + (i + 1) + ' 組候選卡'" [ids]="clause.anyOf" [cards]="cards()" (idsChange)="clause.anyOf = $event; touch()" (picked)="remember($event)" />
+          <div class="row">
+            <label class="choice">從此組需要 <input type="number" min="1" max="6" [value]="clause.count" (input)="clause.count = int($any($event.target).value, 1); touch()" /> 張</label>
+            <button type="button" class="danger" (click)="removeClause(d, i)" [disabled]="d.conditions.handAllOf.length === 1">刪除此組</button>
+          </div>
+        </div>
+      }
+      <button type="button" (click)="addClause(d)">＋ 新增起手條件組</button>
+      <label class="choice">
+        分配完上述卡片後，手牌至少還要剩
+        <input type="number" min="0" max="6" [value]="d.conditions.unallocatedHandMin ?? ''" (input)="d.conditions.unallocatedHandMin = optInt($any($event.target).value); touch()" />
+        張（可當代價）
+      </label>
+    </section>
+
+    <section class="card">
+      <h2>其他必要條件</h2>
+      <app-card-id-list label="主牌組中必須仍有" [counts]="d.conditions.mustRemainInMain ?? noRows" [cards]="cards()" (countsChange)="d.conditions.mustRemainInMain = $event.length ? $event : undefined; touch()" (picked)="remember($event)" />
+      <app-card-id-list label="額外牌組必須有" [counts]="d.conditions.mustExistInExtra ?? noRows" [cards]="cards()" (countsChange)="d.conditions.mustExistInExtra = $event.length ? $event : undefined; touch()" (picked)="remember($event)" />
+      <app-card-id-list label="起手不可有（需留在牌組）" [ids]="d.conditions.forbiddenInHand" [cards]="cards()" (idsChange)="d.conditions.forbiddenInHand = $event.length ? $event : undefined; touch()" (picked)="remember($event)" />
+    </section>
+
+    <section class="card">
+      <h2>步驟（{{ d.steps.length }}）</h2>
+      @if (d.steps.length === 0) {
+        <p class="notice warn">尚未填寫步驟（草稿可儲存；非草稿必須至少一步）。</p>
+      }
+      <ol class="plain stack">
+        @for (step of d.steps; track step.id; let i = $index) {
+          <li class="step">
+            <div class="row">
+              <strong>第 {{ step.order }} 步</strong>
+              <button type="button" (click)="moveStep(d, i, -1)" [disabled]="i === 0" [attr.aria-label]="'上移第 ' + step.order + ' 步'">上移</button>
+              <button type="button" (click)="moveStep(d, i, 1)" [disabled]="i === d.steps.length - 1" [attr.aria-label]="'下移第 ' + step.order + ' 步'">下移</button>
+              <button type="button" class="danger" (click)="removeStep(d, i)" [attr.aria-label]="'刪除第 ' + step.order + ' 步'">刪除</button>
+            </div>
+            <div class="grid">
+              <label>
+                動作類型
+                <select [value]="step.actionType" (change)="step.actionType = $any($event.target).value; touch()">
+                  @for (t of actionTypes; track t) {
+                    <option [value]="t">{{ actionLabel[t] }}</option>
+                  }
+                </select>
+              </label>
+              <label>操作摘要（必填）<input [value]="step.title" (input)="step.title = $any($event.target).value; touch()" maxlength="120" /></label>
+              <label>來源位置<input [value]="step.fromZone ?? ''" (input)="step.fromZone = opt($any($event.target).value); touch()" placeholder="例如：手牌" /></label>
+              <label>目標位置<input [value]="step.toZone ?? ''" (input)="step.toZone = opt($any($event.target).value); touch()" placeholder="例如：主要怪獸區" /></label>
+            </div>
+            <label>完整說明（必填）<textarea rows="2" [value]="step.description" (input)="step.description = $any($event.target).value; touch()"></textarea></label>
+            <app-card-id-list label="執行的卡" [ids]="step.actorCardIds" [cards]="cards()" (idsChange)="step.actorCardIds = $event; touch()" (picked)="remember($event)" />
+            <app-card-id-list label="目標卡" [ids]="step.targetCardIds" [cards]="cards()" (idsChange)="step.targetCardIds = $event.length ? $event : undefined; touch()" (picked)="remember($event)" />
+            <app-card-id-list label="素材" [ids]="step.materialCardIds" [cards]="cards()" (idsChange)="step.materialCardIds = $event.length ? $event : undefined; touch()" (picked)="remember($event)" />
+            <div class="grid">
+              <label>代價<input [value]="step.costText ?? ''" (input)="step.costText = opt($any($event.target).value); touch()" /></label>
+              <label>效果<input [value]="step.effectText ?? ''" (input)="step.effectText = opt($any($event.target).value); touch()" /></label>
+              <label>結果<input [value]="step.resultText ?? ''" (input)="step.resultText = opt($any($event.target).value); touch()" /></label>
+              <label>原因<input [value]="step.reason ?? ''" (input)="step.reason = opt($any($event.target).value); touch()" /></label>
+            </div>
+            <label>注意事項（影響合法性的提醒）<input [value]="step.warning ?? ''" (input)="step.warning = opt($any($event.target).value); touch()" /></label>
+          </li>
+        }
+      </ol>
+      <button type="button" (click)="addStep(d)">＋ 新增步驟</button>
+    </section>
+
+    <section class="card">
+      <h2>預計終場</h2>
+      @if (d.endBoard.length === 0) {
+        <p class="muted">（未填）</p>
+      }
+      <ul class="plain stack">
+        @for (e of d.endBoard; track $index; let i = $index) {
+          <li class="row">
+            <strong>{{ displayName(cards().get(e.cardId)) }}</strong>
+            <span class="muted">ID {{ e.cardId }}</span>
+            <label>位置<input [value]="e.zone" (input)="e.zone = $any($event.target).value; touch()" size="10" /></label>
+            <label>張數<input type="number" min="1" [value]="e.count" (input)="e.count = int($any($event.target).value, 1); touch()" style="width: 4em" /></label>
+            <label>備註<input [value]="e.note ?? ''" (input)="e.note = opt($any($event.target).value); touch()" /></label>
+            <button type="button" class="danger" (click)="removeEndBoard(d, i)">移除</button>
+          </li>
+        }
+      </ul>
+      @if (addingEndBoard()) {
+        <app-card-search label="搜尋終場卡" actionLabel="加入終場" (picked)="addEndBoard(d, $event)" />
+        <button type="button" (click)="addingEndBoard.set(false)">完成</button>
+      } @else {
+        <button type="button" (click)="addingEndBoard.set(true)">＋ 加入終場卡</button>
+      }
+    </section>
+
+    <section class="card">
+      <h2>驗證狀態</h2>
+      <div class="row" role="radiogroup" aria-label="驗證狀態">
+        @for (s of statuses; track s) {
+          <label class="choice"><input type="radio" name="status" [checked]="d.verification.status === s" (change)="setStatus(d, s)" /> {{ statusLabel[s] }}</label>
+        }
+      </div>
+      @if (d.verification.status === 'verified') {
+        <p class="notice warn">只有實際在遊戲中照此路線操作成功、並留有證據，才可設為「已驗證」。驗證只適用於下方選擇的牌表。</p>
+        <div class="grid">
+          <label>實測日期<input type="date" [value]="d.verification.verifiedAt ?? ''" (input)="d.verification.verifiedAt = opt($any($event.target).value); touch()" /></label>
+          <label>驗證者<input [value]="d.verification.verifiedBy ?? ''" (input)="d.verification.verifiedBy = opt($any($event.target).value); touch()" /></label>
+          <label>
+            實測使用的牌組（牌表前提）
+            <select (change)="useDeckForVerification(d, $any($event.target).value)">
+              <option value="">選擇牌組…</option>
+              @for (deck of decks(); track deck.id) {
+                <option [value]="deck.id" [selected]="deck.id === fingerprintDeck()?.id">{{ deck.name }}（版本 {{ deck.version }}）</option>
+              }
+            </select>
+          </label>
+        </div>
+        <p class="muted">牌表指紋：{{ d.verification.deckFingerprint ?? '（未選擇）' }}</p>
+      }
+      <label>驗證證據／說明<textarea rows="2" [value]="d.verification.evidenceNote ?? ''" (input)="d.verification.evidenceNote = opt($any($event.target).value); touch()"></textarea></label>
+    </section>
+
+    @if (validation(); as v) {
+      @if (!v.ok) {
+        <div class="notice warn">
+          <strong>目前尚未通過檢核（儲存時會阻擋）：</strong>
+          <ul>
+            @for (e of v.errors; track $index) {
+              <li>{{ e }}</li>
+            }
+          </ul>
+        </div>
+      }
+    }
+
+    <div class="row sticky-actions">
+      <button type="button" class="primary" (click)="save()">儲存</button>
+      <button type="button" (click)="discard()" [disabled]="!dirty()">放棄變更</button>
+      @if (saved()) {
+        <button type="button" class="danger" (click)="remove()">刪除此 Combo</button>
+      }
+      @if (dirty()) {
+        <span class="badge warn">有未儲存的變更</span>
+      }
+    </div>
+  } @else {
+    <p class="muted">載入中…</p>
+  }
+</div>

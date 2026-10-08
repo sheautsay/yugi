@@ -1,0 +1,105 @@
+<section class="card" aria-labelledby="import-heading">
+  <h2 id="import-heading">匯入牌組</h2>
+  <p class="muted">貼上 <code>ydke://</code> 代碼或 YDK 內容（自動判斷格式），或選擇 .ydk 檔。Master Duel 遊戲內牌組代碼仍在研究中，尚不支援。</p>
+
+  <div class="stack">
+    <label>
+      牌組代碼或 YDK 內容
+      <textarea rows="5" [value]="text()" (input)="text.set($any($event.target).value)" spellcheck="false"></textarea>
+    </label>
+    <div class="row">
+      <button type="button" class="primary" (click)="parse()" [disabled]="!text().trim()">解析</button>
+      <label class="button">
+        選擇 .ydk 檔
+        <input type="file" accept=".ydk,text/plain" class="visually-hidden" (change)="onFile($event)" />
+      </label>
+      @if (fileName()) {
+        <span class="muted">檔案：{{ fileName() }}</span>
+      }
+    </div>
+  </div>
+
+  @if (errors().length) {
+    <div class="notice bad" role="alert">
+      <strong>無法匯入，請修正後再解析：</strong>
+      <ul>
+        @for (error of errors(); track $index) {
+          <li>
+            @if (error.line) {
+              第 {{ error.line }} 行「{{ error.text?.trim() }}」：
+            }
+            {{ error.message }}
+          </li>
+        }
+      </ul>
+    </div>
+  }
+
+  @if (preview(); as p) {
+    <div class="stack preview" aria-live="polite">
+      <h3>預覽（尚未寫入）— 格式：{{ p.format === 'ydke' ? 'ydke://' : 'YDK' }}</h3>
+      <p>
+        主牌 <strong>{{ p.check.totals.main }}</strong> 張／額外 <strong>{{ p.check.totals.extra }}</strong> 張／備牌
+        <strong>{{ p.check.totals.side }}</strong> 張
+      </p>
+
+      @if (p.check.queryable) {
+        <p class="notice ok">牌表檢核通過，匯入後可用於起手查詢。</p>
+      } @else {
+        <div class="notice warn">
+          <strong>匯入後會是草稿（不能用於正式查詢）：</strong>
+          <ul>
+            @for (e of p.check.errors; track $index) {
+              <li>{{ e }}</li>
+            }
+          </ul>
+        </div>
+      }
+      @if (p.check.unresolvedIds.length) {
+        <div class="row">
+          <button type="button" (click)="downloadCards()" [disabled]="busy()">
+            {{ busy() ? '下載中…' : '從 YGOPRODeck 下載缺少的卡片資料' }}
+          </button>
+        </div>
+      }
+      @if (downloadMessage()) {
+        <p class="notice" role="status">{{ downloadMessage() }}</p>
+      }
+
+      @for (zone of zones; track zone) {
+        @if (p.deck[zone].length) {
+          <div>
+            <h3>{{ zoneLabel[zone] }}（前 {{ previewLimit }} 種）</h3>
+            <div class="row">
+              @for (c of p.deck[zone].slice(0, previewLimit); track c.cardId) {
+                <app-card-tile [cardId]="c.cardId" [card]="p.cards.get(c.cardId)" [count]="c.count" size="s" />
+              }
+            </div>
+          </div>
+        }
+      }
+
+      <div class="row">
+        <label>
+          匯入到
+          <select [value]="target()" (change)="target.set($any($event.target).value)">
+            <option value="new">建立新牌組</option>
+            @for (d of decks(); track d.id) {
+              <option [value]="d.id">取代：{{ d.name }}</option>
+            }
+          </select>
+        </label>
+        @if (target() === 'new') {
+          <label>
+            新牌組名稱
+            <input [value]="deckName()" (input)="deckName.set($any($event.target).value)" maxlength="80" />
+          </label>
+        }
+      </div>
+      <div class="row">
+        <button type="button" class="primary" (click)="confirm()" [disabled]="!canConfirm()">確認匯入</button>
+        <button type="button" (click)="cancel()">取消</button>
+      </div>
+    </div>
+  }
+</section>

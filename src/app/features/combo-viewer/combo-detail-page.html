@@ -1,0 +1,101 @@
+<div class="page">
+  <nav class="row back" aria-label="返回">
+    @if (deck()) {
+      <a [routerLink]="['/decks', deck(), 'hand']">← 返回起手查詢</a>
+    }
+    <a routerLink="/combos">← 返回 Combo 列表</a>
+  </nav>
+
+  @if (!loaded()) {
+    <p class="muted">載入中…</p>
+  } @else if (!route()) {
+    <h1>找不到 Combo</h1>
+    <p>此 Combo 可能已被刪除。</p>
+  } @else {
+    @let r = route()!;
+    <h1>{{ r.name }}</h1>
+    <p class="row">
+      <span class="badge" [class.ok]="r.verification.status === 'verified'" [class.warn]="r.verification.status !== 'verified'">{{ statusLabel[r.verification.status] }}</span>
+      <span class="muted">{{ r.archetype }}・版本 {{ r.version }}・{{ r.steps.length }} 步</span>
+      <a [routerLink]="['/combos', r.id, 'edit']">編輯</a>
+    </p>
+    @if (r.verification.status === 'invalidated') {
+      <p class="notice bad">此路線已標記為失效，不建議使用。</p>
+    } @else if (r.verification.status !== 'verified') {
+      <p class="notice warn">此路線{{ statusLabel[r.verification.status] }}，尚未經人工實測，僅供參考。</p>
+    }
+    @if (unknownCards().length) {
+      <p class="notice warn">有 {{ unknownCards().length }} 張卡沒有卡片資料，以 ID 顯示（未識別）。可到牌組編輯頁下載卡片資料。</p>
+    }
+
+    <div class="split">
+      <aside class="stack">
+        <section class="card" aria-labelledby="cond-heading">
+          <h2 id="cond-heading">前提與起手條件</h2>
+          <p>前提：{{ setup() }}</p>
+          <ul>
+            @for (line of conditions(); track $index) {
+              <li>{{ line }}</li>
+            }
+          </ul>
+          <p class="muted">符合條件只代表符合此固定教學的前提，受干擾時不一定能走完。</p>
+        </section>
+
+        <section class="card" aria-labelledby="end-heading">
+          <h2 id="end-heading" #endBoard tabindex="-1">預計終場</h2>
+          @if (r.endBoard.length === 0) {
+            <p class="muted">未填</p>
+          }
+          <ul class="plain stack">
+            @for (e of r.endBoard; track $index) {
+              <li class="row">
+                <app-card-tile [cardId]="e.cardId" [card]="cards().get(e.cardId)" [count]="e.count" size="s" />
+                <span>{{ name(e.cardId) }} ×{{ e.count }} <span class="muted">— {{ e.zone }}{{ e.note ? '，' + e.note : '' }}</span></span>
+              </li>
+            }
+          </ul>
+        </section>
+
+        <details class="card">
+          <summary>來源與驗證資訊</summary>
+          <dl>
+            <dt>來源</dt>
+            <dd>
+              {{ r.source?.title ?? '未填' }}
+              @if (sourceHref(); as href) {
+                <a [href]="href" target="_blank" rel="noopener noreferrer">開啟來源（新分頁）</a>
+              }
+            </dd>
+            <dt>驗證狀態</dt>
+            <dd>{{ statusLabel[r.verification.status] }}</dd>
+            <dt>實測日期</dt>
+            <dd>{{ r.verification.verifiedAt ?? '未填' }}</dd>
+            <dt>驗證者</dt>
+            <dd>{{ r.verification.verifiedBy ?? '未填' }}</dd>
+            <dt>牌表指紋</dt>
+            <dd>{{ r.verification.deckFingerprint ?? '未填' }}</dd>
+            <dt>證據</dt>
+            <dd>{{ r.verification.evidenceNote ?? '未填' }}</dd>
+            <dt>備註</dt>
+            <dd>{{ r.notes ?? '未填' }}</dd>
+          </dl>
+        </details>
+      </aside>
+
+      <section class="card viewer" aria-labelledby="viewer-heading">
+        <h2 id="viewer-heading" class="visually-hidden">展開步驟</h2>
+        <div class="row mode-switch" role="group" aria-label="觀看模式">
+          <button type="button" (click)="setMode('flow')" [attr.aria-pressed]="mode() === 'flow'">圖像流程</button>
+          <button type="button" (click)="setMode('steps')" [attr.aria-pressed]="mode() === 'steps'">逐步教學</button>
+        </div>
+        @if (r.steps.length === 0) {
+          <p class="notice warn">此路線尚未填寫步驟（待補內容）。</p>
+        } @else if (mode() === 'flow') {
+          <app-flow-view [route]="r" [cards]="cards()" [navigator]="navigator" />
+        } @else {
+          <app-step-view [route]="r" [cards]="cards()" [navigator]="navigator" [backLink]="backLink()" (jumpToEnd)="jumpToEnd()" />
+        }
+      </section>
+    </div>
+  }
+</div>
