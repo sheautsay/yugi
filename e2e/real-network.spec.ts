@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { EDGE_SAMPLE } from '../src/app/core/neuron-deck.sample';
 import { MALISS, setAutoThumbnails, syntheticScreenshot, toYdke } from './fixtures';
 
 // REAL external source (YGOPRODeck API + images via the dev-server proxy). Run explicitly:
@@ -108,4 +109,19 @@ test('real full sync: Master Duel pool downloads once, is searchable locally, re
   expect(await page.getByRole('dialog').locator('.image img').evaluate((el: HTMLImageElement) => el.naturalWidth)).toBeGreaterThan(300);
   await expect(page.getByRole('dialog')).toContainText('效果（英文原文）');
   expect(api).toEqual([]); // searching used local data only
+});
+
+test('real card data: the user\'s Edge deck list resolves to a valid 40 / 15 / 0 deck', async ({ page }) => {
+  test.setTimeout(240_000);
+  const official: string[] = [];
+  page.on('request', (r) => r.url().includes('db.yugioh-card.com') && official.push(r.url()));
+  await page.goto('/settings');
+  await page.getByRole('button', { name: '下載／更新完整卡片資料' }).click();
+  await expect(page.getByText(/已同步 \d+ 張卡片|已是最新版本/)).toBeVisible({ timeout: 180_000 });
+  await page.goto('/decks');
+  await page.getByLabel('牌組代碼或 YDK 內容').fill(EDGE_SAMPLE);
+  await page.getByRole('button', { name: '解析', exact: true }).click();
+  await expect(page.getByText(/主牌 40 張／額外 15 張／備牌 0 張/)).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByText('牌表檢核通過，匯入後可用於起手查詢。')).toBeVisible();
+  expect(official).toEqual([]);
 });

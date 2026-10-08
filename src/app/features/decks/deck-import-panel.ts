@@ -1,9 +1,11 @@
 import { ChangeDetectionStrategy, Component, computed, inject, input, output, signal } from '@angular/core';
 import { CardDataService } from '../../core/card-data.service';
 import { DECK_ZONES, DeckCheck, ParseIssue, ParsedDeck, ZONE_LABEL, checkDeck, deckCardIds, newDeck } from '../../core/deck';
-import { DeckTextFormat, parseDeckText } from '../../core/deck-import';
+import { DeckTextFormat, detectDeckFormat, parseDeckText } from '../../core/deck-import';
 import { DeckRepository } from '../../core/deck-repository';
 import { CardRecord, DeckRecord } from '../../core/models';
+import { deckCodeError, officialDeckSearchUrl, parseNeuronDeckText, resolveNeuronDeck } from '../../core/neuron-deck';
+import { SettingsService } from '../../core/settings.service';
 import { MAX_YDK_LENGTH } from '../../core/ydk';
 import { CardTile } from '../../shared/card-tile';
 
@@ -12,7 +14,11 @@ interface Preview {
   deck: ParsedDeck;
   cards: Map<number, CardRecord>;
   check: DeckCheck;
+  /** Official deck page sections that were read (G21). */
+  sections?: Array<{ title: string; declared: number }>;
 }
+
+const FORMAT_LABEL: Record<Preview['format'], string> = { ydke: 'ydke://', ydk: 'YDK', neuron: '官方牌組頁牌表（英文）' };
 
 const PREVIEW_PER_ZONE = 12;
 
@@ -25,6 +31,7 @@ const PREVIEW_PER_ZONE = 12;
 export class DeckImportPanel {
   private readonly cardData = inject(CardDataService);
   private readonly repo = inject(DeckRepository);
+  private readonly settings = inject(SettingsService);
 
   /** Existing decks that may be replaced by the import. */
   readonly decks = input<DeckRecord[]>([]);
@@ -33,6 +40,13 @@ export class DeckImportPanel {
   protected readonly zones = DECK_ZONES;
   protected readonly zoneLabel = ZONE_LABEL;
   protected readonly previewLimit = PREVIEW_PER_ZONE;
+  protected readonly formatLabel = FORMAT_LABEL;
+
+  protected readonly deckCode = signal('');
+  protected readonly codeError = signal('');
+  protected readonly codeOpened = signal(false);
+  /** Card names from a pasted official deck list that the local card database does not know. */
+  protected readonly unknownNames = signal<string[]>([]);
 
   protected readonly text = signal('');
   protected readonly fileName = signal('');
@@ -61,9 +75,25 @@ export class DeckImportPanel {
     await this.parse();
   }
 
+  /**
+   * G21: only opens the official public Deck Search in a new tab — the app itself never requests
+   * the official site (its terms forbid automated retrieval without written consent).
+   */
+  protected openOfficial(): void {
+    const error = deckCodeError(this.deckCode());
+    this.codeError.set(error ?? '');
+    this.codeOpened.set(!error);
+    if (!error) window.open(officialDeckSearchUrl(this.deckCode()), '_blank', 'noopener,noreferrer');
+  }
+
   protected async parse(): Promise<void> {
     this.preview.set(null);
     this.downloadMessage.set('');
+    this.unknownNames.set([]);
+    if (detectDeckFormat(this.text()) === 'neuron') {
+      await this.parseOfficialList();
+      return;
+    }
     const { format, result } = parseDeckText(this.text());
     if (!result.ok || format === 'unknown') {
       this.errors.set(result.ok ? [] : result.errors);
@@ -72,6 +102,34 @@ export class DeckImportPanel {
     this.errors.set([]);
     const cards = await this.cardData.getMany(deckCardIds(result.deck));
     this.preview.set({ format, deck: result.deck, cards, check: checkDeck(result.deck, cards) });
+  }
+
+  /** Deck list copied from the official deck page: check section totals, then map names locally. */
+  private async parseOfficialList(): Promise<void> {
+    const parsed = parseNeuronDeckText(this.text());
+    if (!parsed.ok) {
+      this.errors.set(parsed.errors);
+      return;
+    }
+    const { deck, unknownNames } = resolveNeuronDeck(parsed.sections, await this.cardData.allCards());
+    if (unknownNames.length) {
+      this.unknownNames.set(unknownNames);
+      this.errors.set(unknownNames.map((name) => ({ message: `本機卡片資料庫找不到卡名「${name}」` })));
+      return;
+    }
+    this.errors.set([]);
+    const cards = await this.cardData.getMany(deckCardIds(deck));
+    this.preview.set({ format: 'neuron', deck, cards, check: checkDeck(deck, cards), sections: parsed.sections.map((s) => ({ title: s.title, declared: s.declared })) });
+  }
+
+  /** Explicit network action: full card data, then parse the pasted official list again. */
+  protected async syncAndRetry(): Promise<void> {
+    this.busy.set(true);
+    this.downloadMessage.set('正在下載完整卡片資料（約 24 MB）…');
+    const result = await this.cardData.syncAll(this.settings.settings().cardPool);
+    this.busy.set(false);
+    this.downloadMessage.set(result.status === 'failed' ? result.error : '');
+    if (result.status !== 'failed') await this.parse();
   }
 
   /** Explicit network action — the only way the import contacts the card data source. */
@@ -105,7 +163,10 @@ export class DeckImportPanel {
       extra: preview.deck.extra,
       side: preview.deck.side,
       version: existing ? existing.version + 1 : 1,
-      source: { type: preview.format, ref: this.fileName() || undefined },
+      source:
+        preview.format === 'neuron'
+          ? { type: 'deck-code', ref: this.deckCode().trim() || undefined }
+          : { type: preview.format, ref: this.fileName() || undefined },
       importWarnings: preview.check.errors.length ? [...preview.check.errors] : undefined,
       updatedAt: now,
     };
@@ -115,15 +176,24 @@ export class DeckImportPanel {
     this.text.set('');
     this.deckName.set('');
     this.target.set('new');
+    this.deckCode.set('');
+    this.codeOpened.set(false);
   }
 
   protected cancel(): void {
     this.reset();
   }
 
+  protected sectionSummary(sections: ReadonlyArray<{ title: string; declared: number }>): string {
+    const read = sections.map((s) => `${s.title} ${s.declared}`).join('・');
+    const missing = ['Monster Cards', 'Spell Cards', 'Trap Cards', 'Extra Deck', 'Side Deck'].filter((t) => !sections.some((s) => s.title.toLowerCase() === t.toLowerCase()));
+    return `已讀取官方牌表區段：${read}${missing.length ? `；未包含：${missing.join('、')}（視為 0 張，請確認官方頁上確實沒有）` : ''}`;
+  }
+
   private reset(): void {
     this.preview.set(null);
     this.errors.set([]);
+    this.unknownNames.set([]);
     this.fileName.set('');
     this.downloadMessage.set('');
   }

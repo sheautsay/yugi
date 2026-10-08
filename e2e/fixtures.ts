@@ -129,13 +129,16 @@ export interface MockOptions {
   dbVersion?: () => string;
   /** HTTP status for the full download (e.g. 500 to simulate a failure). */
   fullStatus?: () => number;
+  /** Additional cards served by the full download and ID lookups. */
+  extraCards?: ApiCardFixture[];
 }
 
 export async function mockCardSource(page: Page | BrowserContext, options: MockOptions = {}): Promise<{ apiCalls: string[]; imageCalls: string[] }> {
   const apiCalls: string[] = [];
   const imageCalls: string[] = [];
   const unknown = new Set(options.unknownIds ?? []);
-  const byId = new Map(FULL_DATASET.map((c) => [c.id, c]));
+  const dataset = [...FULL_DATASET, ...(options.extraCards ?? [])];
+  const byId = new Map(dataset.map((c) => [c.id, c]));
   await page.route('https://db.ygoprodeck.com/api/v7/**', async (route) => {
     const url = new URL(route.request().url());
     apiCalls.push(route.request().url());
@@ -146,7 +149,7 @@ export async function mockCardSource(page: Page | BrowserContext, options: MockO
       const status = options.fullStatus?.() ?? 200;
       if (status !== 200) return route.fulfill({ status, json: { error: 'mock failure' } });
       const pool = url.searchParams.get('format');
-      const data = FULL_DATASET.filter((c) => !pool || (c['misc_info'] as Array<{ formats: string[] }> | undefined)?.[0]?.formats.includes('Master Duel'));
+      const data = dataset.filter((c) => !pool || (c['misc_info'] as Array<{ formats: string[] }> | undefined)?.[0]?.formats.includes('Master Duel'));
       return route.fulfill({ status: 200, json: { data } });
     }
     const ids = (url.searchParams.get('id') ?? '').split(',').filter(Boolean).map(Number);

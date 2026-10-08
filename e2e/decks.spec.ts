@@ -55,7 +55,7 @@ test('N11: an unsupported in-game style code is not guessed', async ({ page }) =
   await page.goto('/decks');
   await page.getByLabel('牌組代碼或 YDK 內容').fill('MDXK-7F3Q-9ZPA');
   await page.getByRole('button', { name: '解析', exact: true }).click();
-  await expect(page.getByRole('alert')).toContainText('遊戲內牌組代碼：此格式仍在研究中');
+  await expect(page.getByRole('alert')).toContainText('遊戲內牌組代碼無法直接解碼'); // CR-003
 });
 
 test('deck edit: count changes save a new version; images download on request and work offline', async ({ page }) => {

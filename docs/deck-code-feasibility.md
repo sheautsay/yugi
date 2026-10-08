@@ -1,34 +1,52 @@
 # Master Duel 遊戲內牌組代碼 — 可行性報告（PoC-DeckCode）
 
-- 日期：2026-10-08
-- 依據：rev1 R1、`docs/acceptance-v1-rev1.md` G13-1
-- **結論：BLOCKED** — 尚未取得使用者提供的實際代碼範例與取得畫面，無法測試。
+- 初版：2026-10-08（結論 BLOCKED：缺使用者提供的代碼範例）
+- 本版：2026-10-09，使用者提供代碼 `2962ut6`
+- **結論**：
+  - **程式自動查詢官方網站並匯入：NO-GO**（技術上可行，但 KONAMI 使用條款不允許，且無正式 API）
+  - **使用者自行開啟官方頁、複製牌表貼回本程式：GO**（已依 CR-003 與 `docs/acceptance-v1-rev3.md` G21 實作）
 
-## 1. 已完成的公開資料查證（僅讀取公開網頁，未登入、未呼叫任何未公開 API）
+## 1. 查證方式
 
-| 查證項目 | 結果 |
+- 只讀取公開網頁，未登入、未使用任何帳號憑證或私人 Cookie、未呼叫遊戲用戶端介面、未繞過網站防護。
+- 研究期間對 `www.db.yugioh-card.com` 共約 8 次一般 HTTP 請求（GET／一次表單 POST），之後不再自動存取。
+
+## 2. 證據（2026-10-09）
+
+| 項目 | 結果 |
 |---|---|
-| Master Duel 是否有可從外部解析的官方牌組代碼 | 未找到。公開資料顯示牌組匯入多經 KONAMI 官方卡片資料庫（需 Konami ID 登入）轉入遊戲 |
-| 第三方匯入工具的運作方式 | 瀏覽器擴充（例如 Deck transfer for Master Duel、MasterDuelMeta Assistant）在使用者**已登入**的官方資料庫頁面上操作；屬使用者登入工作階段，不符合 F04「不讀取 Cookie／Token」限制 |
-| 2.7.0 版（2026-04-30）更新內容 | 公開報導中未見遊戲內牌組代碼功能（報導內容不完整，不能完全排除） |
-| 官方資料庫卡片編號 | 官方網址使用 Konami 卡片編號（非 passcode），若改走官方網址匯入需另做編號對應 |
+| 查詢介面 | 官方公開 Deck Search 表單有 `deck_code` 欄位（`/yugiohdb/deck_search.action`，`ope=1`）；牌組類型 `3` = Master Duel |
+| `2962ut6` | 搜尋結果恰 1 副：`member_deck.action?cgid=31565760642c57f185605bc43c1667b5&dno=523` |
+| 牌組內容 | 名稱「烙印 Shuyin」、類型 Master Duel；主牌 60（怪獸 24／魔法 31／陷阱 5）、額外 15、備牌 0（頁面合計與逐列加總一致） |
+| 是否為「60 烙印」 | 名稱不是字面「60 烙印」，但為 60 張主牌的烙印（Branded）牌組 |
+| 每列資料 | 卡名、官方卡片編號 `cid`、張數（例：Fallen of Albaz `cid 15245` ×3） |
+| 對應卡片 ID | 48 種 `cid` 經 YGOPRODeck `misc_info.konami_id` 全部唯一對應，英文名稱 100% 一致 |
+| 登入／Cookie | 不需要；但牌組頁必須使用搜尋結果附帶的一次性 `ytkn` 參數，分享網址本身會導回首頁 |
+| 錯誤／未公開／已刪除 | 搜尋結果皆為 0 筆；官方只列「公開」牌組，三者無法區分 |
+| CORS | 無 `Access-Control-Allow-Origin`，瀏覽器內程式無法直接呼叫，須另設代理 |
+| 防護 | Imperva Incapsula 防機器人機制（`_Incapsula_Resource`、`incap_ses` Cookie） |
+| robots.txt | 404（不存在） |
+| 正式 API | 未發現 |
 
-參考來源：
-- https://www.masterduelmeta.com/articles/articles/events/september-2024/deck-import
-- https://chrome.google.com/webstore/detail/deck-transfer-for-yu-gi-o/lgcpomfflpfipndmldmgblhpbnnfidgk
-- https://www.masterduelmeta.com/articles/news/april-30-2026/master-duel-update/
-- https://yugipedia.com/wiki/Konami_index_number
+## 3. 使用條款（Yu-Gi-Oh! Neuron Terms of Use）
 
-## 2. 判定方式（取得範例後執行）
+https://legal.konami.com/games/neuron/terms/tou/en/
 
-1. 確認代碼來源畫面與格式（長度、字元集、是否含校驗碼）。
-2. 確認是否存在**不需登入**的公開解析方式；若只能在遊戲內或登入 Konami ID 後解析 → NO-GO。
-3. 若有公開方式：驗證能取得完整卡片 ID、張數、區域，並列出授權、頻率、反機器人限制；新增網路來源前依規格 §9.8 提交設計差異並經使用者批准。
+- 第 4 條：未經 KONAMI 事先書面同意，不得使用 robot、spider、site search/retrieval application 或其他手動／自動裝置擷取、索引、scrape、data mine 服務內容；不得系統性下載儲存內容建立資料庫。
+- 第 3 條：授權限於個人、非商業用途。
+- 因此「輸入代碼 → 程式向官方網站查詢並解析網頁」屬於需要書面同意的擷取程式，**未取得同意前不實作**。
 
-## 3. 目前 V1 行為
+## 4. 採用的替代方案（G21）
 
-- 匯入框只接受 `ydke://` 與 YDK；其他格式一律顯示「遊戲內牌組代碼仍在研究中，請改用 ydke:// 或 YDK」，不產生任何牌組（G13-2，已由 unit／component／E2E 測試驗證）。
+1. 使用者輸入代碼 → 程式只產生官方搜尋網址，在新分頁開啟（程式本身不發出請求）。
+2. 使用者在官方頁（英文）點進牌組，從 Monster Cards 選到最後一個表格並複製。
+3. 貼回本程式：自動辨識官方牌表格式、核對各區合計、以本機卡片資料庫把英文卡名對應為卡片 ID、預覽後確認匯入。
 
-## 4. 解除 BLOCKED 所需
+其他替代：由第三方網站或使用者自行安裝的擴充功能匯出 ydke:// 或 YDK，再用既有匯入。
 
-- 使用者提供 1 組以上遊戲內牌組代碼範例（可遮部分字元）及其在遊戲中的取得畫面。
+## 5. 限制
+
+- 需使用者手動開啟與複製，無法一鍵匯入。
+- 官方頁須為英文；其他語系卡名無法對應本機的英文卡片資料庫。
+- 官方改版頁面時，複製文字格式可能改變。
+- 若日後取得 KONAMI 書面同意，可另行評估自動查詢（需代理、處理一次性參數與防護機制）。

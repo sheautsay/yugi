@@ -43,7 +43,7 @@ describe('parseDeckText — N11 unknown formats', () => {
     const { format, result } = parseDeckText('MDXK-7F3Q-9ZPA');
     expect(format).toBe('unknown');
     expect(result).toEqual({ ok: false, errors: [{ message: UNKNOWN_FORMAT_MESSAGE }] });
-    expect(UNKNOWN_FORMAT_MESSAGE).toContain('研究中');
+    expect(UNKNOWN_FORMAT_MESSAGE).toContain('遊戲內牌組代碼無法直接解碼'); // CR-003
   });
 
   it('treats gibberish and empty input as failures', () => {

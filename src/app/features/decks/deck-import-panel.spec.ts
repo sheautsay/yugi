@@ -5,6 +5,9 @@ import { checkDeck, newDeck, ParsedDeck } from '../../core/deck';
 import { DeckRepository } from '../../core/deck-repository';
 import { CardRecord } from '../../core/models';
 import { toYdke } from '../../core/ydke';
+import { toCardRecord } from '../../core/card-api';
+import { totalCount } from '../../core/deck';
+import { EDGE_SAMPLE, EDGE_SAMPLE_CARDS } from '../../core/neuron-deck.sample';
 import { DeckImportPanel } from './deck-import-panel';
 
 const MAIN_IDS = Array.from({ length: 14 }, (_, i) => 10_000_000 + i);
@@ -123,7 +126,7 @@ describe('DeckImportPanel — G3 / G13 UI', () => {
   it('an in-game style code is not guessed: research notice, no deck', async () => {
     const { fixture, repo, el } = await setup();
     await paste(fixture, 'MDXK-7F3Q-9ZPA');
-    expect(el.textContent).toContain('研究中');
+    expect(el.textContent).toContain('遊戲內牌組代碼無法直接解碼'); // CR-003
     expect(await repo.list()).toEqual([]);
   });
 
@@ -177,5 +180,74 @@ describe('DeckImportPanel — G3 / G13 UI', () => {
     button(el, '確認匯入').click();
     await settle(fixture);
     expect(await repo.get('deck-a')).toMatchObject({ name: '舊版', version: 2, main: deck40.main, createdAt: existing.createdAt });
+  });
+});
+
+describe('DeckImportPanel — G21 Master Duel deck code (assisted)', () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  async function setupSample(withCards = true) {
+    TestBed.configureTestingModule({
+      imports: [DeckImportPanel],
+      providers: [
+        { provide: DB_NAME, useValue: `code-${crypto.randomUUID()}` },
+        { provide: SLEEP_FN, useValue: async () => undefined },
+        { provide: FETCH_FN, useValue: async () => Promise.reject(new TypeError('offline')) },
+      ],
+    });
+    const db = await TestBed.inject(AppDb).db();
+    if (withCards) for (const c of EDGE_SAMPLE_CARDS) await db.put('cards', { ...toCardRecord(c, 'test'), formats: ['Master Duel'] });
+    const fixture = TestBed.createComponent(DeckImportPanel);
+    await fixture.whenStable();
+    return { fixture, repo: TestBed.inject(DeckRepository), el: fixture.nativeElement as HTMLElement };
+  }
+
+  it('the code only opens the official English Deck Search in a new tab; invalid codes are refused', async () => {
+    const { fixture, el } = await setupSample();
+    const open = vi.spyOn(window, 'open').mockReturnValue(null);
+    setInput(fixture, 'Master Duel 牌組代碼', '2962ut6!');
+    await fixture.whenStable();
+    button(el, '在官方網站開啟').click();
+    await settle(fixture);
+    expect(open).not.toHaveBeenCalled();
+    expect(el.textContent).toContain('牌組代碼只能包含英文字母與數字');
+
+    setInput(fixture, 'Master Duel 牌組代碼', '2962ut6');
+    await fixture.whenStable();
+    button(el, '在官方網站開啟').click();
+    await settle(fixture);
+    expect(open).toHaveBeenCalledWith('https://www.db.yugioh-card.com/yugiohdb/deck_search.action?ope=1&deck_code=2962ut6&request_locale=en', '_blank', 'noopener,noreferrer');
+    expect(el.textContent).toContain('代碼錯誤、牌組未公開或已被刪除');
+  });
+
+  it('a pasted official deck list previews 40 / 15 / 0 and is saved as a deck-code deck only on confirm', async () => {
+    const { fixture, repo, el } = await setupSample();
+    setInput(fixture, 'Master Duel 牌組代碼', '2962ut6');
+    await paste(fixture, EDGE_SAMPLE);
+    await waitForText(fixture, '預覽');
+    expect(el.textContent).toContain('格式：官方牌組頁牌表（英文）');
+    expect(el.textContent).toMatch(/主牌 40 張／額外 15 張／備牌 0 張/);
+    expect(el.textContent).toContain('牌表檢核通過');
+    expect(el.textContent).toContain('未包含：Side Deck');
+    expect(await repo.list()).toEqual([]);
+
+    setInput(fixture, '新牌組名稱', '碼莉絲（官方頁）');
+    await fixture.whenStable();
+    button(el, '確認匯入').click();
+    await settle(fixture);
+    const [saved] = await repo.list();
+    expect(saved).toMatchObject({ name: '碼莉絲（官方頁）', source: { type: 'deck-code', ref: '2962ut6' } });
+    expect(totalCount(saved.main)).toBe(40);
+    expect(totalCount(saved.extra)).toBe(15);
+  });
+
+  it('unknown card names block the import and point to the full card data download', async () => {
+    const { fixture, repo, el } = await setupSample(false);
+    await paste(fixture, EDGE_SAMPLE);
+    await waitForText(fixture, '找不到卡名');
+    expect(el.textContent).toContain('本機卡片資料庫找不到卡名「Droll & Lock Bird」');
+    expect([...el.querySelectorAll('button')].some((b) => b.textContent?.includes('確認匯入'))).toBe(false);
+    expect([...el.querySelectorAll('button')].some((b) => b.textContent?.trim() === '下載完整卡片資料後重新解析')).toBe(true);
+    expect(await repo.list()).toEqual([]);
   });
 });

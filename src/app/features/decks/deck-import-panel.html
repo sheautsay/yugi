@@ -1,11 +1,33 @@
 <section class="card" aria-labelledby="import-heading">
   <h2 id="import-heading">匯入牌組</h2>
-  <p class="muted">貼上 <code>ydke://</code> 代碼或 YDK 內容（自動判斷格式），或選擇 .ydk 檔。Master Duel 遊戲內牌組代碼仍在研究中，尚不支援。</p>
+  <p class="muted">貼上 <code>ydke://</code> 代碼、YDK 內容，或從官方牌組頁複製的牌表（自動判斷格式），或選擇 .ydk 檔。</p>
+
+  <div class="stack code-box">
+    <h3>用 Master Duel 牌組代碼匯入</h3>
+    <div class="row">
+      <label>
+        Master Duel 牌組代碼
+        <input [value]="deckCode()" (input)="deckCode.set($any($event.target).value)" placeholder="例如 2962ut6" maxlength="40" />
+      </label>
+      <button type="button" (click)="openOfficial()">在官方網站開啟</button>
+    </div>
+    @if (codeError()) {
+      <p class="notice bad" role="alert">{{ codeError() }}</p>
+    } @else if (codeOpened()) {
+      <p class="notice" role="status">已在新分頁開啟官方牌組搜尋，請依下列步驟複製牌表後貼到下方。</p>
+    }
+    <ol class="muted">
+      <li>按「在官方網站開啟」，會在新分頁開啟 KONAMI 官方卡片資料庫的牌組搜尋（本工具不會讀取官方網站）。</li>
+      <li>在官方頁點進牌組（頁面請切換為 English），從「Monster Cards」選取到最後一個表格，按 Ctrl+C。</li>
+      <li>貼到下方輸入框，按「解析」。</li>
+    </ol>
+    <p class="muted">官方頁搜尋不到牌組時，可能是代碼錯誤、牌組未公開或已被刪除（官方網站無法區分），也可以改用 ydke:// 或 YDK 匯入。</p>
+  </div>
 
   <div class="stack">
     <label>
       牌組代碼或 YDK 內容
-      <textarea rows="5" [value]="text()" (input)="text.set($any($event.target).value)" spellcheck="false"></textarea>
+      <textarea rows="5" [value]="text()" (input)="text.set($any($event.target).value)" spellcheck="false" placeholder="ydke://…、YDK 內容，或從官方牌組頁複製的牌表"></textarea>
     </label>
     <div class="row">
       <button type="button" class="primary" (click)="parse()" [disabled]="!text().trim()">解析</button>
@@ -34,10 +56,22 @@
       </ul>
     </div>
   }
+  @if (unknownNames().length) {
+    <p class="notice warn">
+      找不到的卡名通常是因為尚未下載完整卡片資料，或官方頁不是英文。
+      <button type="button" (click)="syncAndRetry()" [disabled]="busy()">下載完整卡片資料後重新解析</button>
+    </p>
+  }
+  @if (downloadMessage() && !preview()) {
+    <p class="notice" role="status">{{ downloadMessage() }}</p>
+  }
 
   @if (preview(); as p) {
     <div class="stack preview" aria-live="polite">
-      <h3>預覽（尚未寫入）— 格式：{{ p.format === 'ydke' ? 'ydke://' : 'YDK' }}</h3>
+      <h3>預覽（尚未寫入）— 格式：{{ formatLabel[p.format] }}</h3>
+      @if (p.sections) {
+        <p class="muted">{{ sectionSummary(p.sections) }}</p>
+      }
       <p>
         主牌 <strong>{{ p.check.totals.main }}</strong> 張／額外 <strong>{{ p.check.totals.extra }}</strong> 張／備牌
         <strong>{{ p.check.totals.side }}</strong> 張
