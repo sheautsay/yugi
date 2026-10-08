@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { MALISS, TEST_DECK, importTestDeck, mockCardSource, toYdk, toYdke } from './fixtures';
+import { MALISS, TEST_DECK, importTestDeck, mockCardSource, setAutoThumbnails, toYdk, toYdke } from './fixtures';
 
 // Card source is MOCKED here (see fixtures.ts); these tests prove UI behaviour only.
 
@@ -60,6 +60,7 @@ test('N11: an unsupported in-game style code is not guessed', async ({ page }) =
 
 test('deck edit: count changes save a new version; images download on request and work offline', async ({ page }) => {
   const { imageCalls } = await mockCardSource(page);
+  await setAutoThumbnails(page, false); // CR-002: this test covers the explicit download path
   await importTestDeck(page, '編輯測試');
   await page.locator('.deck-row', { hasText: '編輯測試' }).getByRole('link', { name: '編輯' }).click();
   await expect(page.getByRole('heading', { name: '編輯牌組' })).toBeVisible();

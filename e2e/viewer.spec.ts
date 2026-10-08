@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { MALISS, importTestDeck, mockCardSource, seedCombos, testComboRoute } from './fixtures';
+import { MALISS, importTestDeck, mockCardSource, seedCombos, setAutoThumbnails, testComboRoute } from './fixtures';
 
 // Card source MOCKED; the route is test data (verified against the test deck for this UI test only).
 
@@ -42,6 +42,7 @@ test('G7: from a hand query into the route; A/B share the step; back returns to 
 });
 
 test('N7: with the card source unreachable a cached route still opens; missing card data is labelled', async ({ page }) => {
+  await setAutoThumbnails(page, false); // CR-002 addendum: this test checks that nothing external is requested
   await seedCombos(page, [{ ...testComboRoute({ id: 'unknown-card-route', name: '含未下載卡片的路線' }), endBoard: [{ cardId: 55555555, zone: 'EMZ', count: 1 }] }]);
   await page.unrouteAll();
   const external: string[] = [];

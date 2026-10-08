@@ -59,6 +59,48 @@
     }
   </section>
 
+  <section class="card" aria-labelledby="carddb-heading">
+    <h2 id="carddb-heading">完整卡片資料庫</h2>
+    <div class="row" role="radiogroup" aria-label="卡池">
+      <label class="choice"><input type="radio" name="pool" [checked]="appSettings.settings().cardPool === 'master-duel'" (change)="setPool('master-duel')" /> Master Duel 卡池（預設）</label>
+      <label class="choice"><input type="radio" name="pool" [checked]="appSettings.settings().cardPool === 'all'" (change)="setPool('all')" /> 全部遊戲王卡片</label>
+    </div>
+    @if (syncInfo(); as info) {
+      <p>
+        本機資料：{{ info.pool === 'all' ? '全部卡片' : 'Master Duel 卡池' }}・{{ info.count }} 張・資料版本 {{ info.dbVersion }}（來源更新於 {{ info.lastUpdate }}）・同步於 {{ info.syncedAt }}
+      </p>
+    } @else {
+      <p class="notice warn">尚未下載完整卡片資料。下載約 24 MB，之後搜尋都在本機進行，不會再呼叫 API。</p>
+    }
+    <div class="row">
+      <button type="button" (click)="checkRemote()" [disabled]="busy()">檢查遠端版本</button>
+      <button type="button" class="primary" (click)="syncCards()" [disabled]="busy()">下載／更新完整卡片資料</button>
+      <button type="button" (click)="syncCards(true)" [disabled]="busy() || !syncInfo()">強制重新下載</button>
+    </div>
+    @if (remote()) {
+      <p class="muted" role="status">{{ remote() }}</p>
+    }
+    <p class="muted">版本與本機相同時不會重新下載。下載或寫入失敗時，原有卡片資料、牌組與 Combo 都不會改變。卡片資料同步不會下載任何圖片。</p>
+    <label class="choice">
+      <input type="checkbox" [checked]="appSettings.settings().autoThumbnails" (change)="setAutoThumbnails($any($event.target).checked)" />
+      卡片出現在畫面上時自動下載縮圖（逐張、每秒最多 10 張，下載後存在本機）
+    </label>
+  </section>
+
+  <section class="card" aria-labelledby="notes-heading">
+    <h2 id="notes-heading">繁中名稱、俗稱與 Master Duel 禁限標註</h2>
+    <p class="muted">
+      資料來源沒有繁體中文卡名與 Master Duel 禁限表，本工具不會自行產生。你可以在卡片詳細資訊中輸入，或匯入自己整理的 JSON 陣列（每筆含 cardId，以及選填的 nameZhTw、aliases、mdBan）。這些標註會隨完整備份一起匯出。
+    </p>
+    <div class="row">
+      <button type="button" (click)="exportNotes()">匯出卡片標註（JSON）</button>
+      <label class="button">
+        匯入卡片標註…
+        <input type="file" accept=".json,application/json" class="visually-hidden" (change)="importNotes($event)" />
+      </label>
+    </div>
+  </section>
+
   <section class="card">
     <h2>卡片資料</h2>
     <table>

@@ -1,4 +1,4 @@
-import { ParsedDeck, checkDeck, countsFromIds, parseCardId } from './deck';
+import { ParsedDeck, banHints, checkDeck, countsFromIds, parseCardId } from './deck';
 import { CardRecord } from './models';
 
 function card(cardId: number, isExtraDeckType = false): CardRecord {
@@ -99,5 +99,26 @@ describe('deck helpers', () => {
     expect(parseCardId('-1')).toContain('負數');
     expect(parseCardId('1.0')).toContain('整數');
     expect(parseCardId('x1')).toContain('數字');
+  });
+});
+
+describe('banHints — G20-4 (separate from the deck check)', () => {
+  it('warns about the user\'s own Master Duel marks without making the deck a draft', () => {
+    const deck = validDeck();
+    const cards = cardMap(deck);
+    cards.set(1000, { ...card(1000), mdBan: 'Limited' });
+    cards.set(1001, { ...card(1001), mdBan: 'Semi-Limited' });
+    cards.set(1002, { ...card(1002), mdBan: 'Forbidden' });
+    expect(banHints(deck, cards)).toEqual([
+      '「Card 1000」你標註為 Master Duel 限制卡（上限 1 張），目前 3 張',
+      '「Card 1001」你標註為 Master Duel 準限制卡（上限 2 張），目前 3 張',
+      '「Card 1002」你標註為 Master Duel 禁止卡（上限 0 張），目前 3 張',
+    ]);
+    expect(checkDeck(deck, cards).queryable).toBe(true);
+  });
+
+  it('gives no hint for unmarked cards or counts within the limit', () => {
+    const deck = { ...validDeck(), main: [{ cardId: 7, count: 1 }] };
+    expect(banHints(deck, new Map([[7, { ...card(7), mdBan: 'Limited' as const }]]))).toEqual([]);
   });
 });

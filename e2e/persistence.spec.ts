@@ -64,7 +64,7 @@ test('G9: decks and combos survive a full browser restart; a backup restores int
   await page.goto('/decks');
   await expect(page.getByText('尚未建立任何牌組')).toBeVisible();
   await page.goto('/settings');
-  await page.locator('input[type=file]').setInputFiles(backupPath);
+  await page.getByLabel('從備份檔還原…').setInputFiles(backupPath);
   await expect(page.getByText(/牌組 1、Combo 1、版型 0/)).toBeVisible();
   await expect(page.getByText('將會：新增 2、覆蓋 0、另存副本 0、略過 0、內容相同不變 0。')).toBeVisible();
   expect((await dumpUserData(page)).decks).toEqual([]); // preview writes nothing
@@ -73,7 +73,7 @@ test('G9: decks and combos survive a full browser restart; a backup restores int
   expect(await dumpUserData(page)).toEqual(before);
 
   // Restoring the same file again changes nothing (no duplicates).
-  await page.locator('input[type=file]').setInputFiles(backupPath);
+  await page.getByLabel('從備份檔還原…').setInputFiles(backupPath);
   await expect(page.getByText('將會：新增 0、覆蓋 0、另存副本 0、略過 0、內容相同不變 2。')).toBeVisible();
   await page.getByRole('button', { name: '確認還原' }).click();
   expect(await dumpUserData(page)).toEqual(before);
@@ -84,7 +84,7 @@ test('G9: a corrupted backup file is rejected without writing anything', async (
   const context = await launch(await newProfile());
   const page = await context.newPage();
   await page.goto('/settings');
-  await page.locator('input[type=file]').setInputFiles({
+  await page.getByLabel('從備份檔還原…').setInputFiles({
     name: 'bad.json',
     mimeType: 'application/json',
     buffer: Buffer.from(JSON.stringify({ format: 'ygo-combo-assistant/backup', backupVersion: 1, exportedAt: 'x', decks: [{ id: 'd' }], combos: [], layouts: [] })),

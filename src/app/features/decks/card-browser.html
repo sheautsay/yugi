@@ -1,0 +1,146 @@
+<div class="stack">
+  <div class="row sync-line">
+    @if (syncInfo(); as info) {
+      <span class="muted">
+        卡片資料：{{ poolLabel[info.pool] }}・{{ info.count }} 張・資料版本 {{ info.dbVersion }}・同步於 {{ info.syncedAt.slice(0, 10) }}
+      </span>
+      <button type="button" (click)="sync()" [disabled]="syncing()">檢查並更新</button>
+    } @else if (!loading()) {
+      <span class="notice warn">尚未下載完整卡片資料，目前只能搜尋已快取的 {{ cards().length }} 張卡。</span>
+      <button type="button" class="primary" (click)="sync()" [disabled]="syncing()">下載完整卡片資料（{{ poolLabel[pool()] }}，約 24 MB）</button>
+    }
+  </div>
+  @if (message()) {
+    <p class="notice" role="status">{{ message() }}</p>
+  }
+  @if (pool() === 'all' && syncInfo()?.pool === 'master-duel') {
+    <p class="notice warn">
+      本機目前只有 Master Duel 卡池的資料，「全部卡片」只會列出已存在本機的卡。
+      <button type="button" (click)="sync()" [disabled]="syncing()">下載全部遊戲王卡片資料</button>
+    </p>
+  }
+
+  <form class="filters" (submit)="$event.preventDefault()" role="search" aria-label="搜尋卡片">
+    <label class="wide">
+      卡名（英文／繁中／俗稱）或卡片 ID
+      <input type="search" [value]="text()" (input)="setText($any($event.target).value)" placeholder="例如 Maliss 或 32061192" />
+    </label>
+    <label>
+      卡池
+      <select [value]="pool()" (change)="setPool($any($event.target).value)">
+        <option value="master-duel">Master Duel</option>
+        <option value="all">全部卡片</option>
+      </select>
+    </label>
+    <label>
+      種類
+      <select [value]="kind()" (change)="kind.set($any($event.target).value)">
+        <option value="any">全部</option>
+        <option value="monster">怪獸</option>
+        <option value="spell">魔法</option>
+        <option value="trap">陷阱</option>
+      </select>
+    </label>
+    <label>
+      牌組區
+      <select [value]="zone()" (change)="zone.set($any($event.target).value)">
+        <option value="any">全部</option>
+        <option value="main">主牌組卡</option>
+        <option value="extra">額外牌組卡</option>
+      </select>
+    </label>
+    <label>
+      系列
+      <input list="archetype-options" [value]="archetype()" (change)="archetype.set($any($event.target).value)" placeholder="例如 Maliss" />
+      <datalist id="archetype-options">
+        @for (a of facetValues().archetypes; track a) {
+          <option [value]="a"></option>
+        }
+      </datalist>
+    </label>
+    <label>
+      屬性
+      <select [value]="attribute()" (change)="attribute.set($any($event.target).value)">
+        <option value="">全部</option>
+        @for (a of facetValues().attributes; track a) {
+          <option [value]="a">{{ a }}</option>
+        }
+      </select>
+    </label>
+    <label>
+      種族／魔陷類型
+      <select [value]="race()" (change)="race.set($any($event.target).value)">
+        <option value="">全部</option>
+        @for (r of facetValues().races; track r) {
+          <option [value]="r">{{ r }}</option>
+        }
+      </select>
+    </label>
+    <label>
+      等級／階級
+      <select [value]="level() ?? ''" (change)="setLevel($any($event.target).value)">
+        <option value="">全部</option>
+        @for (l of facetValues().levels; track l) {
+          <option [value]="l">{{ l }}</option>
+        }
+      </select>
+    </label>
+    <button type="button" (click)="resetFilters()">清除條件</button>
+  </form>
+
+  <p class="muted" aria-live="polite">
+    符合 {{ results().length }} 張（{{ poolLabel[pool()] }}）・第 {{ paged().page }} / {{ paged().pages }} 頁
+  </p>
+  @if (!loading() && results().length === 0) {
+    <p class="notice">沒有符合的卡片。可以換個關鍵字、清除條件，或切換到「全部卡片」。</p>
+  }
+
+  <ul class="plain results">
+    @for (card of paged().items; track card.cardId) {
+      <li class="result-row">
+        <app-card-tile [cardId]="card.cardId" [card]="card" size="s" />
+        <div class="meta">
+          <strong>{{ card.nameZhTw ?? card.nameEn }}</strong>
+          @if (card.nameZhTw) {
+            <span class="muted">{{ card.nameEn }}</span>
+          }
+          <span class="muted">
+            ID {{ card.cardId }}・{{ kindLabel[card.kind] }}{{ card.isExtraDeckType ? '（額外）' : '' }}{{ card.attribute ? '・' + card.attribute : '' }}{{ card.race ? '・' + card.race : '' }}{{ card.level !== undefined ? '・★' + card.level : '' }}
+          </span>
+          <span class="badges">
+            @if (card.mdBan) {
+              <span class="badge bad">MD {{ card.mdBan }}（自行標註）</span>
+            }
+            @if (card.banlist; as ban) {
+              <span class="badge warn">TCG {{ ban.tcg ?? '—' }}／OCG {{ ban.ocg ?? '—' }}（參考）</span>
+            }
+            @if (zoneCounts(card.cardId); as counts) {
+              <span class="badge ok">牌組中：{{ counts }}</span>
+            }
+          </span>
+        </div>
+        <div class="actions">
+          <button type="button" (click)="adjust.emit({ card, delta: -1 })" [disabled]="copies(card.cardId) === 0" [attr.aria-label]="'從牌組移除一張 ' + card.nameEn">−1</button>
+          <span class="count" aria-hidden="true">{{ copies(card.cardId) }}</span>
+          <button type="button" (click)="adjust.emit({ card, delta: 1 })" [disabled]="!canAdd(card)" [attr.aria-label]="'加入一張 ' + card.nameEn">+1</button>
+          <button type="button" (click)="detail.set(card)" [attr.aria-label]="'查看 ' + card.nameEn + ' 詳細資訊'">詳細</button>
+          @if (addBlockedReason(card); as reason) {
+            <span class="muted reason">{{ reason }}</span>
+          }
+        </div>
+      </li>
+    }
+  </ul>
+
+  @if (paged().pages > 1) {
+    <nav class="row pager" aria-label="搜尋結果分頁">
+      <button type="button" (click)="page.set(1)" [disabled]="paged().page === 1">第一頁</button>
+      <button type="button" (click)="page.set(paged().page - 1)" [disabled]="paged().page === 1">上一頁</button>
+      <span>第 {{ paged().page }} / {{ paged().pages }} 頁</span>
+      <button type="button" (click)="page.set(paged().page + 1)" [disabled]="paged().page === paged().pages">下一頁</button>
+      <button type="button" (click)="page.set(paged().pages)" [disabled]="paged().page === paged().pages">最後一頁</button>
+    </nav>
+  }
+
+  <app-card-detail [card]="detail()" (closed)="detail.set(null)" (saved)="onNoteSaved($event)" />
+</div>

@@ -2,17 +2,18 @@ import { ChangeDetectionStrategy, Component, computed, effect, inject, input, si
 import { RouterLink } from '@angular/router';
 import { CardDataService } from '../../core/card-data.service';
 import { CardImageService } from '../../core/card-image.service';
-import { DECK_ZONES, ZONE_LABEL, checkDeck, deckCardIds, displayName } from '../../core/deck';
+import { isDeckCard } from '../../core/card-search';
+import { DECK_ZONES, ZONE_LABEL, banHints, checkDeck, countOf, deckCardIds, displayName } from '../../core/deck';
 import { DeckRepository } from '../../core/deck-repository';
 import { CardRecord, DeckRecord, DeckZone } from '../../core/models';
 import { toYdke } from '../../core/ydke';
-import { CardSearch } from '../../shared/card-search';
 import { CardTile } from '../../shared/card-tile';
+import { CardAdjust, CardBrowser } from './card-browser';
 import { safeFileName, saveTextFile } from '../../shared/save-file';
 
 @Component({
   selector: 'app-deck-edit-page',
-  imports: [RouterLink, CardTile, CardSearch],
+  imports: [RouterLink, CardTile, CardBrowser],
   templateUrl: './deck-edit-page.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -33,11 +34,16 @@ export class DeckEditPage {
   protected readonly notFound = signal(false);
   protected readonly message = signal('');
   protected readonly busy = signal(false);
-  protected readonly addZone = signal<DeckZone>('main');
+  /** When set, the card browser's +/− work on the side deck instead of main/extra. */
+  protected readonly sideMode = signal(false);
 
   protected readonly check = computed(() => {
     const deck = this.draft();
     return deck ? checkDeck(deck, this.cards()) : null;
+  });
+  protected readonly banHintList = computed(() => {
+    const deck = this.draft();
+    return deck ? banHints(deck, this.cards()) : [];
   });
   protected readonly dirty = computed(() => JSON.stringify(this.draft()) !== JSON.stringify(this.saved()));
   protected readonly ydke = computed(() => {
@@ -81,17 +87,41 @@ export class DeckEditPage {
     this.update((d) => ({ ...d, [zone]: d[zone].filter((c) => c.cardId !== cardId) }));
   }
 
-  protected addCard(card: CardRecord): void {
-    const zone = this.addZone();
+  /** Copies of a card across main, extra and side (the 3-copy rule). */
+  protected copies(cardId: number): number {
+    const deck = this.draft();
+    return deck ? DECK_ZONES.reduce((sum, zone) => sum + countOf(deck[zone], cardId), 0) : 0;
+  }
+
+  /** G20: extra-deck monsters go to the extra deck, everything else to the main deck. */
+  protected adjust({ card, delta }: CardAdjust): void {
+    const zone: DeckZone = this.sideMode() ? 'side' : card.isExtraDeckType ? 'extra' : 'main';
+    if (delta < 0) {
+      if (countOf(this.draft()?.[zone] ?? [], card.cardId) === 0) return;
+      this.changeCount(zone, card.cardId, -1);
+      this.message.set(`已從${ZONE_LABEL[zone]}移除一張「${displayName(card)}」（尚未儲存）。`);
+      return;
+    }
+    if (!isDeckCard(card)) {
+      this.message.set(`「${displayName(card)}」是 Skill／Token 卡，不能放入牌組。`);
+      return;
+    }
+    if (this.copies(card.cardId) >= 3) {
+      this.message.set(`「${displayName(card)}」已有 3 張（同名卡最多 3 張）。`);
+      return;
+    }
     this.update((d) => {
-      const existing = d[zone].find((c) => c.cardId === card.cardId);
-      const rows = existing
-        ? d[zone].map((c) => (c.cardId === card.cardId ? { ...c, count: Math.min(3, c.count + 1) } : c))
+      const rows = d[zone].some((c) => c.cardId === card.cardId)
+        ? d[zone].map((c) => (c.cardId === card.cardId ? { ...c, count: c.count + 1 } : c))
         : [...d[zone], { cardId: card.cardId, count: 1 }];
       return { ...d, [zone]: rows };
     });
+    this.remember(card);
+    this.message.set(`已將「${displayName(card)}」加入${ZONE_LABEL[zone]}（尚未儲存）。`);
+  }
+
+  protected remember(card: CardRecord): void {
     this.cards.update((m) => new Map(m).set(card.cardId, card));
-    this.message.set(`已將「${card.nameEn}」加入${ZONE_LABEL[zone]}（尚未儲存）。`);
   }
 
   protected async save(): Promise<void> {

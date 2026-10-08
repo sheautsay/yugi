@@ -171,6 +171,13 @@ label {
   flex: 1 1 160px;
 }
 
+label.choice {
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
+  min-height: 40px;
+}
+
 .notice {
   border-radius: var(--radius);
   padding: 10px 12px;

@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { MALISS, syntheticScreenshot, toYdke } from './fixtures';
+import { MALISS, setAutoThumbnails, syntheticScreenshot, toYdke } from './fixtures';
 
 // REAL external source (YGOPRODeck API + images via the dev-server proxy). Run explicitly:
 //   npm run e2e:real
@@ -11,6 +11,7 @@ test('real YGOPRODeck: card data and images for the Maliss archetype download an
     extra: [MALISS.redRansom, MALISS.whiteBinder, MALISS.heartsCrypter].map((id): [number, number] => [id, 1]),
     side: [] as Array<[number, number]>,
   };
+  await setAutoThumbnails(page, false); // CR-002: this test covers the explicit download path
   await page.goto('/decks');
   await page.getByLabel('牌組代碼或 YDK 內容').fill(toYdke(deck));
   await page.getByRole('button', { name: '解析', exact: true }).click();
@@ -73,4 +74,38 @@ test('real card art: a synthetic screenshot built from real YGOPRODeck art is re
   console.log('real-art recognition', JSON.stringify({ statuses, chosen }));
   expect(statuses).toEqual(Array(5).fill('confident'));
   hand.forEach((id, i) => expect(chosen[i]).toContain(`ID ${id}`));
+});
+
+test('real full sync: Master Duel pool downloads once, is searchable locally, re-check skips the download', async ({ page }) => {
+  test.setTimeout(240_000);
+  const api: string[] = [];
+  page.on('request', (r) => r.url().includes('db.ygoprodeck.com') && api.push(r.url()));
+  await page.goto('/settings');
+  const started = Date.now();
+  await page.getByRole('button', { name: '下載／更新完整卡片資料' }).click();
+  const done = page.getByText(/已同步 (\d+) 張卡片/);
+  await expect(done).toBeVisible({ timeout: 180_000 });
+  const text = (await done.textContent()) ?? '';
+  const count = Number(/已同步 (\d+) 張/.exec(text)?.[1]);
+  console.log('real-sync', JSON.stringify({ text, seconds: Math.round((Date.now() - started) / 1000), requests: api }));
+  expect(count).toBeGreaterThan(13_000);
+  expect(api).toEqual(['https://db.ygoprodeck.com/api/v7/checkDBVer.php', 'https://db.ygoprodeck.com/api/v7/cardinfo.php?misc=yes&format=master%20duel']);
+
+  api.length = 0;
+  await page.getByRole('button', { name: '下載／更新完整卡片資料' }).click();
+  await expect(page.getByText(/卡片資料已是最新版本/)).toBeVisible({ timeout: 30_000 });
+  expect(api).toEqual(['https://db.ygoprodeck.com/api/v7/checkDBVer.php']);
+
+  api.length = 0;
+  await page.goto('/decks');
+  await page.getByLabel('牌組名稱', { exact: true }).fill('真實搜尋');
+  await page.getByRole('button', { name: '建立', exact: true }).click();
+  await page.locator('.deck-row', { hasText: '真實搜尋' }).getByRole('link', { name: '編輯' }).click();
+  await page.getByLabel('卡名（英文／繁中／俗稱）或卡片 ID').fill('maliss');
+  await expect(page.locator('app-card-browser p[aria-live]')).toContainText(/符合 1\d 張/);
+  await page.getByRole('button', { name: '查看 Maliss <P> Dormouse 詳細資訊' }).click();
+  await expect(page.getByRole('dialog').locator('.image img')).toBeVisible({ timeout: 30_000 });
+  expect(await page.getByRole('dialog').locator('.image img').evaluate((el: HTMLImageElement) => el.naturalWidth)).toBeGreaterThan(300);
+  await expect(page.getByRole('dialog')).toContainText('效果（英文原文）');
+  expect(api).toEqual([]); // searching used local data only
 });

@@ -1,15 +1,19 @@
-import { ChangeDetectionStrategy, Component, computed, effect, inject, input, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, ElementRef, afterNextRender, computed, effect, inject, input, signal, untracked } from '@angular/core';
 import { CardImageService } from '../core/card-image.service';
+import { SettingsService } from '../core/settings.service';
 import { displayName } from '../core/deck';
 import { CardRecord } from '../core/models';
 
-/** Card image from the local cache, or a readable frame with name and ID when there is none. */
+/**
+ * Card image from the local cache, or a readable frame with name and ID when there is none.
+ * A missing thumbnail is requested only while the tile is on screen (G19).
+ */
 @Component({
   selector: 'app-card-tile',
   template: `
     <figure class="tile" [class.small]="size() === 's'" [attr.aria-label]="label()">
       @if (src(); as url) {
-        <img [src]="url" [alt]="label()" (error)="src.set(null)" />
+        <img [src]="url" [alt]="label()" (error)="onImageError()" />
       } @else {
         <div class="fallback" aria-hidden="true">
           <span class="name">{{ name() }}</span>
@@ -39,6 +43,7 @@ import { CardRecord } from '../core/models';
 })
 export class CardTile {
   private readonly images = inject(CardImageService);
+  private readonly settings = inject(SettingsService);
 
   readonly cardId = input.required<number>();
   readonly card = input<CardRecord | undefined>();
@@ -47,19 +52,64 @@ export class CardTile {
   readonly caption = input(false);
 
   protected readonly src = signal<string | null>(null);
+  /** The cache lookup for the current card has finished. */
+  private readonly looked = signal(false);
+  private readonly visible = signal(false);
+  /** The cached image could not be decoded; show the frame and stop requesting it. */
+  private readonly broken = signal(false);
   protected readonly name = computed(() => displayName(this.card()));
   protected readonly label = computed(() => `${this.name()}（ID ${this.cardId()}）${this.count() > 1 ? `×${this.count()}` : ''}`);
 
   constructor() {
+    // A different card (or a bulk cache change): look it up afresh.
     effect((onCleanup) => {
       const id = this.cardId();
       this.images.version();
-      let cancelled = false;
-      onCleanup(() => (cancelled = true));
-      this.images.cachedUrl(id).then(
-        (url) => !cancelled && this.src.set(url),
-        () => !cancelled && this.src.set(null),
-      );
+      this.src.set(null);
+      this.looked.set(false);
+      this.broken.set(false);
+      this.lookup(id, onCleanup);
     });
+
+    // An image was just stored: only the tiles showing that card look again.
+    effect((onCleanup) => {
+      const loaded = this.images.loaded();
+      const id = untracked(this.cardId);
+      if (loaded?.variant === 'small' && loaded.cardId === id) this.lookup(id, onCleanup);
+    });
+
+    effect((onCleanup) => {
+      const id = this.cardId();
+      if (!this.visible() || !this.looked() || this.src() || this.broken() || !this.settings.settings().autoThumbnails) return;
+      this.images.want(id);
+      onCleanup(() => this.images.unwant(id));
+    });
+
+    const host = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
+    const destroyRef = inject(DestroyRef);
+    afterNextRender(() => {
+      if (typeof IntersectionObserver === 'undefined') return;
+      const observer = new IntersectionObserver((entries) => this.visible.set(entries.some((e) => e.isIntersecting)), { rootMargin: '120px' });
+      observer.observe(host);
+      destroyRef.onDestroy(() => observer.disconnect());
+    });
+  }
+
+  protected onImageError(): void {
+    this.broken.set(true);
+    this.src.set(null);
+  }
+
+  private lookup(id: number, onCleanup: (fn: () => void) => void): void {
+    let cancelled = false;
+    onCleanup(() => (cancelled = true));
+    this.images.cachedUrl(id).then(
+      (url) => {
+        if (cancelled || this.broken()) return;
+        this.src.set(url);
+        this.looked.set(true);
+      },
+      () => !cancelled && this.looked.set(true),
+    );
   }
 }

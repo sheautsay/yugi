@@ -95,6 +95,26 @@ function cyrb53(text: string): number {
   return 4294967296 * (2097151 & h2) + (h1 >>> 0);
 }
 
+const MD_BAN_LIMIT = { Forbidden: 0, Limited: 1, 'Semi-Limited': 2 } as const;
+const MD_BAN_LABEL = { Forbidden: '禁止卡', Limited: '限制卡', 'Semi-Limited': '準限制卡' } as const;
+
+/**
+ * Ban-list hints, kept apart from {@link checkDeck}: they never make a deck a draft. Only the
+ * user's own Master Duel marks are used — the card source publishes no Master Duel list.
+ */
+export function banHints(deck: ParsedDeck, cards: ReadonlyMap<number, CardRecord>): string[] {
+  const totals = new Map<number, number>();
+  for (const zone of DECK_ZONES) for (const { cardId, count } of deck[zone]) totals.set(cardId, (totals.get(cardId) ?? 0) + count);
+  const hints: string[] = [];
+  for (const [cardId, count] of totals) {
+    const card = cards.get(cardId);
+    if (card?.mdBan && count > MD_BAN_LIMIT[card.mdBan]) {
+      hints.push(`「${displayName(card)}」你標註為 Master Duel ${MD_BAN_LABEL[card.mdBan]}（上限 ${MD_BAN_LIMIT[card.mdBan]} 張），目前 ${count} 張`);
+    }
+  }
+  return hints;
+}
+
 export function displayName(card: CardRecord | undefined): string {
   return card?.nameZhTw ?? card?.nameEn ?? '未識別';
 }

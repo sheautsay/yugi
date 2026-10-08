@@ -39,7 +39,10 @@
               </div>
             }
           }
-          <p class="muted">禁限表尚未進行當期核對，不作為阻擋條件。</p>
+          @for (hint of banHintList(); track $index) {
+            <p class="notice warn" role="note">禁限提示：{{ hint }}（不影響牌表檢核）</p>
+          }
+          <p class="muted">禁限表尚未進行當期核對，不作為阻擋條件；Master Duel 禁限可在卡片詳細資訊中自行標註。</p>
           <div class="row">
             <button type="button" class="primary" (click)="save()" [disabled]="!dirty() || !deck.name.trim()">儲存</button>
             <button type="button" (click)="discard()" [disabled]="!dirty()">放棄變更</button>
@@ -58,17 +61,14 @@
           </div>
         </section>
 
-        <section class="card">
-          <h2>加入卡片</h2>
-          <label>
-            加入到
-            <select [value]="addZone()" (change)="addZone.set($any($event.target).value)">
-              @for (zone of zones; track zone) {
-                <option [value]="zone">{{ zoneLabel[zone] }}</option>
-              }
-            </select>
+        <section class="card" aria-labelledby="browser-heading">
+          <h2 id="browser-heading">搜尋卡片並加入牌組</h2>
+          <p class="muted">＋／− 會自動放入主牌組或額外牌組（融合／同步／超量／連結 → 額外）。</p>
+          <label class="choice">
+            <input type="checkbox" [checked]="sideMode()" (change)="sideMode.set($any($event.target).checked)" />
+            改為加入／移除備牌
           </label>
-          <app-card-search actionLabel="加入" (picked)="addCard($event)" />
+          <app-card-browser [deck]="deck" (adjust)="adjust($event)" (cardUpdated)="remember($event)" />
         </section>
 
         <section class="card">
@@ -98,7 +98,7 @@
                   <span class="grow">{{ displayName(cards().get(c.cardId)) }} <span class="muted">（ID {{ c.cardId }}）</span></span>
                   <button type="button" (click)="changeCount(zone, c.cardId, -1)" [attr.aria-label]="'減少一張 ' + c.cardId">−1</button>
                   <span aria-live="polite">×{{ c.count }}</span>
-                  <button type="button" (click)="changeCount(zone, c.cardId, 1)" [disabled]="c.count >= 3" [attr.aria-label]="'增加一張 ' + c.cardId">+1</button>
+                  <button type="button" (click)="changeCount(zone, c.cardId, 1)" [disabled]="copies(c.cardId) >= 3" [attr.aria-label]="'增加一張 ' + c.cardId">+1</button>
                   <button type="button" class="danger" (click)="removeCard(zone, c.cardId)">移除</button>
                 </li>
               }

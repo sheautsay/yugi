@@ -154,6 +154,14 @@ export const layoutSchema = z.strictObject({
   createdAt: isoDateTime,
 });
 
+/** User annotations on a card (zh-TW name, aliases, Master Duel ban mark). */
+export const cardNoteSchema = z.strictObject({
+  cardId,
+  nameZhTw: text(80).optional(),
+  aliases: z.array(text(40)).max(20).optional(),
+  mdBan: z.enum(['Forbidden', 'Limited', 'Semi-Limited']).optional(),
+});
+
 /** Human-readable messages: "path: message". */
 export function issues(error: z.ZodError): string[] {
   return error.issues.map((i) => `${i.path.length ? `${i.path.join('.')}：` : ''}${i.message}`);

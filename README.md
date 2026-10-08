@@ -15,11 +15,11 @@ npm start
 ## 文件
 
 - [使用說明](docs/user-guide.md)
-- [驗收基準（鎖定）](docs/acceptance-v1.md)、[rev1 新增驗收](docs/acceptance-v1-rev1.md)、[變更記錄](docs/acceptance-changes.md)
+- [驗收基準（鎖定）](docs/acceptance-v1.md)、[rev1 新增驗收](docs/acceptance-v1-rev1.md)、[rev2 卡片資料庫驗收](docs/acceptance-v1-rev2.md)、[變更記錄](docs/acceptance-changes.md)
 - [驗收證據](docs/validation/)
 - [G12 碼莉絲實測檢核單](docs/g12-maliss-verification-checklist.md)
 - [遊戲內牌組代碼可行性](docs/deck-code-feasibility.md)
 
 ## 技術
 
-Angular 22（standalone、zoneless、TypeScript strict）、IndexedDB（idb）、Zod、Vitest、Playwright（系統 Edge）。卡片資料來自 YGOPRODeck API v7，僅在使用者按下下載時連線。
+Angular 22（standalone、zoneless、TypeScript strict）、IndexedDB（idb）、Zod、Vitest、Playwright（系統 Edge）。卡片資料來自 YGOPRODeck API v7：完整卡片文字資料只在使用者按下同步時下載並存在本機；縮圖在卡片顯示時才下載並快取（可在設定關閉）。

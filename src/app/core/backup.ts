@@ -1,6 +1,7 @@
+import type { CardNote } from './card-data.service';
 import { validateCombo } from './combo';
 import { ComboRoute, DeckRecord, HandLayoutPreset } from './models';
-import { deckSchema, issues, layoutSchema } from './schemas';
+import { cardNoteSchema, deckSchema, issues, layoutSchema } from './schemas';
 
 export const BACKUP_FORMAT = 'ygo-combo-assistant/backup';
 export const BACKUP_VERSION = 1;
@@ -16,14 +17,16 @@ export interface BackupFile extends UserData {
   format: typeof BACKUP_FORMAT;
   backupVersion: number;
   exportedAt: string;
+  /** Optional (CR-002): the user's own card names / aliases / Master Duel ban marks. */
+  cardNotes?: CardNote[];
 }
 
 /** Full user data without card images or the card cache (F11). */
-export function buildBackup(data: UserData, now = new Date().toISOString()): BackupFile {
-  return { format: BACKUP_FORMAT, backupVersion: BACKUP_VERSION, exportedAt: now, ...data };
+export function buildBackup(data: UserData, now = new Date().toISOString(), cardNotes: CardNote[] = []): BackupFile {
+  return { format: BACKUP_FORMAT, backupVersion: BACKUP_VERSION, exportedAt: now, ...data, ...(cardNotes.length ? { cardNotes } : {}) };
 }
 
-export function parseBackup(json: string): { ok: true; data: UserData; exportedAt: string } | { ok: false; errors: string[] } {
+export function parseBackup(json: string): { ok: true; data: UserData; exportedAt: string; cardNotes?: CardNote[] } | { ok: false; errors: string[] } {
   if (json.length > MAX_BACKUP_LENGTH) return { ok: false, errors: ['檔案過大（超過 20 MB）'] };
   let raw: Partial<BackupFile>;
   try {
@@ -52,6 +55,12 @@ export function parseBackup(json: string): { ok: true; data: UserData; exportedA
     if (!r.success) errors.push(...issues(r.error).map((e) => `版型 ${i + 1}：${e}`));
     return r.success ? [r.data as HandLayoutPreset] : [];
   });
+  if (raw.cardNotes !== undefined && !Array.isArray(raw.cardNotes)) errors.push('cardNotes 必須是陣列');
+  const cardNotes = (Array.isArray(raw.cardNotes) ? raw.cardNotes : []).flatMap((n, i) => {
+    const r = cardNoteSchema.safeParse(n);
+    if (!r.success) errors.push(...issues(r.error).map((e) => `卡片標註 ${i + 1}：${e}`));
+    return r.success ? [r.data as CardNote] : [];
+  });
   for (const [label, list] of [
     ['牌組', decks],
     ['Combo', combos],
@@ -60,7 +69,7 @@ export function parseBackup(json: string): { ok: true; data: UserData; exportedA
     const ids = list.map((x) => x.id);
     if (new Set(ids).size !== ids.length) errors.push(`${label}的 ID 在備份檔中重複`);
   }
-  return errors.length ? { ok: false, errors } : { ok: true, data: { decks, combos, layouts }, exportedAt: String(raw.exportedAt ?? '') };
+  return errors.length ? { ok: false, errors } : { ok: true, data: { decks, combos, layouts }, exportedAt: String(raw.exportedAt ?? ''), ...(cardNotes.length ? { cardNotes } : {}) };
 }
 
 export type ConflictStrategy = 'skip' | 'overwrite' | 'keep-both';

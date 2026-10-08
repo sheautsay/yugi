@@ -15,7 +15,35 @@ export interface CardRecord {
   imageCacheKey?: string;
   source: string;
   updatedAt: string;
+
+  // Full card data (rev2 sync) — all optional so older records stay valid.
+  /** Upstream card type, e.g. "Effect Monster", "Spell Card". */
+  typeLine?: string;
+  /** Monster type (e.g. "Spellcaster") or spell/trap kind (e.g. "Quick-Play"). */
+  race?: string;
+  attribute?: string;
+  /** Level or rank. */
+  level?: number;
+  linkval?: number;
+  atk?: number;
+  def?: number;
+  archetype?: string;
+  /** English card text as provided by the source. */
+  desc?: string;
+  /** Formats the source lists the card in, e.g. "Master Duel", "TCG". */
+  formats?: string[];
+  /** Reference ban status from the source (no Master Duel list is published there). */
+  banlist?: { tcg?: string; ocg?: string };
+
+  // User annotations — never produced by the program, kept across syncs.
+  /** Master Duel ban status marked by the user. */
+  mdBan?: MdBan;
 }
+
+export type MdBan = 'Forbidden' | 'Limited' | 'Semi-Limited';
+
+/** Card data scope: Master Duel pool (default) or every card. */
+export type CardPool = 'master-duel' | 'all';
 
 export interface CardCount {
   cardId: number;

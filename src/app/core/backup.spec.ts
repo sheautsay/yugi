@@ -96,3 +96,20 @@ describe('UserDataService — atomic writes (N6)', () => {
     expect(BACKUP_FORMAT).toBe('ygo-combo-assistant/backup');
   });
 });
+
+describe('backup card notes — CR-002', () => {
+  it('round-trips the user\'s card notes and still reads backups without them', () => {
+    const notes = [{ cardId: 32061192, nameZhTw: '睡鼠', aliases: ['鼠'], mdBan: 'Limited' as const }];
+    const parsed = parseBackup(JSON.stringify(buildBackup(sample(), NOW, notes)));
+    expect(parsed).toMatchObject({ ok: true, cardNotes: notes });
+    const old = parseBackup(JSON.stringify(buildBackup(sample(), NOW)));
+    expect(old.ok && 'cardNotes' in old).toBe(false);
+  });
+
+  it('rejects invalid notes without partial results', () => {
+    const bad = { ...buildBackup(sample(), NOW), cardNotes: [{ cardId: -1 }, { cardId: 5, mdBan: 'Banned' }, { cardId: 6, nameZhTw: '<script>x</script>' }] };
+    const result = parseBackup(JSON.stringify(bad));
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.errors).toHaveLength(3);
+  });
+});

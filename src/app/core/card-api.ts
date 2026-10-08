@@ -1,5 +1,5 @@
 import { Injectable, InjectionToken, inject } from '@angular/core';
-import { CardKind, CardRecord } from './models';
+import { CardKind, CardPool, CardRecord } from './models';
 
 // The single place that talks to the network (spec §9.8). Card metadata comes straight from the
 // YGOPRODeck API (CORS enabled); card images go through the dev-server proxy in proxy.conf.json
@@ -10,8 +10,10 @@ export const CARD_SOURCE = 'YGOPRODeck API v7';
 
 /** Requests per batch of IDs; keeps URLs short. */
 const ID_BATCH = 50;
-/** Minimum gap between requests — far below the upstream limit of 20 requests/second. */
+/** Minimum gap between API requests — far below the upstream limit of 20 requests/second. */
 const MIN_INTERVAL_MS = 250;
+/** Images use their own lane (≤ 10/s) so thumbnails never wait behind a card-data sync. */
+const IMAGE_INTERVAL_MS = 100;
 const RETRY_DELAYS_MS = [1000, 2000, 4000];
 
 export interface ApiCard {
@@ -19,9 +21,29 @@ export interface ApiCard {
   name: string;
   type: string;
   frameType?: string;
+  desc?: string;
+  race?: string;
+  attribute?: string;
+  level?: number;
+  linkval?: number;
+  atk?: number | null;
+  def?: number | null;
+  archetype?: string;
+  banlist_info?: { ban_tcg?: string; ban_ocg?: string };
+  misc_info?: Array<{ formats?: string[] }>;
 }
 
-export type ImageVariant = 'small' | 'cropped';
+export type ImageVariant = 'small' | 'cropped' | 'full';
+
+const IMAGE_FOLDER: Record<ImageVariant, string> = { small: 'cards_small', cropped: 'cards_cropped', full: 'cards' };
+
+/** Source format name for each pool (`format=masterduel` is rejected by the API). */
+const POOL_QUERY: Record<CardPool, string> = { 'master-duel': '&format=master%20duel', all: '' };
+
+export interface DbVersion {
+  version: string;
+  lastUpdate: string;
+}
 
 export class CardApiError extends Error {}
 
@@ -42,7 +64,11 @@ const EXTRA_FRAMES = new Set(['fusion', 'synchro', 'xyz', 'link', 'fusion_pendul
 
 export function toCardRecord(card: ApiCard, now: string): CardRecord {
   const kind: CardKind = /spell/i.test(card.type) ? 'spell' : /trap/i.test(card.type) ? 'trap' : /monster/i.test(card.type) ? 'monster' : 'unknown';
-  return {
+  const num = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v : undefined);
+  const str = (v: unknown) => (typeof v === 'string' && v.trim() ? v : undefined);
+  const ban = card.banlist_info;
+  const formats = card.misc_info?.[0]?.formats?.filter((f) => typeof f === 'string');
+  const record: CardRecord = {
     cardId: card.id,
     nameEn: card.name,
     kind,
@@ -50,15 +76,51 @@ export function toCardRecord(card: ApiCard, now: string): CardRecord {
     frameType: card.frameType,
     source: CARD_SOURCE,
     updatedAt: now,
+    typeLine: card.type,
+    race: str(card.race),
+    attribute: str(card.attribute),
+    level: num(card.level),
+    linkval: num(card.linkval),
+    atk: num(card.atk),
+    def: num(card.def),
+    archetype: str(card.archetype),
+    desc: str(card.desc),
+    formats: formats?.length ? formats : undefined,
+    banlist: ban && (str(ban.ban_tcg) || str(ban.ban_ocg)) ? { tcg: str(ban.ban_tcg), ocg: str(ban.ban_ocg) } : undefined,
   };
+  // Drop absent fields so merging into an existing record never erases data.
+  return Object.fromEntries(Object.entries(record).filter(([, v]) => v !== undefined)) as unknown as CardRecord;
 }
 
 @Injectable({ providedIn: 'root' })
 export class YgoProDeckClient {
   private readonly fetchFn = inject(FETCH_FN);
   private readonly sleep = inject(SLEEP_FN);
-  private queue: Promise<unknown> = Promise.resolve();
-  private lastStart = 0;
+  private readonly lanes = {
+    api: { queue: Promise.resolve() as Promise<unknown>, lastStart: 0, interval: MIN_INTERVAL_MS },
+    image: { queue: Promise.resolve() as Promise<unknown>, lastStart: 0, interval: IMAGE_INTERVAL_MS },
+  };
+
+  /** Version of the upstream card database, used to skip unnecessary full downloads. */
+  async checkDbVersion(): Promise<DbVersion> {
+    const response = await this.request(`${CARD_API_BASE}/checkDBVer.php`);
+    if (!response.ok) throw new CardApiError(`版本檢查失敗（HTTP ${response.status}）`);
+    const body = (await response.json().catch(() => null)) as Array<{ database_version?: unknown; last_update?: unknown }> | null;
+    const row = Array.isArray(body) ? body[0] : undefined;
+    if (!row || typeof row.database_version !== 'string' || !row.database_version) throw new CardApiError('版本資訊格式不符預期');
+    return { version: row.database_version, lastUpdate: String(row.last_update ?? '') };
+  }
+
+  /** Every card of the pool in one request (≈24 MB); throws instead of returning a partial list. */
+  async fetchAll(pool: CardPool): Promise<ApiCard[]> {
+    const response = await this.request(`${CARD_API_BASE}/cardinfo.php?misc=yes${POOL_QUERY[pool]}`);
+    if (!response.ok) throw new CardApiError(`完整卡片資料下載失敗（HTTP ${response.status}）`);
+    const body = (await response.json().catch(() => null)) as { data?: unknown } | null;
+    if (!body || !Array.isArray(body.data)) throw new CardApiError('完整卡片資料格式不符預期（缺少 data 陣列）');
+    const cards = body.data.filter(isApiCard);
+    if (cards.length === 0) throw new CardApiError('完整卡片資料是空的');
+    return cards;
+  }
 
   /** Unknown IDs are simply absent from the result (the API answers 400 when none match). */
   async fetchByIds(ids: readonly number[]): Promise<ApiCard[]> {
@@ -75,8 +137,7 @@ export class YgoProDeckClient {
   }
 
   async fetchImage(cardId: number, variant: ImageVariant): Promise<Blob> {
-    const folder = variant === 'small' ? 'cards_small' : 'cards_cropped';
-    const response = await this.request(`${CARD_IMAGE_BASE}/${folder}/${cardId}.jpg`);
+    const response = await this.request(`${CARD_IMAGE_BASE}/${IMAGE_FOLDER[variant]}/${cardId}.jpg`, 'image');
     if (!response.ok) throw new CardApiError(`卡圖下載失敗（HTTP ${response.status}）`);
     const blob = await response.blob();
     if (!blob.type.startsWith('image/')) {
@@ -95,12 +156,13 @@ export class YgoProDeckClient {
   }
 
   /** Throttled, sequential, with exponential backoff on network errors, 429 and 5xx. */
-  private request(url: string): Promise<Response> {
+  private request(url: string, laneName: 'api' | 'image' = 'api'): Promise<Response> {
+    const lane = this.lanes[laneName];
     const run = async () => {
       for (let attempt = 0; ; attempt++) {
-        const wait = this.lastStart + MIN_INTERVAL_MS - Date.now();
+        const wait = lane.lastStart + lane.interval - Date.now();
         if (wait > 0) await this.sleep(wait);
-        this.lastStart = Date.now();
+        lane.lastStart = Date.now();
         let response: Response | undefined;
         try {
           response = await this.fetchFn(url);
@@ -115,8 +177,8 @@ export class YgoProDeckClient {
         await this.sleep(RETRY_DELAYS_MS[attempt]);
       }
     };
-    const result = this.queue.then(run, run);
-    this.queue = result.catch(() => undefined);
+    const result = lane.queue.then(run, run);
+    lane.queue = result.catch(() => undefined);
     return result;
   }
 }
