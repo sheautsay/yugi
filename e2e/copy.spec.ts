@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { importTestDeck, mockCardSource } from './fixtures';
+import { importTestDeck, mockCardSource, openAddDeck } from './fixtures';
 
 // P2: no engineering vocabulary on the main screens, and the disclaimer only shows once.
 
@@ -47,4 +47,30 @@ test('P2: without a deck the deck-only navigation items are disabled with a tool
   await page.getByRole('button', { name: '＋ 新增牌組' }).click();
   await expect(page.locator('dialog.add-dialog[open]')).toBeVisible();
   await expect(page.getByLabel('牌組代碼或 YDK 內容')).toBeVisible();
+});
+
+test('P3: at the desktop minimum width (420px) the AI analysis page does not scroll sideways and selects stay inside their card', async ({ page }) => {
+  await mockCardSource(page);
+  await importTestDeck(page, '窄版檢查');
+  await page.setViewportSize({ width: 420, height: 800 });
+  await page.goto('/decks');
+  await page.locator('.deck-row', { hasText: '窄版檢查' }).getByRole('link', { name: 'AI 展開分析' }).click();
+  await page.getByLabel('Claude API（雲端；用你自己的 API Key，會產生費用）').check();
+  const metrics = await page.evaluate(() => ({
+    scroll: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    outside: [...document.querySelectorAll('.card select')].filter((s) => s.getBoundingClientRect().right > (s.closest('.card') as HTMLElement).getBoundingClientRect().right + 1).length,
+  }));
+  expect(metrics).toEqual({ scroll: 0, outside: 0 });
+});
+
+test('P3: after an import the page returns to the top so the new deck is in view', async ({ page }) => {
+  await mockCardSource(page);
+  await importTestDeck(page, '第一副');
+  await page.goto('/decks');
+  await openAddDeck(page);
+  await page.getByLabel('牌組名稱', { exact: true }).fill('第二副');
+  await page.getByRole('button', { name: '建立', exact: true }).click();
+  await expect(page.locator('dialog.add-dialog[open]')).toHaveCount(0);
+  await expect(page.locator('.deck-row', { hasText: '第二副' })).toBeInViewport();
+  expect(await page.evaluate(() => window.scrollY + (document.getElementById('main')?.scrollTop ?? 0))).toBe(0);
 });

@@ -142,3 +142,14 @@ app-board-preview {
 .candidate app-board-preview {
   max-width: 340px;
 }
+
+/* Long model names must not push the select past the card edge. */
+select {
+  max-width: 100%;
+  min-width: 0;
+}
+
+label {
+  max-width: 100%;
+  min-width: 0;
+}
