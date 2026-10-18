@@ -133,7 +133,7 @@ test('DK11 / P0.4 / P0.5: choosing the ChatGPT account starts the bundled servic
     await expect(page.getByText('Claude API（雲端')).toHaveCount(0);
     await expect(page.getByText('本機 Ollama')).toHaveCount(0);
     await page.getByRole('button', { name: '重新整理' }).click();
-    await expect(page.getByRole('button', { name: 'Continue with ChatGPT' }).first()).toBeVisible({ timeout: 60_000 });
+    await expect(page.getByRole('button', { name: '使用 ChatGPT 登入' }).first()).toBeVisible({ timeout: 60_000 });
     const bridges = processes(BRIDGE_EXE_NAME);
     expect(bridges.size).toBe(1);
     const [[bridgePid, parent]] = [...bridges];
@@ -151,7 +151,7 @@ test('DK25 / P0.13: ending the app with no chance to clean up (End task) leaves 
   await goto(page, '/decks');
   await page.locator('.deck-row', { hasText: DECK }).getByRole('link', { name: 'AI 展開分析' }).click();
   await page.getByRole('button', { name: '重新整理' }).click();
-  await expect(page.getByRole('button', { name: 'Continue with ChatGPT' }).first()).toBeVisible({ timeout: 60_000 });
+  await expect(page.getByRole('button', { name: '使用 ChatGPT 登入' }).first()).toBeVisible({ timeout: 60_000 });
   const [bridgePid] = [...processes(BRIDGE_EXE_NAME).keys()];
   expect(bridgePid).toBeTruthy();
   await app.kill();
@@ -169,14 +169,14 @@ test('DK12: when the ChatGPT service crashes, "重新整理" starts a new one (n
     await goto(page, '/decks');
     await page.locator('.deck-row', { hasText: DECK }).getByRole('link', { name: 'AI 展開分析' }).click();
     await page.getByRole('button', { name: '重新整理' }).click();
-    await expect(page.getByRole('button', { name: 'Continue with ChatGPT' }).first()).toBeVisible({ timeout: 60_000 });
+    await expect(page.getByRole('button', { name: '使用 ChatGPT 登入' }).first()).toBeVisible({ timeout: 60_000 });
     const [first] = [...processes(BRIDGE_EXE_NAME).keys()];
     process.kill(first); // simulate a crash
     await waitUntil(() => !alive(first), 5000, 'crash');
     // One click on 「重新整理」 is enough: the app notices the service is gone, starts a new one and reads its status.
     await page.getByRole('button', { name: '重新整理' }).click();
     await waitUntil(() => [...processes(BRIDGE_EXE_NAME).keys()].some((pid) => pid !== first), 60_000, 'a new ChatGPT service after one refresh');
-    await expect(page.getByRole('button', { name: 'Continue with ChatGPT' }).first()).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByRole('button', { name: '使用 ChatGPT 登入' }).first()).toBeVisible({ timeout: 30_000 });
     await expect(page.getByText('本機 ChatGPT 服務目前沒有回應')).toHaveCount(0);
     const second = [...processes(BRIDGE_EXE_NAME).keys()];
     expect(second, `ygo-bridge processes after the restart: ${JSON.stringify([...processes(BRIDGE_EXE_NAME)])}, crashed pid ${first}, app pid ${app.pid}`).toHaveLength(1);

@@ -67,6 +67,6 @@ export const ANALYSIS_LEVEL_LABEL: Record<AnalysisLevel, string> = {
 export const ANALYSIS_LEVEL_NOTE: Record<AnalysisLevel, string> = {
   'ai-candidate': '由 AI 產生，尚未通過本機資料驗證，不可當作可用路線。',
   'data-checked': '卡片、張數與每一步的卡片位置都符合此牌組；這不代表合法，仍需實戰確認。',
-  'engine-verified': '規則引擎驗證尚未整合（BLOCKED）。',
+  'engine-verified': '規則引擎驗證尚未提供。',
   'md-confirmed': '已由人工在 Master Duel 以此牌表實測，並附上證據。',
 };

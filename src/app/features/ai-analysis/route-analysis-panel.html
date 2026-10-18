@@ -8,7 +8,7 @@
         <strong>{{ levelLabel[l] }}</strong>
         <span class="muted">
           @if (l === 'engine-verified') {
-            尚未整合（BLOCKED）
+            尚未提供
           } @else if (reached(l)) {
             已達成
           } @else {
@@ -182,7 +182,7 @@
     <details>
       <summary>分析紀錄</summary>
       <dl>
-        <dt>Provider／模型</dt><dd>{{ providerLabel[a.provider] }}／{{ a.model }}{{ a.servedModel && a.servedModel !== a.model ? '（實際回應：' + a.servedModel + '）' : '' }}</dd>
+        <dt>模型服務／模型</dt><dd>{{ providerLabel[a.provider] }}／{{ a.model }}{{ a.servedModel && a.servedModel !== a.model ? '（實際回應：' + a.servedModel + '）' : '' }}</dd>
         <dt>產生時間</dt><dd>{{ time(a.generatedAt) }}</dd>
         <dt>牌組</dt><dd>{{ a.deckName }} 版本 {{ a.deckVersion }}（{{ a.deckFingerprint }}）</dd>
         <dt>卡片資料</dt><dd>{{ a.cardDataVersion }}</dd>

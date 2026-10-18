@@ -123,7 +123,7 @@ test('G22–G25: mocked Claude analysis → structured result, separate levels, 
   // G25-2: the same player for a candidate — both modes share the current step; moves are shown.
   await candidates(page).nth(0).getByRole('button', { name: '查看完整展開' }).click();
   await expect(page.getByText('目前層級：資料完整性通過')).toBeVisible();
-  await expect(page.locator('.ladder li', { hasText: '規則引擎驗證' })).toContainText('尚未整合（BLOCKED）');
+  await expect(page.locator('.ladder li', { hasText: '規則引擎驗證' })).toContainText('尚未提供');
   await expect(page.locator('.ladder li', { hasText: 'Master Duel 實測確認' })).toContainText('未達成');
   await page.getByRole('button', { name: '逐步教學' }).click();
   await expect(page.locator('.progress')).toHaveText('第 1 / 4 步');

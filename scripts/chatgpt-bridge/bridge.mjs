@@ -205,7 +205,7 @@ export function createBridge(options) {
   async function completeSignIn(query) {
     const attempt = pending;
     if (!attempt || now() - attempt.createdAt > PENDING_TTL_MS || query.get('state') !== attempt.state) {
-      throw new BridgeError(400, 'state_mismatch', '登入狀態不符或已逾時，請回到 App 重新按「Continue with ChatGPT」');
+      throw new BridgeError(400, 'state_mismatch', '登入狀態不符或已逾時，請回到 App 重新按「使用 ChatGPT 登入」');
     }
     pending = null;
     if (query.get('error')) {

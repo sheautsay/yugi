@@ -44,7 +44,7 @@
           @for (hint of banHintList(); track $index) {
             <p class="notice warn" role="note">禁限提示：{{ hint }}（不影響牌表檢核）</p>
           }
-          <p class="muted">禁限表尚未進行當期核對，不作為阻擋條件；Master Duel 禁限可在卡片詳細資訊中自行標註。</p>
+          <p class="faint small"><span class="info-tip-inline" tabindex="0" role="note" [attr.aria-label]="t.banList.tip" [attr.data-tip]="t.banList.tip">ⓘ 禁限表說明</span></p>
           <div class="row">
             <button type="button" class="primary" (click)="save()" [disabled]="!dirty() || !deck.name.trim()">儲存</button>
             <button type="button" (click)="discard()" [disabled]="!dirty()">放棄變更</button>

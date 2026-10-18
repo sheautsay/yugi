@@ -158,7 +158,7 @@ describe('ComboEditPage — G8', () => {
     radio.click();
     await settle(f);
     await click(f, '儲存');
-    for (const e of ['步驟不可為空', '非草稿路線需要填寫預計終場', '已驗證需要實測日期', '已驗證需要驗證者', '已驗證需要驗證證據說明', '已驗證需要實測所用牌表的指紋']) {
+    for (const e of ['步驟不可為空', '非草稿路線需要填寫預計終場', '已驗證需要實測日期', '已驗證需要驗證者', '已驗證需要驗證證據說明', '已驗證需要實測所用牌表識別碼']) {
       expect(text(f)).toContain(e);
     }
     expect(await TestBed.inject(ComboRepository).list()).toEqual([]);

@@ -90,7 +90,7 @@ test('G34–G39: goal B with preferred Allied Code Talker / Firewall Dragon / Tr
   await expect(evaluation).toContainText('Allied Code Talker @Ignister');
   await expect(evaluation).toContainText('有效');
   await expect(page.getByRole('region', { name: '規則檢查（部分）' })).toContainText('連結素材');
-  await expect(page.locator('.ladder li', { hasText: '規則引擎驗證' })).toContainText('尚未整合（BLOCKED）');
+  await expect(page.locator('.ladder li', { hasText: '規則引擎驗證' })).toContainText('尚未提供');
 
   // N27: the rule-breaking route is kept but stays an AI candidate with the reason.
   await page.getByText('其他候選（超過顯示上限 2 條）').click();

@@ -153,7 +153,7 @@ describe('AiAnalysisService with the ChatGPT provider', () => {
     expect(await reasons()).toContain('npm run chatgpt-bridge');
     current = { ...status, signedIn: false, sharing: false, account: null };
     await service.refreshChatGpt();
-    expect(await reasons()).toContain('Continue with ChatGPT');
+    expect(await reasons()).toContain('使用 ChatGPT 登入');
     current = { ...status, sharing: false };
     await service.refreshChatGpt();
     expect(await reasons()).toContain('沒有授權使用 ChatGPT 方案用量');

@@ -10,6 +10,7 @@ import { DeckRepository } from '../../core/deck-repository';
 import { CardRecord, DeckRecord, DeckZone } from '../../core/models';
 import { checkRoute } from '../../core/route-check';
 import { toYdke } from '../../core/ydke';
+import { TEXT } from '../../core/texts';
 import { CardDataPrompt } from '../../shared/card-data-prompt';
 import { CardTile } from '../../shared/card-tile';
 import { MissingCards } from '../../shared/missing-cards';
@@ -56,6 +57,8 @@ export class DeckEditPage {
     const deck = this.draft();
     return deck ? toYdke(deck) : '';
   });
+
+  protected readonly t = TEXT;
 
   constructor() {
     effect(() => void this.load(this.deckId()));

@@ -1,5 +1,5 @@
 ﻿# Windows 10 VM, desktop session: CG6 (CG1–CG3 on Windows 10) with the user's REAL ChatGPT account.
-# 1. opens the installed app at Settings and presses "Continue with ChatGPT" (the official page opens in the VM's
+# 1. opens the installed app at Settings and presses "使用 ChatGPT 登入" (the official page opens in the VM's
 #    browser; the USER signs in there), 2. waits for the sign-in, 3. sends exactly ONE one-shot analysis on the real
 #    deck (user-authorized), 4. signs out in the VM, which also revokes this test machine's grant.
 # The account e-mail is never written to the results and is covered in screenshots. Tokens are never read.
@@ -43,8 +43,8 @@ try {
   for ($i = 0; $i -lt 10 -and $status -and $status.Current.Name -match '尚未連線'; $i++) { $null = ClickName $w '^重新整理$' 'Button' 5; Start-Sleep 3; $status = Find $w '^(尚未登入|已連線|已登入，但|本機 ChatGPT 服務)' '' }
   $result.statusBefore = Redact $status.Current.Name
   if ($result.statusBefore -notmatch '^已連線') {
-    $null = RealClick (WaitFor $w '^Continue with ChatGPT$' 15 'Button')
-    Log 'pressed Continue with ChatGPT; WAITING for the user to sign in on the official page in the VM browser'
+    $null = RealClick (WaitFor $w '^使用 ChatGPT 登入$' 15 'Button')
+    Log 'pressed 使用 ChatGPT 登入; WAITING for the user to sign in on the official page in the VM browser'
     $end = (Get-Date).AddMinutes($SignInMinutes)
     $signed = $null
     while (-not $signed -and (Get-Date) -lt $end) { Start-Sleep 5; $signed = Find $w '^已連線：' '' }

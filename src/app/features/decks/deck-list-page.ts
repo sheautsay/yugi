@@ -1,7 +1,9 @@
-import { ChangeDetectionStrategy, Component, effect, inject, signal } from '@angular/core';
+import { NgTemplateOutlet } from '@angular/common';
+import { ChangeDetectionStrategy, Component, ElementRef, effect, inject, signal, viewChild } from '@angular/core';
 import { CardNamesService } from '../../core/card-names.service';
 import { RouterLink } from '@angular/router';
 import { CurrentDeckService } from '../../core/current-deck.service';
+import { TEXT } from '../../core/texts';
 import { localDateTime } from '../../core/time';
 import { CardDataPrompt } from '../../shared/card-data-prompt';
 import { CardTile } from '../../shared/card-tile';
@@ -19,7 +21,7 @@ interface DeckRow {
 
 @Component({
   selector: 'app-deck-list-page',
-  imports: [RouterLink, DeckImportPanel, CardTile, CardDataPrompt, MissingCards],
+  imports: [RouterLink, NgTemplateOutlet, DeckImportPanel, CardTile, CardDataPrompt, MissingCards],
   templateUrl: './deck-list-page.html',
   styleUrl: './deck-list-page.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -37,6 +39,9 @@ export class DeckListPage {
   protected readonly loadError = signal('');
   protected readonly message = signal('');
   protected readonly newName = signal('');
+  protected readonly t = TEXT;
+  protected readonly addOpen = signal(false);
+  private readonly addDialog = viewChild<ElementRef<HTMLDialogElement>>('addDialog');
 
   constructor() {
     // Reloads once at start and again whenever card data is downloaded, so drafts re-check themselves.
@@ -70,8 +75,27 @@ export class DeckListPage {
     this.message.set(`目前使用「${deck.name}」：側邊欄的起手查詢與 AI 展開分析會開啟這副牌組。`);
   }
 
-  protected scrollToAdd(): void {
-    document.getElementById('add-deck')?.scrollIntoView({ block: 'start' });
+  /** With no decks the form is already on the page; otherwise it opens in a dialog. */
+  protected openAdd(): void {
+    if (this.rows().length === 0) {
+      document.getElementById('add-deck')?.scrollIntoView({ block: 'start' });
+      return;
+    }
+    this.addOpen.set(true);
+    // The dialog body renders on the next change detection pass; showModal only needs the element.
+    this.addDialog()?.nativeElement.showModal();
+  }
+
+  protected closeAdd(): void {
+    this.addDialog()?.nativeElement.close();
+    this.addOpen.set(false);
+  }
+
+  /** After a deck was added: back to the top of the list so the result is visible. */
+  private showResult(): void {
+    this.closeAdd();
+    document.getElementById('main')?.scrollTo({ top: 0 });
+    window.scrollTo({ top: 0 });
   }
 
   protected async create(): Promise<void> {
@@ -81,11 +105,13 @@ export class DeckListPage {
     this.newName.set('');
     this.message.set(`已建立空白牌組「${name}」（草稿），請在編輯頁加入卡片。`);
     await this.reload();
+    this.showResult();
   }
 
   protected async onImported(message: string): Promise<void> {
     this.message.set(message);
     await this.reload();
+    this.showResult();
   }
 
   protected async copy(deck: DeckRecord): Promise<void> {

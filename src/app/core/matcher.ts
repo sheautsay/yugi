@@ -185,7 +185,7 @@ export function verificationProblem(route: ComboRoute, deck: Pick<ParsedDeck, 'm
   if (v.status === 'unverified') return '此路線尚未經人工實測驗證';
   if (v.status === 'invalidated') return '此路線已標記為失效';
   if (route.steps.length === 0) return '此路線沒有步驟，不能視為已驗證';
-  if (!v.verifiedAt || !v.verifiedBy || !v.evidenceNote || !v.deckFingerprint) return '此路線的驗證資料不完整（需實測日期、驗證者、證據與牌表指紋）';
+  if (!v.verifiedAt || !v.verifiedBy || !v.evidenceNote || !v.deckFingerprint) return '此路線的驗證資料不完整（需實測日期、驗證者、證據與牌表識別碼）';
   const fingerprint = deckFingerprint(deck);
   if (v.deckFingerprint !== fingerprint) return `此路線是以另一份牌表驗證（${v.deckFingerprint}），目前牌組（${fingerprint}）尚未實測`;
   return null;

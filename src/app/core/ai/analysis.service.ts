@@ -345,7 +345,7 @@ export class AiAnalysisService {
     if (settings.provider === 'chatgpt') {
       const g = this.chatgpt();
       if (!g.reachable) reasons.push(bridgeHints().preflight);
-      else if (!g.signedIn) reasons.push('請按「Continue with ChatGPT」以 ChatGPT 帳號登入');
+      else if (!g.signedIn) reasons.push('請按「使用 ChatGPT 登入」以 ChatGPT 帳號登入');
       else if (!g.sharing) reasons.push('此登入沒有授權使用 ChatGPT 方案用量，請重新登入並同意');
       else if (!settings.chatgptModel) reasons.push('請從目前帳號的模型清單選擇模型');
       else if (!(this.chatgptModels() ?? []).some((m) => m.slug === settings.chatgptModel)) reasons.push('所選模型不在目前帳號的模型清單中，請重新整理後再選');

@@ -44,8 +44,8 @@ function SignIn($w, [string]$label) {
   $s = Status $w
   $port = BridgePort
   if ($s -and $s.Current.Name -match '^已連線') { return [ordered]@{ label = $label; already = $true; port = $port } }
-  $null = RealClick (WaitFor $w '^Continue with ChatGPT$' 15 'Button')
-  Log "$label pressed Continue with ChatGPT on port $port; WAITING for the user to sign in"
+  $null = RealClick (WaitFor $w '^使用 ChatGPT 登入$' 15 'Button')
+  Log "$label pressed 使用 ChatGPT 登入 on port $port; WAITING for the user to sign in"
   $end = (Get-Date).AddMinutes($SignInMinutes)
   $signed = $null
   while (-not $signed -and (Get-Date) -lt $end) { Start-Sleep 5; $signed = Find $w '^已連線：' '' }

@@ -87,10 +87,10 @@ test('G28–G32: sign in through the official page, pick a model from the accoun
   bridge.up = true;
   await page.getByRole('button', { name: '重新整理' }).click();
   await expect(page.getByText('尚未登入 ChatGPT。')).toBeVisible();
-  await expect(page.getByText('請按「Continue with ChatGPT」以 ChatGPT 帳號登入')).toBeVisible();
+  await expect(page.getByText('請按「使用 ChatGPT 登入」以 ChatGPT 帳號登入')).toBeVisible();
 
-  // "Continue with ChatGPT" opens the official authorization page in a new tab.
-  const [tab] = await Promise.all([context.waitForEvent('page'), page.getByRole('button', { name: 'Continue with ChatGPT' }).click()]);
+  // "使用 ChatGPT 登入" opens the official authorization page in a new tab.
+  const [tab] = await Promise.all([context.waitForEvent('page'), page.getByRole('button', { name: '使用 ChatGPT 登入' }).click()]);
   await tab.waitForURL(/auth\.openai\.com/);
   expect(tab.url()).toBe(AUTHORIZE);
   expect(await tab.evaluate(() => window.opener)).toBeNull();

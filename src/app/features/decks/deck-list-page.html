@@ -4,7 +4,7 @@
       <h1>牌組</h1>
       <p class="page-sub">選一副牌組來使用、編輯，或直接進行起手查詢與 AI 展開分析。</p>
     </div>
-    <a class="button primary" href="#add-deck" (click)="$event.preventDefault(); scrollToAdd()">＋ 新增牌組</a>
+    <button type="button" class="primary" (click)="openAdd()">{{ t.decks.add }}</button>
   </header>
 
   @if (loadError()) {
@@ -17,7 +17,10 @@
   <app-card-data-prompt heading="先下載卡片資料，牌組才能被辨識" />
 
   <section aria-labelledby="list-heading">
-    <h2 id="list-heading" class="section-title">我的牌組 <span class="faint">（{{ rows().length }}）</span></h2>
+    <h2 id="list-heading" class="section-title">
+      我的牌組 <span class="faint">（{{ rows().length }}）</span>
+      <span class="info-tip" tabindex="0" role="note" [attr.aria-label]="t.banList.tip" [attr.data-tip]="t.banList.tip">ⓘ</span>
+    </h2>
     @if (rows().length === 0) {
       <div class="empty-state">
         <strong>還沒有牌組</strong>
@@ -76,11 +79,9 @@
         }
       </ul>
     }
-    <p class="faint small">禁限表尚未進行當期核對，不作為阻擋條件；請自行確認牌組符合 Master Duel 當期規定。</p>
   </section>
 
-  <section id="add-deck" class="add-deck" aria-labelledby="add-heading">
-    <h2 id="add-heading" class="section-title">新增牌組</h2>
+  <ng-template #addForm>
     <div class="add-grid">
       <app-deck-import-panel [decks]="decks()" (imported)="onImported($event)" />
 
@@ -98,5 +99,22 @@
         </form>
       </section>
     </div>
-  </section>
+  </ng-template>
+
+  @if (rows().length === 0) {
+    <section id="add-deck" class="add-deck" aria-labelledby="add-heading">
+      <h2 id="add-heading" class="section-title">新增牌組</h2>
+      <ng-container *ngTemplateOutlet="addForm" />
+    </section>
+  }
+
+  <dialog #addDialog class="add-dialog" aria-labelledby="add-dialog-heading" (close)="addOpen.set(false)" (cancel)="addOpen.set(false)">
+    @if (addOpen()) {
+      <div class="dialog-head">
+        <h2 id="add-dialog-heading">新增牌組</h2>
+        <button type="button" class="ghost" (click)="closeAdd()">關閉</button>
+      </div>
+      <ng-container *ngTemplateOutlet="addForm" />
+    }
+  </dialog>
 </div>

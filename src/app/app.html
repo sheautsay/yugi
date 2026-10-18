@@ -13,12 +13,16 @@
 
     <nav aria-label="主要導覽">
       @for (item of nav; track item.label) {
-        <a [routerLink]="item.link()" [class.active]="item.active(url())" [attr.aria-current]="item.active(url()) ? 'page' : null">
-          <app-icon [name]="item.icon" />
-          <span class="nav-label">{{ item.label }}</span>
-        </a>
-        @if (item.hint?.(); as hint) {
-          <span class="nav-hint">{{ hint }}</span>
+        @if (item.needsDeck && !deckId()) {
+          <span class="nav-disabled" role="link" aria-disabled="true" tabindex="0" [attr.data-tip]="t.nav.needsDeck">
+            <app-icon [name]="item.icon" />
+            <span class="nav-label">{{ item.label }}</span>
+          </span>
+        } @else {
+          <a [routerLink]="item.link()" [class.active]="item.active(url())" [attr.aria-current]="item.active(url()) ? 'page' : null">
+            <app-icon [name]="item.icon" />
+            <span class="nav-label">{{ item.label }}</span>
+          </a>
         }
       }
     </nav>
@@ -30,7 +34,12 @@
       </div>
     }
 
-    <p class="app-footer">獨立查詢工具：不連接遊戲、不讀取遊戲資料、不自動操作。固定展開皆假設無干擾。</p>
+    @if (showDisclaimer()) {
+      <div class="app-footer" role="note">
+        <p>{{ t.disclaimer.short }}</p>
+        <button type="button" class="small ghost" (click)="dismissDisclaimer()">{{ t.disclaimer.dismiss }}</button>
+      </div>
+    }
   </aside>
 
   <main id="main" class="content" tabindex="-1">

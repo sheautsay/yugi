@@ -81,6 +81,6 @@ describe('YgoProDeckClient', () => {
     ]);
     expect((await client.fetchImage(32061192, 'cropped')).type).toBe('image/jpeg');
     expect(urls[0]).toBe('/ygo-images/cards_cropped/32061192.jpg');
-    await expect(client.fetchImage(1, 'small')).rejects.toThrow('npm start');
+    await expect(client.fetchImage(1, 'small')).rejects.toThrow('未回傳圖片');
   });
 });
