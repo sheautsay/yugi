@@ -10,6 +10,25 @@ export type SummonLock = 'no-special-summon' | 'cyberse-only' | 'extra-link-only
 /** Where the card must be when the effect is activated. */
 export type EffectZone = 'field' | 'hand' | 'gy' | 'banished' | 'field-or-gy';
 
+/**
+ * B7: what an effect does to Life Points and to the opponent's side, for the first-turn-kill check. The damage of a route
+ * is always worked out from these rules and the route's own steps — a number written by the author or a model is never used.
+ */
+export interface FtkEffect {
+  /** Damage to the opponent per card the opponent has banished (D.D. Dynamite: 300). */
+  damagePerOpponentBanished?: number;
+  /** Fixed damage to the opponent. */
+  damage?: number;
+  /** Change of the opponent's Life Points that is not damage: positive = they gain (Chicken Game), negative = they lose. */
+  opponentLp?: number;
+  /** Change of your own Life Points (costs are negative); 'half' pays half. */
+  selfLp?: number | 'half';
+  /** The opponent banishes as many cards from their Extra Deck as you banished from yours in this step (Banquet of Millions). */
+  banishesOpponentExtraEqualToOwn?: boolean;
+  /** The card(s) this step Sets can be activated this turn (Trap Trick, Trap Holic), optionally only with enough Traps in the Graveyard. */
+  setAllowsActivationThisTurn?: { minTrapsInGy?: number };
+}
+
 export interface EffectRule {
   /** "<cardId>#<n>": the n-th effect of the card in reading order. */
   ref: string;
@@ -29,6 +48,8 @@ export interface EffectRule {
   summonedCannotActivate?: boolean;
   /** Targets returned to the hand may not exceed the monsters co-linked to this card (Firewall Dragon). */
   returnsUpToCoLinked?: boolean;
+  /** B7: Life Point and opponent-side effect of this effect (first-turn-kill routes). */
+  ftk?: FtkEffect;
 }
 
 /** What a card on the final board does on the opponent's turn (end-board evaluation). */
@@ -52,7 +73,7 @@ const e = (cardId: number, n: number, zone: EffectZone, once: OncePerTurn, summa
 
 const BANISHED_SS = 'If banished: pay 300 LP; Special Summon it (for the rest of the turn only Link Monsters can be Special Summoned from the Extra Deck)';
 
-export const CARD_RULES: readonly CardRule[] = [
+const MALISS_RULES: readonly CardRule[] = [
   {
     cardId: 32061192,
     name: 'Maliss <P> Dormouse',
@@ -293,6 +314,60 @@ export const CARD_RULES: readonly CardRule[] = [
     effects: [e(80538047, 1, 'field', 'effect', 'If Normal or Special Summoned: add 1 "Radiant Typhoon" Spell/Trap or 1 "Mystical Space Typhoon" from your Deck to your hand')],
   },
 ];
+
+// B7: the effects of the Banquet FTK reference deck that matter for Life Points, written from the cards' English texts
+// (YGOPRODeck, 2026-10-18). Only what the first-turn-kill check needs: the damage count, Life Point costs and gains, the
+// cards the opponent banishes, and which Set Traps may be activated at once.
+const FTK_RULES: readonly CardRule[] = [
+  {
+    cardId: 8628798,
+    name: 'D.D. Dynamite',
+    guard: 'Inflict 300 damage to your opponent for each of their removed from play cards',
+    effects: [e(8628798, 1, 'field', 'none', 'Activate: inflict 300 damage to your opponent for each of their banished cards', { ftk: { damagePerOpponentBanished: 300 } })],
+  },
+  {
+    cardId: 48814566,
+    name: 'Banquet of Millions',
+    guard: 'Banish any number of cards from your Extra Deck face-down',
+    effects: [e(48814566, 1, 'field', 'name', 'Activate: banish any number of cards from your Extra Deck face-down; banish the same number of random face-down cards from the opponent Extra Deck face-up until the End Phase', { ftk: { banishesOpponentExtraEqualToOwn: true } })],
+  },
+  {
+    cardId: 67616300,
+    name: 'Chicken Game',
+    guard: 'The player with the lowest LP takes no damage',
+    effects: [
+      e(67616300, 1, 'field', 'name', 'Once per turn, pay 1000 LP: draw 1 card', { ftk: { selfLp: -1000 } }),
+      e(67616300, 2, 'field', 'name', 'Once per turn, pay 1000 LP: destroy this card', { ftk: { selfLp: -1000 } }),
+      e(67616300, 3, 'field', 'name', 'Once per turn, pay 1000 LP: your opponent gains 1000 LP', { ftk: { selfLp: -1000, opponentLp: 1000 } }),
+    ],
+  },
+  {
+    cardId: 56673480,
+    name: 'Contract with Don Thousand',
+    guard: 'Both players lose 1000 LP, and if they do, each draws 1 card',
+    effects: [e(56673480, 1, 'field', 'name', 'When activated: both players lose 1000 LP, and if they do, each draws 1 card', { ftk: { selfLp: -1000, opponentLp: -1000 } })],
+  },
+  {
+    cardId: 6351147,
+    name: 'Transaction Rollback',
+    guard: 'Pay half your LP, then target 1 Normal Trap in your opponent\'s GY',
+    effects: [e(6351147, 1, 'field', 'name', 'Pay half your LP: this effect becomes the activation effect of a Normal Trap in your opponent\'s GY', { ftk: { selfLp: 'half' } })],
+  },
+  {
+    cardId: 80101899,
+    name: 'Trap Trick',
+    guard: 'Banish 1 Normal Trap from your Deck, except "Trap Trick", and Set 1 card with the same name directly from your Deck, also it can be activated this turn',
+    effects: [e(80101899, 1, 'field', 'name', 'Activate: banish 1 Normal Trap from your Deck and Set 1 card with the same name from your Deck; it can be activated this turn', { ftk: { setAllowsActivationThisTurn: {} } })],
+  },
+  {
+    cardId: 22377092,
+    name: 'Trap Holic',
+    guard: 'Target 1 Spell/Trap you control; destroy it, and if you do, Set 1 Normal Trap from your Deck',
+    effects: [e(22377092, 1, 'field', 'name', 'Activate: destroy 1 Spell/Trap you control and Set 1 Normal Trap from your Deck; it can be activated this turn while you have 3 or more Traps in your GY', { ftk: { setAllowsActivationThisTurn: { minTrapsInGy: 3 } } })],
+  },
+];
+
+export const CARD_RULES: readonly CardRule[] = [...MALISS_RULES, ...FTK_RULES];
 
 const RULES = new Map(CARD_RULES.map((r) => [r.cardId, r]));
 
