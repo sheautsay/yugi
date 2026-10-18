@@ -8,6 +8,8 @@ import { ComboRoute } from '../../core/models';
 import { localDate } from '../../core/time';
 import { safeFileName, saveTextFile } from '../../shared/save-file';
 import { SampleLoader } from '../../core/sample/sample-loader';
+import { TEXT } from '../../core/texts';
+import { canShare, encodeShareCode, looksLikeShareCode, shareCodesToImportJson } from '../../core/combo-share';
 
 type ConflictChoice = 'keep-both' | 'overwrite' | 'skip';
 
@@ -31,6 +33,10 @@ export class ComboListPage {
   protected readonly missingCardIds = signal<number[]>([]);
   protected readonly conflictChoice = signal<ConflictChoice>('keep-both');
   protected readonly busy = signal(false);
+  protected readonly shareText = TEXT.share;
+  /** B6: the Combo whose share code is open, with the code. */
+  protected readonly sharing = signal<{ id: string; code: string } | null>(null);
+  protected readonly shareMessage = signal('');
   protected readonly conflicts = computed(() => this.importItems()?.filter((i) => i.conflict).length ?? 0);
 
   constructor() {
@@ -66,7 +72,16 @@ export class ComboListPage {
   protected async check(): Promise<void> {
     this.importItems.set(null);
     this.missingCardIds.set([]);
-    const text = this.importText();
+    let text = this.importText();
+    // B6: a pasted share code becomes the JSON of an ordinary export and goes through the same check.
+    if (looksLikeShareCode(text)) {
+      const converted = await shareCodesToImportJson(text);
+      if (!converted.ok) {
+        this.importErrors.set([converted.error]);
+        return;
+      }
+      text = converted.json;
+    }
     const referenced = this.referencedIds(text);
     const known = await this.cardData.getMany(referenced);
     const result = prepareComboImport(text, { knownCardIds: new Set(known.keys()), existingIds: new Set(this.combos().map((c) => c.id)) });
@@ -109,6 +124,28 @@ export class ComboListPage {
     this.importItems.set(null);
     this.importErrors.set([]);
     this.missingCardIds.set([]);
+  }
+
+  /** B6: shows the share code of one Combo (the same data as the JSON export, compressed to one line of text). */
+  protected async share(route: ComboRoute): Promise<void> {
+    this.shareMessage.set('');
+    if (!canShare()) {
+      this.sharing.set(null);
+      this.message.set(this.shareText.unsupported);
+      return;
+    }
+    this.sharing.set({ id: route.id, code: await encodeShareCode(route) });
+  }
+
+  protected async copyShare(): Promise<void> {
+    const code = this.sharing()?.code;
+    if (!code) return;
+    try {
+      await navigator.clipboard.writeText(code);
+      this.shareMessage.set(this.shareText.copied);
+    } catch {
+      this.shareMessage.set(this.shareText.copyFailed);
+    }
   }
 
   protected async copy(route: ComboRoute): Promise<void> {

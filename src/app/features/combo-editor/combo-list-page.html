@@ -35,8 +35,26 @@
               <a class="button" [routerLink]="['/combos', c.id, 'edit']">編輯</a>
               <button type="button" (click)="copy(c)">複製</button>
               <button type="button" (click)="exportOne(c)">匯出</button>
+              <button type="button" (click)="share(c)">{{ shareText.button }}</button>
               <button type="button" class="danger" (click)="remove(c)">刪除</button>
             </div>
+            @if (sharing(); as s) {
+              @if (s.id === c.id) {
+                <div class="stack share-panel">
+                  <label>
+                    {{ shareText.heading }}
+                    <textarea readonly rows="3" spellcheck="false" [value]="s.code" (focus)="$any($event.target).select()"></textarea>
+                  </label>
+                  <div class="row">
+                    <button type="button" class="primary" (click)="copyShare()">{{ shareText.copy }}</button>
+                    <button type="button" (click)="sharing.set(null)">{{ shareText.close }}</button>
+                    @if (shareMessage()) {
+                      <span class="muted" role="status">{{ shareMessage() }}</span>
+                    }
+                  </div>
+                </div>
+              }
+            }
           </li>
         }
       </ul>
@@ -45,8 +63,9 @@
     <section class="card" aria-labelledby="import-heading">
       <h2 id="import-heading">匯入 Combo JSON</h2>
       <p class="muted">會先完整檢查格式、卡片 ID 與引用，預覽後才寫入。標示為「已驗證」的路線匯入後會改為「未驗證」，需在本機重新實測。</p>
+      <p class="muted small">{{ shareText.importHint }}</p>
       <label>
-        JSON 內容
+        JSON 內容或分享碼
         <textarea rows="6" spellcheck="false" [value]="importText()" (input)="importText.set($any($event.target).value)"></textarea>
       </label>
       <div class="row">

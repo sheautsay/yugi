@@ -88,6 +88,16 @@ export const TEXT = {
     finalBoard: '最終終場',
     noSnapshot: '這條路線沒有卡片移動資料，無法畫出終場，只列文字終場。',
   },
+  share: {
+    button: '分享碼',
+    heading: '分享碼（貼到聊天軟體，對方在「匯入 Combo」貼上即可）',
+    copy: '複製',
+    copied: '已複製分享碼。',
+    copyFailed: '無法自動複製，請在上方文字框全選後手動複製。',
+    close: '關閉',
+    unsupported: '這個環境不支援分享碼。',
+    importHint: '也可以直接貼上分享碼（YGOCOMBO1.…，一行一個）；會先完整檢查，確認後才寫入，匯入的路線一律是「未驗證」。',
+  },
   decks: {
     add: '＋ 新增牌組',
   },
