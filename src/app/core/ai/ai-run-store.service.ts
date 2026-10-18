@@ -4,6 +4,9 @@ import type { AnalysisRun } from './analysis-types';
 
 const RUN_PREFIX = 'aiRun:';
 
+/** The `meta` key a run is stored under (also used by writes that must be atomic with other stores). */
+export const runKey = (id: string) => RUN_PREFIX + id;
+
 /** Analysis runs as recorded (G22-6): stored in the meta store, never in backups. */
 @Injectable({ providedIn: 'root' })
 export class AiRunStore {
@@ -19,14 +22,14 @@ export class AiRunStore {
   }
 
   async getRun(id: string): Promise<AnalysisRun | undefined> {
-    return (await (await this.appDb.db()).get('meta', RUN_PREFIX + id))?.value as AnalysisRun | undefined;
+    return (await (await this.appDb.db()).get('meta', runKey(id)))?.value as AnalysisRun | undefined;
   }
 
   async saveRun(run: AnalysisRun): Promise<void> {
-    await (await this.appDb.db()).put('meta', { key: RUN_PREFIX + run.id, value: run });
+    await (await this.appDb.db()).put('meta', { key: runKey(run.id), value: run });
   }
 
   async deleteRun(id: string): Promise<void> {
-    await (await this.appDb.db()).delete('meta', RUN_PREFIX + id);
+    await (await this.appDb.db()).delete('meta', runKey(id));
   }
 }

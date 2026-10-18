@@ -436,6 +436,24 @@ export class AnalysisPage {
     });
   }
 
+  /** B2: all candidates that pass the local check and are new, saved in one go after a confirmation with the numbers. */
+  saveAll(): Promise<void> {
+    const deck = this.deck();
+    const bulk = TEXT.ai.bulk;
+    return this.withRun(async (run) => {
+      if (!deck) return;
+      const plan = await this.ai.planBulkSave(run, deck);
+      const skipped = bulk.skipped(plan);
+      if (!plan.toSave.length) {
+        this.message.set(bulk.nothing(skipped));
+        return;
+      }
+      if (!confirm(bulk.confirm(plan.toSave.length, skipped))) return;
+      const { saved, plan: done } = await this.ai.saveAllCandidates(run, deck);
+      this.message.set(bulk.done(saved.length, bulk.skipped(done)));
+    });
+  }
+
   recheck(index: number): Promise<void> {
     const deck = this.deck();
     return this.withRun(async (run) => {

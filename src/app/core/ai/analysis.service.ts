@@ -8,7 +8,7 @@ import { AiSettingsService } from './ai-settings.service';
 import { AI_OUTPUT_JSON_SCHEMA, AI_OUTPUT_JSON_SCHEMA_V3, Candidate, parseAiOutput, toCandidate, toExplored, toStarters } from './analysis-output';
 import { goalForDeck } from './analysis-goal';
 import { AnalysisRun, ExploredEntry, RunState } from './analysis-types';
-import { CandidateService } from './candidate.service';
+import { BulkSavePlan, CandidateService } from './candidate.service';
 import { ChatGptAccountService } from './chatgpt-account.service';
 import { OllamaCheck } from './ollama-check';
 import { providerAdapter } from './provider-adapters';
@@ -562,6 +562,14 @@ export class AiAnalysisService {
   }
 
   // ---- candidates -----------------------------------------------------------------------
+
+  planBulkSave(run: AnalysisRun, deck: DeckRecord): Promise<BulkSavePlan> {
+    return this.candidates.planBulkSave(run, deck);
+  }
+
+  saveAllCandidates(run: AnalysisRun, deck: DeckRecord): Promise<{ saved: ComboRoute[]; plan: BulkSavePlan }> {
+    return this.candidates.saveAllCandidates(run, deck);
+  }
 
   saveCandidate(run: AnalysisRun, index: number): Promise<ComboRoute> {
     return this.candidates.saveCandidate(run, index);
