@@ -31,6 +31,13 @@ export const TEXT = {
     oneShot: '單次分析（一次請求）',
     staged: '分階段分析（1～3 卡，多次請求）',
     moreInfo: '進一步說明',
+    bulk: {
+      button: '全部存成 Combo',
+      skipped: (p: { alreadySaved: number; invalid: number; sameEndBoard: number }) => `略過：已存過 ${p.alreadySaved} 條、未通過檢查 ${p.invalid} 條、終場相同 ${p.sameEndBoard} 條`,
+      confirm: (n: number, skipped: string) => `將把 ${n} 條候選路線存成固定 Combo（皆為「未驗證」）。\n${skipped}。\n確定要存嗎？`,
+      nothing: (skipped: string) => `沒有可以存的新路線。${skipped}。`,
+      done: (n: number, skipped: string) => `已存成 ${n} 條固定 Combo（皆為「未驗證」，需實測後才能標示已驗證）。${skipped}。`,
+    },
   },
   settings: {
     nameFileIntro: '匯入你整理的中文名稱檔。',

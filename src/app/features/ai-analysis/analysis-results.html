@@ -142,6 +142,7 @@
     @if (run.candidates && pg.analysis(); as a) {
       <div class="row">
         <h3>候選路線（{{ run.candidates.length }}）</h3>
+        <button type="button" class="primary" (click)="pg.saveAll()" [disabled]="pg.busy()">{{ pg.texts.ai.bulk.button }}</button>
         <label>
           排序依據
           <select (change)="pg.sortGoal.set($any($event.target).value)">
