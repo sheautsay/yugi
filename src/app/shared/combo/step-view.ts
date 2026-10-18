@@ -4,7 +4,7 @@ import { ACTION_LABEL } from '../../core/labels';
 import { CardRecord, ComboRoute } from '../../core/models';
 import { StepState } from '../../core/rule-check';
 import { StepNavigator } from '../../core/step-navigator';
-import { CardTile } from '../../shared/card-tile';
+import { CardTile } from '../card-tile';
 import { StepDetails } from './step-details';
 
 /** Mode B — one step at a time; a manual reading guide that does nothing in the game. */

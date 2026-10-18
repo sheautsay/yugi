@@ -3,7 +3,7 @@ import { ACTION_LABEL } from '../../core/labels';
 import { CardRecord, ComboRoute } from '../../core/models';
 import { StepState } from '../../core/rule-check';
 import { StepNavigator } from '../../core/step-navigator';
-import { CardTile } from '../../shared/card-tile';
+import { CardTile } from '../card-tile';
 import { StepDetails } from './step-details';
 
 const SCALES = [0.6, 0.75, 0.9, 1, 1.15, 1.3];

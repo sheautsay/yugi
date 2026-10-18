@@ -4,9 +4,9 @@ import { AppDb, DB_NAME } from '../db';
 import { deckFingerprint } from '../deck';
 import { ComboRoute } from '../models';
 import { AiAnalysisService, API_KEY_STORAGE, DEFAULT_AI_SETTINGS } from './analysis.service';
-import { anthropicSse, mockAiOutput, ollamaNdjson } from './mock-ai.sample';
+import { anthropicSse, mockAiOutput, ollamaNdjson } from '../../../testing/ai/mock-ai.sample';
 import { AI_FETCH, FetchLike } from './providers';
-import { IDS, testCards, testDeck } from './test-deck.sample';
+import { IDS, testCards, testDeck } from '../../../testing/ai/test-deck.sample';
 
 // CR-004 G22 / G27 with a FAKE network: every "AI" answer below is a mocked response.
 const deck = testDeck();

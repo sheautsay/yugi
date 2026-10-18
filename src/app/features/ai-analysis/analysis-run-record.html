@@ -1,0 +1,47 @@
+@if (pg.selectedRun(); as run) {
+            <details>
+              <summary>分析紀錄（牌組、資料版本、規則假設、模型與參數）</summary>
+              <dl>
+                <dt>牌組</dt><dd>{{ run.deckName }} 版本 {{ run.deckVersion }}（識別碼 {{ run.deckFingerprint }}）</dd>
+                <dt>卡片資料</dt><dd>{{ run.cardDataVersion }}</dd>
+                <dt>模型服務／模型</dt><dd>{{ pg.providerLabel[run.provider] }}／{{ run.model }}{{ run.servedModel && run.servedModel !== run.model ? '（實際回應：' + run.servedModel + '）' : '' }}</dd>
+                <dt>參數</dt>
+                <dd>
+                  @if (run.params.effort) { 思考程度 {{ pg.effortLabel[run.params.effort] }}・ }
+                  @if (run.params.temperature !== undefined) { temperature {{ run.params.temperature }}・ }
+                  @if (run.params.store !== undefined) { store {{ run.params.store }}・stream {{ run.params.stream }}・結構化輸出 {{ run.params.structuredOutput ? '是' : '否（已改為一般文字）' }}・ }
+                  @if (run.params.maxOutputTokens) { 最大輸出 {{ run.params.maxOutputTokens }}・ }
+                  逾時 {{ run.params.timeoutSeconds }} 秒
+                </dd>
+                <dt>範圍</dt><dd>{{ run.scope.single ? '單卡起手 ' : '' }}{{ run.scope.multi ? '雙卡起手 ' : '' }}{{ run.scope.triple ? '三卡起手 ' : '' }}{{ run.scope.extenders ? '常見延伸 ' : '' }}・{{ run.staged ? '分階段分析' : '產生 ' + pg.generated(run.scope) + ' 條' }}・最多顯示 {{ run.scope.maxRoutes }} 條</dd>
+                <dt>分析目標</dt>
+                <dd>
+                  @if (run.goal; as g) {
+                    {{ pg.goalLabel[g.kind] }}・偏好：{{ g.preferredExtraIds.length ? pg.names(g.preferredExtraIds) : '無' }}
+                  } @else {
+                    未設定（舊紀錄）
+                  }
+                </dd>
+                <dt>提示版本</dt><dd>{{ run.promptVersion }}</dd>
+                <dt>時間</dt><dd>{{ pg.time(run.startedAt) }} → {{ pg.time(run.finishedAt) }}（{{ (run.durationMs / 1000).toFixed(1) }} 秒）</dd>
+                <dt>用量</dt>
+                <dd>
+                  @if (run.usage; as u) {
+                    輸入 {{ u.inputTokens }}・輸出 {{ u.outputTokens }} tokens
+                    @if (u.estimatedCostUsd !== undefined) { ・估計 US${{ u.estimatedCostUsd.toFixed(3) }} }
+                    @if (run.provider === 'chatgpt') { ・使用 ChatGPT 方案用量 }
+                  } @else {
+                    無
+                  }
+                </dd>
+                <dt>規則假設</dt>
+                <dd>
+                  <ul>
+                    @for (a of run.assumptions; track $index) {
+                      <li>{{ a }}</li>
+                    }
+                  </ul>
+                </dd>
+              </dl>
+            </details>
+}

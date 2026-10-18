@@ -1,7 +1,7 @@
 import { RunContext, toCandidate } from './ai/analysis-output';
-import { mockAiOutput } from './ai/mock-ai.sample';
+import { mockAiOutput } from '../../testing/ai/mock-ai.sample';
 import { aiOutputSchema } from './ai/analysis-output';
-import { IDS, testCards, testDeck } from './ai/test-deck.sample';
+import { IDS, testCards, testDeck } from '../../testing/ai/test-deck.sample';
 import { parseBackup, buildBackup } from './backup';
 import { comboCardIds, exportCombos, prepareComboImport, validateCombo } from './combo';
 import { deckFingerprint } from './deck';

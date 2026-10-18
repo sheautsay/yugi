@@ -2,7 +2,7 @@
  * REAL MODEL OUTPUT (CR-007 G43). The recorded run of ONE real analysis: provider ChatGPT account (local bridge),
  * model gpt-6.1-sol, 2026-10-09, on the user's real Maliss 40+15 deck, goal A with Allied Code Talker @Ignister and
  * Firewall Dragon preferred. This is AI-GENERATED data — not hand-written, not a mocked answer. The JSON content is
- * identical to docs/validation/rev7-real-ai/run-record.json (that file is the human-readable evidence copy).
+ * identical to docs/dev/validation/rev7-real-ai/run-record.json (that file is the human-readable evidence copy).
  * Used only as a fixed fixture to re-check and re-evaluate with the current local code. Excluded from the app build.
  */
 export const REAL_RUN_RECORD: any = {

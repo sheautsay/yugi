@@ -3,8 +3,8 @@ import { CardRecord, ComboRoute } from '../models';
 import { RunContext, parseAiOutput, toCandidate } from './analysis-output';
 import { AnalysisGoal } from './analysis-goal';
 import { evaluateRoute, handText, interruptionText, rankCandidates } from './evaluate';
-import { malissCards, malissDeck } from './maliss-deck.sample';
-import { C, SampleRoute, mv, routeAllied, routeFirewall, routeMalissOnly, sampleAnswer, st } from './maliss-routes.sample';
+import { malissCards, malissDeck } from '../../../testing/ai/maliss-deck.sample';
+import { C, SampleRoute, mv, routeAllied, routeFirewall, routeMalissOnly, sampleAnswer, st } from '../../../testing/ai/maliss-routes.sample';
 
 // CR-007 G41 / G42 on the user's real deck. Routes are HAND-WRITTEN test data (not model output).
 const deck = malissDeck();

@@ -83,7 +83,7 @@ npm start
 - 只有附上**實測日期、驗證者、證據與實測所用牌組**，且有步驟的路線才能設為「已驗證」。已驗證路線若修改了條件或步驟，必須更新證據或改回未驗證。
 - 來源網址只接受 https 白名單網站，並在新分頁開啟。
 
-如何完成第一條碼莉絲實測，請見 [g12-maliss-verification-checklist.md](g12-maliss-verification-checklist.md)。
+如何完成第一條碼莉絲實測，請見 [dev/g12-maliss-verification-checklist.md](dev/g12-maliss-verification-checklist.md)。
 
 ### 中文名稱檔格式
 
@@ -101,12 +101,13 @@ npm start
 - 截圖辨識使用標準卡框的插畫位置，靈擺卡與異圖可能較常被判為不確定；Master Duel 實際截圖的準確率尚未驗證。
 - 不做即時牌局追蹤、自動出牌或動態改線；不讀取 Steam／Master Duel 的任何資料。
 
-## 8. 開發者命令
+## 8. 開發者命令（完整清單見 README）
 
 | 命令 | 用途 |
 |---|---|
 | `npm run test:ci` | 單元與元件測試（Vitest） |
 | `npm run e2e` | 端對端測試（系統 Edge；卡片來源為 mock） |
 | `npm run e2e:real` | 連真實 YGOPRODeck 的端對端測試 |
+| `npm run lint` | ESLint（angular-eslint） |
 | `npm run build` | production build |
 | `npm run audit:g11` | 檢查 git remote 與網路／危險 API 使用 |

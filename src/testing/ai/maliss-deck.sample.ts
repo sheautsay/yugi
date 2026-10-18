@@ -3,9 +3,9 @@
  * ({@link EDGE_SAMPLE}, 40 main + 15 extra) and the real card data in {@link MALISS_DECK_API_CARDS}.
  * Hand-written routes for it are in `maliss-routes.sample.ts`. Excluded from the app build (`*.sample.ts`).
  */
-import { toCardRecord } from '../card-api';
-import { CardRecord, DeckRecord } from '../models';
-import { parseNeuronDeckText, resolveNeuronDeck } from '../neuron-deck';
+import { toCardRecord } from '../../app/core/card-api';
+import { CardRecord, DeckRecord } from '../../app/core/models';
+import { parseNeuronDeckText, resolveNeuronDeck } from '../../app/core/neuron-deck';
 import { EDGE_SAMPLE } from '../neuron-deck.sample';
 import { MALISS_DECK_API_CARDS } from './maliss-deck-cards.sample';
 

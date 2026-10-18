@@ -3,9 +3,9 @@ import { AppDb, DB_NAME } from '../db';
 import { AI_OUTPUT_JSON_SCHEMA } from './analysis-output';
 import { AiAnalysisService } from './analysis.service';
 import { BRIDGE_DOWN, callChatGpt, chatGptModels, chatGptSignIn, chatGptStatus } from './chatgpt';
-import { mockAiOutput, responsesSse } from './mock-ai.sample';
+import { mockAiOutput, responsesSse } from '../../../testing/ai/mock-ai.sample';
 import { AI_FETCH, AiError, AiRequest, FetchLike } from './providers';
-import { IDS, testCards, testDeck } from './test-deck.sample';
+import { IDS, testCards, testDeck } from '../../../testing/ai/test-deck.sample';
 
 // CR-005 G30–G32 / N25 on the Angular side, against a FAKE local bridge. The page only ever talks
 // to /chatgpt-bridge; it never sees a token and never contacts OpenAI.

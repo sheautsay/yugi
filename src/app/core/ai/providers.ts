@@ -28,12 +28,15 @@ export type Effort = 'low' | 'medium' | 'high' | 'xhigh' | 'max';
 export interface ClaudeModel {
   id: string;
   label: string;
-  /** USD per million tokens (Anthropic list price, 2026-10; an estimate, the bill is authoritative). */
+  /** USD per million tokens (Anthropic list price as of {@link CLAUDE_PRICES_AS_OF}; an estimate, the bill is authoritative). */
   inputPerMTok: number;
   outputPerMTok: number;
   /** Server-side refusal fallback is available for this model. */
   fallback: boolean;
 }
+
+/** The one place model prices live: when the list prices below were last checked. */
+export const CLAUDE_PRICES_AS_OF = '2026-10';
 
 export const CLAUDE_MODELS: readonly ClaudeModel[] = [
   { id: 'claude-opus-5-5', label: 'Claude Opus 5.5', inputPerMTok: 4, outputPerMTok: 20, fallback: true },

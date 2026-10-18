@@ -7,7 +7,7 @@ import { CardRecord } from '../../core/models';
 import { toYdke } from '../../core/ydke';
 import { toCardRecord } from '../../core/card-api';
 import { totalCount } from '../../core/deck';
-import { EDGE_SAMPLE, EDGE_SAMPLE_CARDS } from '../../core/neuron-deck.sample';
+import { EDGE_SAMPLE, EDGE_SAMPLE_CARDS } from '../../../testing/neuron-deck.sample';
 import { DeckImportPanel } from './deck-import-panel';
 
 const MAIN_IDS = Array.from({ length: 14 }, (_, i) => 10_000_000 + i);

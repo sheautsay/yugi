@@ -4,12 +4,12 @@ import { checkRoute } from '../route-check';
 import { AnalysisGoal } from './analysis-goal';
 import { parseAiOutput, toCandidate } from './analysis-output';
 import { STATUS_LABEL, evaluateRoute, handText, interruptionText, rankCandidates, targetCoverage } from './evaluate';
-import { malissCards, malissDeck } from './maliss-deck.sample';
-import { C, routeAllied, routeAlliedTooFewMaterials, routeFirewall, routeFirewallIntoAllied, routeMalissOnly, routeOcgReference, sampleAnswer } from './maliss-routes.sample';
+import { malissCards, malissDeck } from '../../../testing/ai/maliss-deck.sample';
+import { C, routeAllied, routeAlliedTooFewMaterials, routeFirewall, routeFirewallIntoAllied, routeMalissOnly, routeOcgReference, sampleAnswer } from '../../../testing/ai/maliss-routes.sample';
 import { buildPrompt } from './prompt';
 
 // CR-006 evidence: the user's real deck after the change. The same six HAND-WRITTEN routes were run
-// through the pipeline before the change (docs/validation/rev6-G34-G40-2026-10-09.md §5). Prints a
+// through the pipeline before the change (docs/dev/validation/rev6-G34-G40-2026-10-09.md §5). Prints a
 // report and pins the facts that changed. No model is called.
 describe('rev6 comparison on the real deck (after)', () => {
   const deck = malissDeck();

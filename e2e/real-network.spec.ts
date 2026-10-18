@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { EDGE_SAMPLE } from '../src/app/core/neuron-deck.sample';
+import { EDGE_SAMPLE } from '../src/testing/neuron-deck.sample';
 import { MALISS, openAddDeck, setAutoThumbnails, syntheticScreenshot, toYdke } from './fixtures';
 
 // REAL external source (YGOPRODeck API + images via the dev-server proxy). Run explicitly:

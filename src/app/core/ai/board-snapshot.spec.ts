@@ -4,9 +4,9 @@ import { checkRoute } from '../route-check';
 import { RunContext, parseAiOutput, toCandidate } from './analysis-output';
 import { endSnapshot } from './board-snapshot';
 import { evaluateRoute } from './evaluate';
-import { malissCards, malissDeck } from './maliss-deck.sample';
-import { C, SampleRoute, routeAlliedPlusTrap, routeMalissOnly, sampleAnswer, withRoles } from './maliss-routes.sample';
-import { REAL_RUN_RECORD } from './real-ai-run.sample';
+import { malissCards, malissDeck } from '../../../testing/ai/maliss-deck.sample';
+import { C, SampleRoute, routeAlliedPlusTrap, routeMalissOnly, sampleAnswer, withRoles } from '../../../testing/ai/maliss-routes.sample';
+import { REAL_RUN_RECORD } from '../../../testing/ai/real-ai-run.sample';
 import { STAGED_PROMPT_VERSION } from './staged';
 
 // CR-008 G51 / G49-4. The snapshot is computed from the simulation of the route up to its LAST step.

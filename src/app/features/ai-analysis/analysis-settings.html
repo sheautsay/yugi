@@ -1,0 +1,278 @@
+<section class="card stack" aria-labelledby="settings-heading">
+  <h2 id="settings-heading">分析設定</h2>
+  @let s = pg.ai.settings();
+  <fieldset>
+    <legend>{{ pg.texts.ai.provider }}</legend>
+    @if (pg.offers('anthropic')) {
+      <label class="choice">
+        <input type="radio" name="provider" [checked]="s.provider === 'anthropic'" (change)="pg.update({ provider: 'anthropic' })" />
+        Claude API（雲端；用你自己的 API Key，會產生費用）
+      </label>
+    }
+    @if (pg.offers('ollama')) {
+      <label class="choice">
+        <input type="radio" name="provider" [checked]="s.provider === 'ollama'" (change)="pg.update({ provider: 'ollama' })" />
+        本機 Ollama（離線；需自行安裝）
+      </label>
+    }
+    <label class="choice">
+      <input type="radio" name="provider" [checked]="s.provider === 'chatgpt'" (change)="pg.chooseChatGpt()" />
+      ChatGPT 帳號登入（使用你的方案額度）
+    </label>
+  </fieldset>
+
+  @if (s.provider === 'chatgpt') {
+    @let g = pg.ai.chatgpt();
+    <section class="stack chatgpt" aria-label="ChatGPT 帳號">
+      @if (!g.reachable) {
+        @if (pg.bridgeManaged()) {
+          <p class="notice warn">本機 ChatGPT 服務沒有回應，請按「重新整理」重新啟動。</p>
+        } @else {
+        <p class="notice warn">本機 ChatGPT 服務沒有啟動。請另開終端機執行 <code>{{ pg.bridgeCommand }}</code>，再按「重新整理」。</p>
+        }
+      } @else if (!g.signedIn) {
+        @if (pg.bridgeManaged()) {
+          <p>尚未登入。按下按鈕後在系統瀏覽器完成 OpenAI 官方登入。</p>
+        } @else {
+          <p>尚未登入。按下按鈕後在新分頁完成 OpenAI 官方登入。</p>
+        }
+        <div class="row">
+          <button type="button" class="primary" (click)="pg.signInChatGpt()">{{ pg.texts.chatgpt.signIn }}</button>
+        </div>
+      } @else {
+        <p>已登入：<strong>{{ g.account?.email ?? g.account?.name ?? 'ChatGPT 帳號' }}</strong></p>
+        @if (!g.sharing) {
+          <p class="notice warn">此登入沒有授權使用方案額度，不能用來分析。請重新登入並同意，或改用其他模型服務。</p>
+          <div class="row">
+            <button type="button" class="primary" (click)="pg.signInChatGpt()">{{ pg.texts.chatgpt.signIn }}</button>
+          </div>
+        }
+      }
+      @if (g.pending && !g.signedIn) {
+        <p class="muted" role="status">等待你在 OpenAI 登入頁完成登入…</p>
+      }
+      @if (g.lastError) {
+        <p class="notice bad" role="alert">{{ g.lastError.message }}</p>
+      }
+      @if (pg.chatgptMessage()) {
+        <p class="muted" role="status">{{ pg.chatgptMessage() }}</p>
+      }
+      @if (g.sharing) {
+        @if (!pg.ai.chatgptWelcomeSeen()) {
+          <div class="notice ok" role="dialog" aria-label="你正在使用你的 ChatGPT 方案">
+            <strong>你正在使用你的 ChatGPT 方案</strong>
+            <p>{{ pg.texts.chatgpt.quota }}</p>
+            <button type="button" (click)="pg.ai.dismissChatGptWelcome()">知道了</button>
+          </div>
+        }
+        <label>
+          模型（目前帳號可用）
+          <select (change)="pg.update({ chatgptModel: $any($event.target).value })">
+            <option value="" [selected]="!s.chatgptModel">請選擇模型</option>
+            @for (m of pg.ai.chatgptModels() ?? []; track m.slug) {
+              <option [value]="m.slug" [selected]="m.slug === s.chatgptModel">{{ m.displayName }}</option>
+            }
+          </select>
+        </label>
+        <p class="row disclosure">
+          <span class="badge ok">使用你的 ChatGPT 方案</span>
+          <a [href]="pg.manageUsageUrl" target="_blank" rel="noopener noreferrer">管理用量</a>
+        </p>
+        @if (pg.ai.chatgptError()) {
+          <p class="notice bad">{{ pg.ai.chatgptError() }}</p>
+        }
+      }
+      <div class="row">
+        <button type="button" (click)="pg.refreshChatGpt()">重新整理</button>
+        @if (g.signedIn) {
+          <button type="button" (click)="pg.signOutChatGpt()">登出 ChatGPT</button>
+          <button type="button" (click)="pg.switchChatGptAccount()">切換帳號</button>
+        }
+      </div>
+    </section>
+  } @else if (s.provider === 'anthropic') {
+    <label>
+      Claude API Key
+      <input type="password" autocomplete="off" spellcheck="false" [value]="pg.ai.apiKey()" (input)="pg.ai.setApiKey($any($event.target).value)" />
+    </label>
+    <p class="muted">金鑰只存在目前分頁，不會寫入資料庫、備份或匯出檔。</p>
+    <div class="row">
+      <label>
+        模型
+        <select [value]="s.claudeModel" (change)="pg.update({ claudeModel: $any($event.target).value })">
+          @for (m of pg.models; track m.id) {
+            <option [value]="m.id">{{ m.label }}（US${{ m.inputPerMTok }}／US${{ m.outputPerMTok }} 每百萬 tokens）</option>
+          }
+        </select>
+      </label>
+      <label>
+        {{ pg.texts.ai.effort }}
+        <select [value]="s.effort" (change)="pg.update({ effort: $any($event.target).value })">
+          @for (e of pg.efforts; track e) {
+            <option [value]="e">{{ pg.effortLabel[e] }}</option>
+          }
+        </select>
+      </label>
+    </div>
+  } @else {
+    <div class="row">
+      <label>
+        Ollama 位址（只限本機）
+        <input [value]="s.ollamaBaseUrl" (change)="pg.update({ ollamaBaseUrl: $any($event.target).value })" />
+      </label>
+      <label>
+        模型名稱
+        <input [value]="s.ollamaModel" (change)="pg.update({ ollamaModel: $any($event.target).value })" placeholder="例如 qwen3" list="ollama-models" />
+        <datalist id="ollama-models">
+          @for (m of pg.ai.ollamaCheck()?.models ?? []; track m) {
+            <option [value]="m"></option>
+          }
+        </datalist>
+      </label>
+      <button type="button" (click)="pg.ai.checkOllama()" [disabled]="pg.ai.ollamaChecking()">檢查 Ollama</button>
+    </div>
+    @if (pg.ai.ollamaCheck(); as c) {
+      <p class="notice" [class.warn]="c.state !== 'ready'" [attr.data-ollama-state]="c.state" role="status">
+        {{ c.message }}
+        @if (c.baseUrl !== s.ollamaBaseUrl || c.model !== s.ollamaModel.trim()) {
+          <em>（設定已變更，這是先前的檢查結果，請重新檢查）</em>
+        }
+      </p>
+    } @else {
+      <p class="muted">尚未檢查。按「檢查 Ollama」確認服務是否就緒。</p>
+    }
+  }
+
+  <fieldset>
+    <legend>分析方式</legend>
+    <label class="choice"><input type="radio" name="mode" [checked]="s.mode === 'one-shot'" (change)="pg.update({ mode: 'one-shot' })" />{{ pg.texts.ai.oneShot }}</label>
+    <label class="choice"><input type="radio" name="mode" [checked]="s.mode === 'staged'" (change)="pg.update({ mode: 'staged' })" />{{ pg.texts.ai.staged }}</label>
+    @if (s.mode === 'staged') {
+      <p class="muted">先請 AI 找出候選起手組合，再逐一寫出完整路線，最後由本機檢查比較；次數、Token 與時間用完就停止並保留已完成的結果。</p>
+    }
+  </fieldset>
+
+  <fieldset>
+    <legend>分析範圍（先攻・雙方空場・無干擾）</legend>
+    <label class="choice"><input type="checkbox" [checked]="s.scope.single" (change)="pg.scope({ single: $any($event.target).checked })" />單卡展開</label>
+    <label class="choice"><input type="checkbox" [checked]="s.scope.multi" (change)="pg.scope({ multi: $any($event.target).checked })" />雙卡展開</label>
+    <label class="choice"><input type="checkbox" [checked]="!!s.scope.triple" (change)="pg.scope({ triple: $any($event.target).checked })" />三卡展開</label>
+    @if (s.mode === 'one-shot') {
+      <label class="choice"><input type="checkbox" [checked]="s.scope.extenders" (change)="pg.scope({ extenders: $any($event.target).checked })" />常見延伸</label>
+    }
+  </fieldset>
+
+  <fieldset>
+    <legend>分析目標（搜尋偏好，不是必要條件）</legend>
+    @for (k of pg.goalKinds; track k) {
+      <label class="choice"><input type="radio" name="goal" [checked]="s.goal.kind === k" (change)="pg.goalKind(k)" />{{ pg.goalLabel[k] }}</label>
+    }
+    <fieldset class="preferred">
+      <legend>優先評估的額外牌組怪獸（偏好，不是必要條件）</legend>
+      @for (o of pg.extraOptions(); track o.cardId) {
+        <label class="choice"><input type="checkbox" [checked]="s.goal.preferredExtraIds.includes(o.cardId)" (change)="pg.prefer(o.cardId, $any($event.target).checked)" />{{ o.name }}</label>
+      } @empty {
+        <span class="muted">此牌組沒有額外牌組怪獸</span>
+      }
+    </fieldset>
+    <p class="muted">偏好只影響搜尋方向與排序，不是必要條件。</p>
+  </fieldset>
+
+  <details class="disclosure advanced" [open]="pg.advancedOpen()" (toggle)="pg.advancedOpen.set($any($event.target).open)">
+    <summary>進階設定</summary>
+    <div class="disclosure-body stack">
+        @if (s.mode === 'one-shot') {
+          <label>
+            AI 產生候選數
+            <input type="number" [min]="pg.limits.candidates[0]" [max]="pg.limits.candidates[1]" [value]="pg.generated(s.scope)" (change)="pg.scope({ candidates: pg.num($any($event.target).value) })" />
+          </label>
+        } @else {
+          <label>
+            最大候選起手組合數
+            <input type="number" [min]="pg.stagedLimits.maxCombos[0]" [max]="pg.stagedLimits.maxCombos[1]" [value]="s.staged.maxCombos" (change)="pg.stagedSetting({ maxCombos: pg.num($any($event.target).value) })" />
+          </label>
+          <label>
+            每個組合的候選路線數
+            <input type="number" [min]="pg.stagedLimits.routesPerCombo[0]" [max]="pg.stagedLimits.routesPerCombo[1]" [value]="s.staged.routesPerCombo" (change)="pg.stagedSetting({ routesPerCombo: pg.num($any($event.target).value) })" />
+          </label>
+        }
+        <label>
+          最多顯示路線數
+          <input type="number" [min]="pg.limits.maxRoutes[0]" [max]="pg.limits.maxRoutes[1]" [value]="s.scope.maxRoutes" (change)="pg.scope({ maxRoutes: pg.num($any($event.target).value) })" />
+        </label>
+        @if (s.mode === 'one-shot') {
+          <p class="muted">超過「最多顯示路線數」的路線會列在「其他候選」。</p>
+        } @else {
+          <p class="muted">「起手張數」是路線必要的起手牌張數（1～3）；沒有參與展開的牌不會被列為必要。</p>
+        }
+    
+      <div class="row">
+        <label>
+          逾時（秒）
+          <input type="number" [min]="pg.limits.timeoutSeconds[0]" [max]="pg.limits.timeoutSeconds[1]" [value]="s.timeoutSeconds" (change)="pg.update({ timeoutSeconds: pg.num($any($event.target).value) })" />
+        </label>
+        <label>
+          最大輸出 tokens
+          <input type="number" [min]="pg.limits.maxOutputTokens[0]" [max]="pg.limits.maxOutputTokens[1]" [value]="s.maxOutputTokens" [disabled]="s.provider === 'chatgpt'" (change)="pg.update({ maxOutputTokens: pg.num($any($event.target).value) })" />
+          @if (s.provider === 'chatgpt') {
+            <span class="muted">ChatGPT 方案不支援，不會送出</span>
+          }
+        </label>
+        <label>
+          每日請求上限
+          <input type="number" [min]="pg.limits.dailyRequestLimit[0]" [max]="pg.limits.dailyRequestLimit[1]" [value]="s.dailyRequestLimit" (change)="pg.update({ dailyRequestLimit: pg.num($any($event.target).value) })" />
+        </label>
+        @if (s.mode === 'staged') {
+          <label>
+            AI 請求次數上限（含階段 A）
+            <input type="number" [min]="pg.stagedLimits.maxRequests[0]" [max]="pg.stagedLimits.maxRequests[1]" [value]="s.staged.maxRequests" (change)="pg.stagedSetting({ maxRequests: pg.num($any($event.target).value) })" />
+          </label>
+          <label>
+            Token 預算（估計的輸入＋輸出）
+            <input type="number" [min]="pg.stagedLimits.tokenBudget[0]" [max]="pg.stagedLimits.tokenBudget[1]" [value]="s.staged.tokenBudget" (change)="pg.stagedSetting({ tokenBudget: pg.num($any($event.target).value) })" />
+          </label>
+          <label>
+            整體逾時（秒）
+            <input type="number" [min]="pg.stagedLimits.totalTimeoutSeconds[0]" [max]="pg.stagedLimits.totalTimeoutSeconds[1]" [value]="s.staged.totalTimeoutSeconds" (change)="pg.stagedSetting({ totalTimeoutSeconds: pg.num($any($event.target).value) })" />
+          </label>
+        }
+      </div>
+    
+          @if (s.mode === 'one-shot' && pg.tokenHint(); as t) {
+        <p class="muted" [class.warn-text]="t.tight">
+          預計輸出：{{ t.n }} 條完整路線約 {{ t.lo }}～{{ t.hi }} tokens（長的延伸路線較多）。
+          @if (t.tight) {
+            目前最大輸出 {{ s.maxOutputTokens }} tokens 可能不夠；輸出被截斷時整次分析會失敗，可提高上限或減少產生候選數。
+          }
+        </p>
+      }
+    
+        </div>
+  </details>
+
+  <p class="muted">
+    今天已送出 {{ pg.usage()?.requests ?? 0 }} 次（上限 {{ s.dailyRequestLimit }} 次）@if (pg.usage()?.estimatedCostUsd) {
+      ，估計花費 US${{ pg.usage()!.estimatedCostUsd.toFixed(3) }}
+    }。
+    @if (s.mode === 'staged') {
+      @if (pg.stagedHint(); as h) {
+        階段 A 輸入約 {{ h.planInput }} tokens；每個組合約 {{ h.comboInput }} tokens；最多 {{ h.requests }} 次請求，合計最多約 {{ h.tokens }} tokens（Token 預算 {{ s.staged.tokenBudget }}）。
+        @if (s.provider === 'chatgpt') {
+          使用你的 ChatGPT 方案額度，不另外計算 API 費用。
+        } @else if (s.provider === 'ollama') {
+          本機執行，不產生 API 費用。
+        }
+      }
+    } @else if (pg.estimate(); as e) {
+      本次輸入約 {{ e.inputTokens }} tokens；
+      @if (e.maxCostUsd !== undefined) {
+        最高約 US${{ e.maxCostUsd.toFixed(2) }}（依 2026-10 公告價格估算，實際以 Anthropic 帳單為準）。
+      } @else if (s.provider === 'chatgpt') {
+        使用你的 ChatGPT 方案額度，不另外計算 API 費用。
+      } @else {
+        本機執行，不產生 API 費用。
+      }
+    }
+  </p>
+  <app-analysis-controls />
+</section>

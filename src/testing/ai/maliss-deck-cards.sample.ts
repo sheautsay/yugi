@@ -4,7 +4,7 @@
  * full English text, link rating, link arrows and type tags. Used as fixed card data for the CR-006 tests,
  * so no test needs the network. Excluded from the app build (`*.sample.ts`).
  */
-import type { ApiCard } from '../card-api';
+import type { ApiCard } from '../../app/core/card-api';
 
 export const MALISS_DECK_API_CARDS: Array<ApiCard & { linkmarkers?: string[]; typeline?: string[] }> = [
   {

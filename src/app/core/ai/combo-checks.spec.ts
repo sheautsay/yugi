@@ -3,8 +3,8 @@ import { deckFingerprint } from '../deck';
 import { ComboRoute } from '../models';
 import { checkRoute } from '../route-check';
 import { RunContext, parseAiOutput, toCandidate } from './analysis-output';
-import { malissCards, malissDeck } from './maliss-deck.sample';
-import { C, SampleRoute, mv, routeAllied, routeAlliedPlusTrap, routeAlliedPlusTwoTraps, routeAlliedWithIdleThirdCard, sampleAnswer, st, withRoles } from './maliss-routes.sample';
+import { malissCards, malissDeck } from '../../../testing/ai/maliss-deck.sample';
+import { C, SampleRoute, mv, routeAllied, routeAlliedPlusTrap, routeAlliedPlusTwoTraps, routeAlliedWithIdleThirdCard, sampleAnswer, st, withRoles } from '../../../testing/ai/maliss-routes.sample';
 import { STAGED_PROMPT_VERSION } from './staged';
 
 // CR-008 G47-3/4, G49-1/2/3, G53, N37 / N41 / N43. All routes are HAND-WRITTEN test data run through

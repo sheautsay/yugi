@@ -1,5 +1,5 @@
 /** TEST DATA ONLY — an abstract 40/15 deck and card records for CR-004 unit tests. */
-import { CardRecord, DeckRecord } from '../models';
+import { CardRecord, DeckRecord } from '../../app/core/models';
 import { MockIds } from './mock-ai.sample';
 
 export const IDS: MockIds = { starter: 101, searched: 102, extender: 103, filler: 104, link: 301, link2: 302, outsider: 999 };

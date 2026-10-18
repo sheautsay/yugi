@@ -1,0 +1,29 @@
+@if (pg.reasons().length && !pg.running()) {
+  <div class="notice warn">
+    <strong>目前無法開始分析：</strong>
+    <ul>
+      @for (r of pg.reasons(); track $index) {
+        <li>{{ r }}</li>
+      }
+    </ul>
+  </div>
+}
+<div class="row">
+  <button type="button" class="primary" (click)="pg.start()" [disabled]="pg.running() || pg.reasons().length > 0">開始分析</button>
+  <button type="button" (click)="pg.start(true)" [disabled]="pg.running() || pg.reasons().length > 0">強制重新分析</button>
+  <button type="button" class="danger" (click)="pg.cancel()" [disabled]="!pg.running()">取消</button>
+</div>
+@if (pg.ai.state().phase !== 'idle') {
+  <p role="status" aria-live="polite">
+    狀態：<strong>{{ pg.phaseLabel[pg.ai.state().phase] }}</strong>
+    @if (pg.running()) {
+      ・已經過 {{ pg.elapsed() }} 秒・已收到 {{ pg.ai.state().receivedChars }} 字元
+      @if (pg.ai.state().progress) {
+        ・{{ pg.ai.state().progress }}
+      }
+    }
+    @if (pg.ai.state().message) {
+      ・{{ pg.ai.state().message }}
+    }
+  </p>
+}

@@ -1,12 +1,12 @@
 import { Injectable, inject } from '@angular/core';
-import { CardDataService } from '../../core/card-data.service';
-import { ComboRepository } from '../../core/combo-repository';
-import { prepareComboImport } from '../../core/combo';
-import { CurrentDeckService } from '../../core/current-deck.service';
-import { checkDeck, deckCardIds, newDeck } from '../../core/deck';
-import { parseDeckText } from '../../core/deck-import';
-import { DeckRepository } from '../../core/deck-repository';
-import { DeckRecord } from '../../core/models';
+import { CardDataService } from '../card-data.service';
+import { ComboRepository } from '../combo-repository';
+import { prepareComboImport } from '../combo';
+import { CurrentDeckService } from '../current-deck.service';
+import { checkDeck, deckCardIds, newDeck } from '../deck';
+import { parseDeckText } from '../deck-import';
+import { DeckRepository } from '../deck-repository';
+import { DeckRecord } from '../models';
 
 export type SampleResult = { ok: true; message: string } | { ok: false; message: string };
 

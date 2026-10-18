@@ -1,5 +1,5 @@
 import { BrowserContext, Page, Route, expect, test } from '@playwright/test';
-import { anthropicSse, mockAiOutput, ollamaNdjson } from '../src/app/core/ai/mock-ai.sample';
+import { anthropicSse, mockAiOutput, ollamaNdjson } from '../src/testing/ai/mock-ai.sample';
 import { dumpUserData, importTestDeck, MALISS, mockCardSource, openAddDeck } from './fixtures';
 
 // CR-004 (G22–G27). Every AI answer here is MOCKED: api.anthropic.com and localhost:11434 are

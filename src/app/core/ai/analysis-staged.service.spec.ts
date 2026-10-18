@@ -2,9 +2,9 @@ import { TestBed } from '@angular/core/testing';
 import { AppDb, DB_NAME } from '../db';
 import { analyzeCandidates, evaluateRoute, groupBySize } from './evaluate';
 import { AiAnalysisService, DEFAULT_AI_SETTINGS } from './analysis.service';
-import { anthropicSse } from './mock-ai.sample';
-import { malissCards, malissDeck } from './maliss-deck.sample';
-import { C, combo, routeAllied, routeAlliedPlusTrap, routeAlliedPlusTwoTraps, routeFirewallIntoAllied, sampleAnswer, samplePlan, withRoles } from './maliss-routes.sample';
+import { anthropicSse } from '../../../testing/ai/mock-ai.sample';
+import { malissCards, malissDeck } from '../../../testing/ai/maliss-deck.sample';
+import { C, combo, routeAllied, routeAlliedPlusTrap, routeAlliedPlusTwoTraps, routeFirewallIntoAllied, sampleAnswer, samplePlan, withRoles } from '../../../testing/ai/maliss-routes.sample';
 import { AI_FETCH, FetchLike } from './providers';
 import { DEFAULT_STAGED, StagedSettings } from './staged';
 

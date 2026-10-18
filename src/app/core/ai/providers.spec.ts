@@ -1,7 +1,7 @@
 import { AI_OUTPUT_JSON_SCHEMA } from './analysis-output';
-import { anthropicSse, mockAiOutput, ollamaNdjson } from './mock-ai.sample';
+import { anthropicSse, mockAiOutput, ollamaNdjson } from '../../../testing/ai/mock-ai.sample';
 import { AiError, AiRequest, FetchLike, callAnthropic, callOllama, ollamaUrlProblem } from './providers';
-import { IDS } from './test-deck.sample';
+import { IDS } from '../../../testing/ai/test-deck.sample';
 
 // CR-004 N20 / G27-3: providers against a FAKE fetch — no request leaves the test.
 const request: AiRequest = { system: 'SYS', user: 'USER', schema: AI_OUTPUT_JSON_SCHEMA, maxOutputTokens: 32000 };

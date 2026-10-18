@@ -1,5 +1,5 @@
 import { BrowserContext, Page, expect, test } from '@playwright/test';
-import { EDGE_SAMPLE, EDGE_SAMPLE_CARDS } from '../src/app/core/neuron-deck.sample';
+import { EDGE_SAMPLE, EDGE_SAMPLE_CARDS } from '../src/testing/neuron-deck.sample';
 import { mockCardSource, openAddDeck } from './fixtures';
 
 // G21 — Master Duel deck code, assisted import. YGOPRODeck is MOCKED (the 41 sample cards are real

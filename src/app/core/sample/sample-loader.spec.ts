@@ -1,10 +1,10 @@
 import { TestBed } from '@angular/core/testing';
-import { FETCH_FN, SLEEP_FN, toCardRecord } from '../../core/card-api';
-import { MALISS_DECK_API_CARDS } from '../../core/ai/maliss-deck-cards.sample';
-import { ComboRepository } from '../../core/combo-repository';
-import { CurrentDeckService } from '../../core/current-deck.service';
-import { AppDb, DB_NAME } from '../../core/db';
-import { DeckRepository } from '../../core/deck-repository';
+import { FETCH_FN, SLEEP_FN, toCardRecord } from '../card-api';
+import { MALISS_DECK_API_CARDS } from '../../../testing/ai/maliss-deck-cards.sample';
+import { ComboRepository } from '../combo-repository';
+import { CurrentDeckService } from '../current-deck.service';
+import { AppDb, DB_NAME } from '../db';
+import { DeckRepository } from '../deck-repository';
 import { SampleLoader } from './sample-loader';
 
 async function setup(options: { seedCards: boolean }) {

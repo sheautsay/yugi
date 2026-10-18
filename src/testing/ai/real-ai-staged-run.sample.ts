@@ -2,7 +2,7 @@
  * REAL MODEL OUTPUT (CR-008). The recorded run of ONE real PHASED analysis: provider ChatGPT account (local bridge),
  * model gpt-6.1-sol, 2026-10-09, on the user's real Maliss 40+15 deck, goal A with Allied Code Talker @Ignister and
  * Firewall Dragon preferred, sizes 1+2+3, default budgets (5 requests). AI-GENERATED data — not hand-written, not a
- * mocked answer. The JSON content is identical to docs/validation/rev8-real-ai/run-record.json (the human-readable copy).
+ * mocked answer. The JSON content is identical to docs/dev/validation/rev8-real-ai/run-record.json (the human-readable copy).
  * Used only as a fixed fixture to re-check and re-evaluate with the current local code. Excluded from the app build.
  */
 export const REAL_STAGED_RUN: any = {

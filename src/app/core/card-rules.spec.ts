@@ -1,7 +1,7 @@
 import { cardRule, effectRule, isEffectMonster, parseLinkMaterials, pointedSlots } from './card-rules';
-import { malissCards } from './ai/maliss-deck.sample';
-import { C } from './ai/maliss-routes.sample';
-import { testCards } from './ai/test-deck.sample';
+import { malissCards } from '../../testing/ai/maliss-deck.sample';
+import { C } from '../../testing/ai/maliss-routes.sample';
+import { testCards } from '../../testing/ai/test-deck.sample';
 
 // CR-006 G38: the rule table and its helpers, on the user's real card data (fixed, no network).
 const cards = malissCards();

@@ -1,4 +1,4 @@
-# Keep LF in the working tree so the SHA-256 locks of docs/acceptance-*.md stay valid on checkout.
+# Keep LF in the working tree so the SHA-256 locks of docs/dev/acceptance-*.md stay valid on checkout.
 * text=auto eol=lf
 *.ico binary
 *.png binary

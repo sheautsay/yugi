@@ -1,8 +1,8 @@
 import { BrowserContext, Page, Route, expect, test } from '@playwright/test';
-import { MALISS_DECK_API_CARDS } from '../src/app/core/ai/maliss-deck-cards.sample';
-import { routeAllied, routeFirewall, routeMalissOnly, sampleAnswer } from '../src/app/core/ai/maliss-routes.sample';
-import { anthropicSse } from '../src/app/core/ai/mock-ai.sample';
-import { EDGE_SAMPLE } from '../src/app/core/neuron-deck.sample';
+import { MALISS_DECK_API_CARDS } from '../src/testing/ai/maliss-deck-cards.sample';
+import { routeAllied, routeFirewall, routeMalissOnly, sampleAnswer } from '../src/testing/ai/maliss-routes.sample';
+import { anthropicSse } from '../src/testing/ai/mock-ai.sample';
+import { EDGE_SAMPLE } from '../src/testing/neuron-deck.sample';
 import { mockCardSource, openAddDeck } from './fixtures';
 
 // CR-007 G41 / G42 with the user's real deck list. Every AI answer is MOCKED and built from

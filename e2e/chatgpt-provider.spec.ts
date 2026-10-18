@@ -1,5 +1,5 @@
 import { BrowserContext, Page, Route, expect, test } from '@playwright/test';
-import { mockAiOutput, responsesSse } from '../src/app/core/ai/mock-ai.sample';
+import { mockAiOutput, responsesSse } from '../src/testing/ai/mock-ai.sample';
 import { MALISS, dumpUserData, importTestDeck, mockCardSource } from './fixtures';
 
 // CR-005 (G28–G32). The local ChatGPT bridge is FAKED in the browser (/chatgpt-bridge/**) and the
