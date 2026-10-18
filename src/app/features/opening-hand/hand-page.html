@@ -15,8 +15,13 @@
           <li>{{ e }}</li>
         }
       </ul>
+      <app-missing-cards [ids]="deckCheck()!.unresolvedIds" />
     </div>
-    <a class="button primary" [routerLink]="['/decks', deck()!.id]">前往編輯牌組</a>
+    @if (deckCheck()!.unresolvedIds.length && hasCardData() === false) {
+      <app-card-data-prompt heading="先下載卡片資料，才能辨識牌組中的卡片" />
+    } @else {
+      <a class="button primary" [routerLink]="['/decks', deck()!.id]">前往編輯牌組</a>
+    }
   } @else {
     <p class="row">
       <span>牌組：<strong>{{ deck()!.name }}</strong>（主牌 {{ deckCheck()!.totals.main }}／額外 {{ deckCheck()!.totals.extra }}）</span>

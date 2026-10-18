@@ -37,6 +37,7 @@
                     <li>{{ e }}</li>
                   }
                 </ul>
+                <app-missing-cards [ids]="c.unresolvedIds" />
               </div>
             }
           }
@@ -56,6 +57,7 @@
         <section class="card">
           <h2>卡片資料與卡圖</h2>
           <p class="muted">需要網路，資料來自 YGOPRODeck；下載後存在本機，離線也能查看。</p>
+          <app-card-data-prompt heading="尚未下載完整卡片資料" />
           <div class="row">
             <button type="button" (click)="downloadCardData()" [disabled]="busy() || !check()?.unresolvedIds?.length">下載缺少的卡片資料</button>
             <button type="button" (click)="downloadImages()" [disabled]="busy()">下載此牌組卡圖</button>

@@ -135,7 +135,7 @@ describe('DeckImportPanel — G3 / G13 UI', () => {
     const { fixture, repo, el } = await setup({ seedCards: false });
     await paste(fixture, toYdke(deck40));
     expect(el.textContent).toContain('匯入後會是草稿');
-    expect(el.textContent).toContain('19 種卡片尚未識別');
+    expect(el.textContent).toContain('19 種卡片缺少資料');
 
     button(el, '從 YGOPRODeck 下載缺少的卡片資料').click();
     await waitForText(fixture, '已快取的資料不受影響');
@@ -146,7 +146,7 @@ describe('DeckImportPanel — G3 / G13 UI', () => {
     button(el, '確認匯入').click();
     await settle(fixture);
     const [saved] = await repo.list();
-    expect(saved.importWarnings?.join()).toContain('尚未識別');
+    expect(saved.importWarnings?.join()).toContain('缺少資料');
     expect(checkDeck(saved, new Map()).queryable).toBe(false);
   });
 
@@ -158,7 +158,7 @@ describe('DeckImportPanel — G3 / G13 UI', () => {
     button(el, '從 YGOPRODeck 下載缺少的卡片資料').click();
     await waitForText(fixture, '查無');
     expect(el.textContent).toContain('查無 6 個 ID');
-    expect(el.textContent).toContain('6 種卡片尚未識別');
+    expect(el.textContent).toContain('6 種卡片缺少資料');
   });
 
   it('replacing an existing deck asks for confirmation and bumps its version', async () => {

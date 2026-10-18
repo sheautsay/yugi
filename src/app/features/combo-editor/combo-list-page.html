@@ -12,7 +12,15 @@
         <button type="button" (click)="exportAll()" [disabled]="combos().length === 0">匯出全部（JSON）</button>
       </div>
       @if (combos().length === 0) {
-        <p class="muted">尚未收錄任何 Combo。</p>
+        <div class="empty-state">
+          <strong>尚未收錄任何 Combo</strong>
+          <span class="muted">想先看看效果？載入範例會加入一副 Maliss 牌組與 3 條範例路線（皆為「未驗證」），並自動下載這副牌需要的卡片資料。</span>
+          <div class="row">
+            <button type="button" class="primary" (click)="loadSample()" [disabled]="busy()">{{ busy() ? '載入中…' : '載入範例（Maliss）' }}</button>
+          </div>
+        </div>
+      } @else {
+        <p class="small"><button type="button" class="ghost small" (click)="loadSample()" [disabled]="busy()">載入範例（Maliss）</button></p>
       }
       <ul class="plain stack">
         @for (c of combos(); track c.id) {

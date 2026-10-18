@@ -1,10 +1,10 @@
 import { expect, test } from '@playwright/test';
 
-test('root redirects to the zh-TW deck list', async ({ page }) => {
+test('root redirects to the zh-TW home dashboard', async ({ page }) => {
   await page.goto('/');
-  await expect(page).toHaveURL(/\/decks$/);
+  await expect(page).toHaveURL(/\/home$/);
   await expect(page.locator('html')).toHaveAttribute('lang', 'zh-Hant-TW');
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText('牌組');
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('首頁');
   await expect(page.getByRole('navigation', { name: '主要導覽' })).toContainText('Combo 管理');
 });
 

@@ -8,14 +8,16 @@ import { DeckRepository } from '../../core/deck-repository';
 import { checkHand, drawHand, randomSeed, remainingInMain } from '../../core/hand';
 import { MatchContext, RouteResult, matchRoutes } from '../../core/matcher';
 import { CardRecord, ComboRoute, DeckRecord, HAND_SIZE, TurnOrder } from '../../core/models';
+import { CardDataPrompt } from '../../shared/card-data-prompt';
 import { CardTile } from '../../shared/card-tile';
+import { MissingCards } from '../../shared/missing-cards';
 import { HandStateService } from './hand-state.service';
 import { KIND_LABEL, RouteResultList } from './route-result-list';
 import { ScreenshotRecognizer } from './screenshot-recognizer';
 
 @Component({
   selector: 'app-hand-page',
-  imports: [RouterLink, CardTile, RouteResultList, ScreenshotRecognizer],
+  imports: [RouterLink, CardTile, RouteResultList, ScreenshotRecognizer, CardDataPrompt, MissingCards],
   templateUrl: './hand-page.html',
   styleUrl: './hand-page.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -25,6 +27,8 @@ export class HandPage {
   private readonly combos = inject(ComboRepository);
   private readonly cardData = inject(CardDataService);
   private readonly handStates = inject(HandStateService);
+
+  protected readonly hasCardData = this.cardData.hasData;
 
   readonly deckId = input.required<string>();
 
@@ -91,6 +95,11 @@ export class HandPage {
   constructor() {
     effect(() => void this.load(this.deckId()));
     effect(() => {
+      this.cardData.version();
+      void this.cardData.refreshTotal();
+      void this.reloadCards();
+    });
+    effect(() => {
       const deck = this.deck();
       if (!deck || !this.loaded()) return;
       this.handStates.set(deck.id, {
@@ -101,6 +110,13 @@ export class HandPage {
         seed: this.seed(),
       });
     });
+  }
+
+  /** Card data was downloaded or changed while this page is open: re-read the cards of the deck and routes. */
+  private async reloadCards(): Promise<void> {
+    const deck = this.deck();
+    if (!deck) return;
+    this.cards.set(await this.cardData.getMany([...deckCardIds(deck), ...this.routes().flatMap((r) => r.endBoard.map((e) => e.cardId))]));
   }
 
   private async load(deckId: string): Promise<void> {

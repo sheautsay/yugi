@@ -14,6 +14,15 @@
       AI 只會提出<strong>候選路線</strong>。每條路線由本機依實際牌表檢查卡片、張數與每一步的卡片位置；<strong>通過也不代表合法</strong>。規則引擎驗證尚未整合（BLOCKED），「已驗證」仍只能由你在 Master Duel 實測後附證據設定。
     </p>
     <p class="muted">牌組版本 {{ d.version }}・指紋 {{ fingerprint() }}・主牌 {{ deckCheck()?.totals?.main }}／額外 {{ deckCheck()?.totals?.extra }}</p>
+    <app-card-data-prompt heading="AI 分析需要先下載卡片資料" />
+    @if (deckCheck(); as c) {
+      @if (c.unresolvedIds.length && hasCardData() === true) {
+        <div class="notice warn" role="status">
+          {{ c.unresolvedIds.length }} 種卡片缺少資料，請到<a [routerLink]="['/decks', d.id]">編輯牌組</a>修正。
+          <app-missing-cards [ids]="c.unresolvedIds" />
+        </div>
+      }
+    }
 
     @if (error()) {
       <div class="notice bad" role="alert">

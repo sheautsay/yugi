@@ -1,4 +1,5 @@
-import { Injectable, inject, signal } from '@angular/core';
+import { Injectable, computed, inject, signal } from '@angular/core';
+import { SettingsService } from './settings.service';
 import { CardApiError, DbVersion, YgoProDeckClient, toCardRecord } from './card-api';
 import { CardNameEntry, searchNames } from './card-names';
 import { EMPTY_QUERY, searchCards } from './card-search';
@@ -55,8 +56,17 @@ export class CardDataService {
   private readonly client = inject(YgoProDeckClient);
   private cache: { version: number; cards: Promise<CardRecord[]> } | null = null;
 
+  private readonly settings = inject(SettingsService);
+
   /** Bumped whenever cached cards change so views can reload. */
   readonly version = signal(0);
+
+  /** How many cards are stored locally; `null` until first read. */
+  readonly total = signal<number | null>(null);
+  /** True once at least one card is stored; `null` while unknown. */
+  readonly hasData = computed(() => (this.total() === null ? null : this.total()! > 0));
+  /** State of the user-triggered full download, shared by every screen that offers it. */
+  readonly fullDownload = signal<{ busy: boolean; message: string; failed: boolean }>({ busy: false, message: '', failed: false });
 
   async getMany(ids: Iterable<number>): Promise<Map<number, CardRecord>> {
     const db = await this.appDb.db();
@@ -70,6 +80,35 @@ export class CardDataService {
     );
     await tx.done;
     return map;
+  }
+
+  /** Reads the stored card count into `total` (call from views that need to know whether data exists). */
+  async refreshTotal(): Promise<void> {
+    try {
+      this.total.set(await this.count());
+    } catch {
+      this.total.set(null);
+    }
+  }
+
+  private bump(): void {
+    this.version.update((v) => v + 1);
+    void this.refreshTotal();
+  }
+
+  /** Explicit user action: downloads the full card database with the pool from the settings, tracking progress in `download`. */
+  async downloadAll(): Promise<SyncResult | null> {
+    if (this.fullDownload().busy) return null;
+    this.fullDownload.set({ busy: true, message: '正在下載卡片資料（約 24 MB），請稍候…', failed: false });
+    await this.settings.ready;
+    const result = await this.syncAll(this.settings.settings().cardPool);
+    await this.refreshTotal();
+    this.fullDownload.set(
+      result.status === 'failed'
+        ? { busy: false, message: result.error, failed: true }
+        : { busy: false, message: `已下載 ${result.info.count} 張卡片資料。`, failed: false },
+    );
+    return result;
   }
 
   async count(): Promise<number> {
@@ -158,7 +197,7 @@ export class CardDataService {
       await tx.done.catch(() => undefined);
       return { status: 'failed', error: '卡片資料寫入本機資料庫失敗，已取消整批寫入，原有資料不受影響。請確認瀏覽器儲存空間後再試。' };
     }
-    this.version.update((v) => v + 1);
+    this.bump();
     return { status: 'synced', info, added, updated: records.length - added };
   }
 
@@ -196,7 +235,7 @@ export class CardDataService {
     if (!next.aliases?.length) delete next.aliases;
     for (const field of NOTE_FIELDS) if (next[field] === undefined) delete next[field];
     await db.put('cards', next);
-    this.version.update((v) => v + 1);
+    this.bump();
     return next;
   }
 
@@ -222,7 +261,7 @@ export class CardDataService {
       applied++;
     }
     await tx.done;
-    this.version.update((v) => v + 1);
+    this.bump();
     return { applied, missing };
   }
 
@@ -250,7 +289,7 @@ export class CardDataService {
       }),
     );
     await tx.done;
-    this.version.update((v) => v + 1);
+    this.bump();
     return stored;
   }
 }

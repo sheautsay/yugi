@@ -50,9 +50,9 @@ describe('App shell', () => {
     });
   }
 
-  it('redirects the root path to the deck list', async () => {
+  it('redirects the root path to the home dashboard', async () => {
     const harness = await RouterTestingHarness.create();
     await harness.navigateByUrl('/');
-    expect(harness.routeNativeElement?.querySelector('h1')?.textContent?.trim()).toBe('牌組');
+    expect(harness.routeNativeElement?.querySelector('h1')?.textContent?.trim()).toBe('首頁');
   });
 });

@@ -77,20 +77,44 @@
     </section>
   </div>
 
-  <!-- Quick actions -->
+  <!-- Quick start -->
   <section aria-labelledby="home-actions">
     <h2 id="home-actions" class="section-title">快速開始</h2>
+    <ol class="quick-steps">
+      <li [class.done]="hasCardData() === true">
+        <span class="step-mark" aria-hidden="true">{{ hasCardData() === true ? '✓' : '1' }}</span>
+        <div class="step-body">
+          <strong>下載卡片資料</strong>
+          @if (hasCardData() === true) {
+            <span class="muted small">已完成（本機有 {{ cardCount() ?? '…' }} 張）</span>
+          } @else {
+            <span class="muted small">起手查詢與 AI 分析都需要；約 24 MB，只需下載一次。</span>
+            <app-card-data-prompt [compact]="true" />
+          }
+        </div>
+      </li>
+      <li [class.done]="!!current.deck()">
+        <span class="step-mark" aria-hidden="true">{{ current.deck() ? '✓' : '2' }}</span>
+        <div class="step-body">
+          <strong>匯入牌組</strong>
+          @if (current.deck()) {
+            <span class="muted small">已完成（目前使用「{{ current.deck()!.name }}」）</span>
+          } @else {
+            <span class="muted small">ydke://、YDK 檔、官方牌組頁或 Master Duel 代碼</span>
+          }
+          <a class="button" [class.primary]="hasCardData() === true && !current.deck()" routerLink="/decks"><app-icon name="import" [size]="18" />{{ current.deck() ? '管理牌組' : '匯入牌組' }}</a>
+        </div>
+      </li>
+      <li>
+        <span class="step-mark" aria-hidden="true">3</span>
+        <div class="step-body">
+          <strong>起手查詢</strong>
+          <span class="muted small">選 5／6 張起手或用截圖辨識，找出已收錄的固定展開</span>
+          <a class="button" [class.primary]="hasCardData() === true && !!current.deck()" [routerLink]="current.deck() ? ['/decks', current.deck()!.id, 'hand'] : ['/decks']"><app-icon name="hand" [size]="18" />起手查詢</a>
+        </div>
+      </li>
+    </ol>
     <div class="actions-grid">
-      <a class="action" routerLink="/decks">
-        <span class="action-icon"><app-icon name="import" /></span>
-        <span class="action-title">匯入牌組</span>
-        <span class="action-text">ydke://、YDK 檔、官方牌組頁或 Master Duel 代碼</span>
-      </a>
-      <a class="action" [routerLink]="current.deck() ? ['/decks', current.deck()!.id, 'hand'] : ['/decks']">
-        <span class="action-icon"><app-icon name="hand" /></span>
-        <span class="action-title">起手查詢</span>
-        <span class="action-text">選 5／6 張起手或用截圖辨識，找出已收錄的固定展開</span>
-      </a>
       <a class="action" [routerLink]="current.deck() ? ['/decks', current.deck()!.id, 'analysis'] : ['/decks']">
         <span class="action-icon"><app-icon name="ai" /></span>
         <span class="action-title">AI 展開分析</span>
