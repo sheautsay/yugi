@@ -55,6 +55,14 @@ export function routeExternalLinks(root: Document, open: (url: string) => void):
 
 let removeLinkRouting: (() => void) | undefined;
 
+/** Undoes {@link installDesktop}'s process-wide changes (link routing, platform hooks, bridge hints); used by tests. */
+export function uninstallDesktop(): void {
+  removeLinkRouting?.();
+  removeLinkRouting = undefined;
+  installPlatformHooks({});
+  setBridgeHints(null);
+}
+
 /**
  * Switches the app to desktop mode: installs the platform hooks and returns the providers that replace the browser
  * defaults. Called once, before the application starts.
