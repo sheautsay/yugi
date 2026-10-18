@@ -1,4 +1,5 @@
 import { ParsedDeck } from './deck';
+import { checkFtkRoute, isFtkRoute } from './ftk-check';
 import { verificationProblem } from './matcher';
 import { AnalysisLevel, ComboRoute } from './models';
 import { RouteCheckOptions, checkRoute } from './route-check';
@@ -12,5 +13,7 @@ export function analysisLevel(route: ComboRoute, deck: Pick<ParsedDeck, 'main' |
   if (deck && route.verification.status === 'verified' && verificationProblem(route, deck) === null) return 'md-confirmed';
   if (!route.analysis) return null;
   if (!deck) return 'ai-candidate';
-  return checkRoute(route, deck, options).passed ? 'data-checked' : 'ai-candidate';
+  // B7: a plan with random steps and branches is checked way by way.
+  const passed = isFtkRoute(route) ? checkFtkRoute(route, deck, options).passed : checkRoute(route, deck, options).passed;
+  return passed ? 'data-checked' : 'ai-candidate';
 }

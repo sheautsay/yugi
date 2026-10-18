@@ -85,6 +85,14 @@ export class DeckEditPage {
     this.update((d) => ({ ...d, name }));
   }
 
+  /** B7: marks the deck as a first-turn-kill deck (analysis, ranking and the battle mode then use the FTK goal). */
+  protected setFtk(on: boolean): void {
+    this.update((d) => {
+      const { ftk: _old, ...rest } = d;
+      return on ? { ...rest, ftk: true } : rest;
+    });
+  }
+
   protected changeCount(zone: DeckZone, cardId: number, delta: number): void {
     this.update((d) => ({
       ...d,

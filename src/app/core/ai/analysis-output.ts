@@ -1,8 +1,10 @@
 import { z } from 'zod';
 import { validateCombo } from '../combo';
 import { ACTION_LABEL } from '../labels';
-import { ACTION_TYPES, CardRecord, ComboRoute, ComboStep, DeckRecord, FIELD_SLOTS, PLAY_ZONES, PlayZone, RouteAnalysisInfo } from '../models';
+import { ActionType, LINEAR_ACTION_TYPES, CardRecord, ComboRoute, ComboStep, DeckRecord, FIELD_SLOTS, PLAY_ZONES, PlayZone, RouteAnalysisInfo } from '../models';
+import { isFtkRoute } from '../ftk-check';
 import { checkRoute, PLAY_ZONE_LABEL } from '../route-check';
+import { withFtkCheck } from './ftk-ai';
 import { markupProblem } from '../schemas';
 import { countOf } from '../deck';
 import { tally } from '../hand';
@@ -46,7 +48,7 @@ export const aiOutputSchema = z.object({
         steps: z
           .array(
             z.object({
-              actionType: z.enum(ACTION_TYPES),
+              actionType: z.enum(LINEAR_ACTION_TYPES as unknown as [ActionType, ...ActionType[]]),
               title: z.string(),
               description: z.string(),
               actorCardIds: z.array(cardId).max(10),
@@ -104,7 +106,7 @@ export const AI_OUTPUT_JSON_SCHEMA: Record<string, unknown> = obj({
       preconditions: arr(str),
       steps: arr(
         obj({
-          actionType: { type: 'string', enum: [...ACTION_TYPES] },
+          actionType: { type: 'string', enum: [...LINEAR_ACTION_TYPES] },
           title: str,
           description: str,
           actorCardIds: arr(int),
@@ -342,6 +344,8 @@ export function toCandidate(r: AiRoute, ctx: RunContext): Candidate {
 
 /** Runs the data check against `deck` and records it; status follows the result (never verified). */
 export function withCheck(route: ComboRoute, deck: DeckRecord, cards: ReadonlyMap<number, CardRecord>, now: string, fingerprint: string): Candidate {
+  // B7: a route with random steps / branches is checked as a plan (every way through), not as one straight line.
+  if (isFtkRoute(route)) return withFtkCheck(route, deck, cards, now, fingerprint);
   const result = checkRoute(route, deck, { cards });
   const problems = result.problems.map((p) => cleanText(`${p.step ? `第 ${p.step} 步：` : ''}${p.message}`, 1000));
   const next: ComboRoute = {

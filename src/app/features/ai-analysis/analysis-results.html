@@ -139,6 +139,51 @@
       </div>
     }
 
+    @if (pg.ftkRows(); as rows) {
+      <section class="stack" aria-labelledby="ftk-heading">
+        <div class="row">
+          <h3 id="ftk-heading">先攻 FTK 計畫（{{ rows.length }}）</h3>
+          <button type="button" class="primary" (click)="pg.saveAll()" [disabled]="pg.busy()">{{ pg.texts.ai.bulk.button }}</button>
+        </div>
+        <p class="muted small">{{ pg.texts.ftk.ftkRank }}。{{ pg.texts.ftk.assumptions }}</p>
+        <ul class="plain stack" aria-label="FTK 計畫">
+          @for (r of rows; track r.candidate.route.id) {
+            <li class="item candidate">
+              <div class="row">
+                <strong>{{ r.rank }}. {{ r.candidate.route.name }}</strong>
+                <span class="badge" [class.ok]="r.level !== 'ai-candidate'" [class.warn]="r.level === 'ai-candidate'">{{ pg.levelText(r.level) }}</span>
+                @if (!r.check.passed) {
+                  <span class="badge bad">檢查 {{ r.check.problems.length }} 項未通過</span>
+                }
+              </div>
+              @if (r.check.probability.ok) {
+                <p class="chance"><strong>{{ pg.texts.ftk.chance }}：</strong>{{ pg.pct(r.check.probability.p) }}</p>
+              } @else {
+                <p class="chance"><strong>{{ pg.texts.ftk.chance }}：</strong>{{ pg.texts.ftk.unavailable }}（{{ r.check.probability.error }}）</p>
+              }
+              <p class="muted small">{{ pg.texts.ftk.chanceNote }}{{ pg.texts.ftk.successLeaves(pg.successCount(r.check), r.check.leaves.length) }}</p>
+              @for (p of r.check.problems; track $index) {
+                <p class="notice bad small">{{ p.branch ? '分支「' + p.branch + '」：' : '' }}{{ p.step ? '第 ' + p.step + ' 步：' : '' }}{{ p.message }}</p>
+              }
+              <details>
+                <summary>{{ pg.texts.ftk.branchTitle }}（計畫與每個分支的結果）</summary>
+                <app-ftk-tree [route]="r.candidate.route" [cards]="pg.cards()" [leaves]="r.check.leaves" />
+              </details>
+              <div class="row">
+                @if (r.candidate.savedComboId) {
+                  <a class="button" [routerLink]="['/combos', r.candidate.savedComboId]">已存成 Combo：查看</a>
+                } @else {
+                  <button type="button" class="primary" (click)="pg.save(r.index)" [disabled]="pg.busy() || r.candidate.schemaErrors.length > 0">存成固定 Combo</button>
+                }
+                <button type="button" (click)="pg.recheck(r.index)" [disabled]="pg.busy()">依目前牌組重新驗證</button>
+                <button type="button" class="danger" (click)="pg.remove(r.index)" [disabled]="pg.busy()">刪除</button>
+              </div>
+            </li>
+          }
+        </ul>
+      </section>
+    }
+
     @if (run.candidates && pg.analysis(); as a) {
       <div class="row">
         <h3>候選路線（{{ run.candidates.length }}）</h3>

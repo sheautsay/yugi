@@ -88,3 +88,54 @@ export function twoDrawPlan(): ComboRoute {
   first.branches = [branch('抽到 Contract with Don Thousand', when([[C.contract]]), [contractKill()], 'success'), branch('否則', null, [dealings, second], 'fail')];
   return plan('Chicken Game → Dark World Dealings → Contract', HAND, [activateChicken(), first], { ftk: { targetDamage: 1000, opponentExtraDeck: 15 } });
 }
+
+// ---- the same plan as a model would answer it (the flat shape of `FTK_JSON_SCHEMA`) ---------------------------------
+
+type FlatMove = { cardId: number; from: PlayZone; to: PlayZone; slot: string };
+const flat = (o: Partial<Record<string, unknown>> & { actionType: string; title: string; actorCardIds: number[] }) => ({
+  description: o['title'],
+  targetCardIds: [],
+  materialCardIds: [],
+  cost: '',
+  effect: '',
+  result: '',
+  uncertainty: '',
+  effectRef: '',
+  moves: [] as FlatMove[],
+  drawCount: 0,
+  drawTo: '',
+  claimedDamage: -1,
+  ...o,
+});
+const fm = (cardId: number, from: PlayZone, to: PlayZone): FlatMove => ({ cardId, from, to, slot: '' });
+
+/**
+ * A HAND-WRITTEN stand-in for a model answer on the reference deck: Chicken Game draws 1; if it is Contract with Don Thousand
+ * the plan activates it and CLAIMS success. The program works out that this takes only 1000 of the 8000 Life Points.
+ */
+export function banquetAnswer(o: { specifiedDraw?: boolean; cycle?: boolean; missingSegment?: boolean } = {}): Record<string, unknown> {
+  const draw = flat({ actionType: 'draw', title: 'Chicken Game：付 1000 LP 抽 1 張', actorCardIds: [C.chicken], effectRef: `${C.chicken}#1`, drawCount: 1, drawTo: 'hand', moves: o.specifiedDraw ? [fm(C.contract, 'deck', 'hand')] : [] });
+  return {
+    summary: '手寫的測試答案（不是模型輸出）',
+    plans: [
+      {
+        name: 'Chicken Game → Contract',
+        handCardIds: HAND,
+        preconditions: ['先攻、雙方空場、無干擾'],
+        segments: [
+          {
+            id: 'main',
+            steps: [flat({ actionType: 'activate', title: '發動 Chicken Game', actorCardIds: [C.chicken], moves: [fm(C.chicken, 'hand', 'field')] }), draw],
+            branches: [
+              { label: '抽到 Contract with Don Thousand', when: [{ anyOf: [C.contract], count: 1 }], outcome: 'success', next: o.missingSegment ? 'nowhere' : 'hit' },
+              { label: '否則', when: [], outcome: 'fail', next: o.cycle ? 'main' : '' },
+            ],
+          },
+          { id: 'hit', steps: [flat({ actionType: 'activate', title: '發動 Contract with Don Thousand', actorCardIds: [C.contract], effectRef: `${C.contract}#1`, moves: [fm(C.contract, 'hand', 'field')] })], branches: [] },
+        ],
+        pros: [],
+        cons: ['只有 1 張 Contract'],
+      },
+    ],
+  };
+}

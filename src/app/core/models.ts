@@ -144,6 +144,9 @@ export const ACTION_TYPES = [
 
 export type ActionType = (typeof ACTION_TYPES)[number];
 
+/** The action types of an ordinary (straight) route: everything except the random ones of B7. */
+export const LINEAR_ACTION_TYPES = ACTION_TYPES.filter((t) => t !== 'draw' && t !== 'excavate') as readonly ActionType[];
+
 /** Where a card is during a combo (CR-004 data check). "overlay" = attached as Xyz material. */
 export const PLAY_ZONES = ['deck', 'hand', 'extra', 'field', 'gy', 'banished', 'overlay'] as const;
 
