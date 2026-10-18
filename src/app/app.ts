@@ -6,6 +6,7 @@ import { CurrentDeckService } from './core/current-deck.service';
 import { BattleSettingsService } from './core/battle-settings.service';
 import { TEXT } from './core/texts';
 import { Icon } from './shared/icon';
+import { CaptureShortcutService } from './shared/recognition/game-capture.service';
 
 interface NavItem {
   label: string;
@@ -78,6 +79,8 @@ export class App {
   constructor() {
     // Desktop only: does nothing unless the host provides a backup folder.
     inject(AutoBackupService).start();
+    // Desktop only (B4): the system-wide capture shortcut of the battle mode.
+    inject(CaptureShortcutService).start();
     let first = true;
     this.router.events.subscribe((e) => {
       if (!(e instanceof NavigationEnd)) return;

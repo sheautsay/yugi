@@ -85,6 +85,9 @@
           <input [value]="presetName()" (input)="presetName.set($any($event.target).value)" maxlength="40" />
         </label>
         <button type="button" (click)="savePreset()" [disabled]="!presetName().trim()">儲存框線為版型</button>
+        @if (capture()) {
+          <button type="button" (click)="saveAsGameLayout()" [disabled]="busy()">記住為遊戲視窗的手牌位置</button>
+        }
       }
     </div>
   }

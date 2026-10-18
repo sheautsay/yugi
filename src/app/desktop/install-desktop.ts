@@ -4,7 +4,7 @@ import { AI_FETCH, AI_PROVIDERS } from '../core/ai/providers';
 import { BACKUP_SINK } from '../core/auto-backup.service';
 import { CARD_IMAGE_BASE_URL, FETCH_FN } from '../core/card-api';
 import { installPlatformHooks } from '../shared/platform-hooks';
-import type { DesktopApis } from './desktop-apis';
+import { CAPTURE_SHORTCUT_EVENT, parseFrame, type DesktopApis } from './desktop-apis';
 import { createDesktopBackupSink } from './desktop-backup-sink';
 import { createDesktopFetch } from './desktop-fetch';
 
@@ -78,6 +78,17 @@ export function installDesktop(apis: DesktopApis): Provider[] {
     openExternal,
     saveText: (fileName, text) => apis.saveTextFile(fileName, text),
     focusApp: () => apis.invoke<void>('focus_main_window'),
+    captureGame: async () => parseFrame(await apis.invoke<ArrayBuffer>('capture_game_window')),
+    setCaptureShortcut: (accelerator) => apis.invoke<void>('set_capture_shortcut', { accelerator }),
+    onCaptureShortcut: (handler) => {
+      let stop: (() => void) | undefined;
+      let stopped = false;
+      void apis.listen(CAPTURE_SHORTCUT_EVENT, handler).then((unlisten) => (stopped ? unlisten() : (stop = unlisten)));
+      return () => {
+        stopped = true;
+        stop?.();
+      };
+    },
   });
   setBridgeHints({
     down: '本機 ChatGPT 服務沒有回應：App 會自動啟動它，請按「重新整理」再試一次；若仍失敗，請重新開啟 App。',

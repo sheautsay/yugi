@@ -77,6 +77,27 @@
         <p class="muted">{{ battleText.settingsNote }}</p>
         @if (battle.enabled()) {
           <a class="button" routerLink="/battle">{{ battleText.title }}</a>
+          @if (canCapture) {
+            <label>
+              {{ battleText.shortcutLabel }}
+              <input [value]="shortcutDraft() ?? battle.shortcut()" (input)="shortcutDraft.set($any($event.target).value)" maxlength="40" autocomplete="off" spellcheck="false" />
+            </label>
+            <div class="row">
+              <button type="button" (click)="applyShortcut()" [disabled]="shortcutDraft() === null">{{ battleText.shortcutSave }}</button>
+            </div>
+            @if (shortcutError()) {
+              <p class="notice bad" role="alert">{{ shortcutError() }}</p>
+            } @else if (captureShortcut.error()) {
+              <p class="notice bad" role="alert">{{ captureShortcut.error() }}</p>
+            }
+            <p class="muted">{{ battleText.shortcutNote }}</p>
+            <p>
+              {{ battleText.layoutsLabel }}：{{ gameLayoutSizes() ? battleText.layoutsSet(gameLayoutSizes()) : battleText.layoutsNone }}
+            </p>
+            @if (gameLayoutSizes()) {
+              <button type="button" (click)="resetGameLayouts()">{{ battleText.layoutsReset }}</button>
+            }
+          }
         }
       </section>
     </div>

@@ -1,4 +1,5 @@
 mod bridge;
+mod capture;
 
 use tauri::{Manager, RunEvent};
 
@@ -54,8 +55,17 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
+        .plugin(tauri_plugin_global_shortcut::Builder::new().with_handler(capture::on_shortcut).build())
         .manage(bridge::BridgeState::default())
-        .invoke_handler(tauri::generate_handler![bridge::bridge_start, bridge::bridge_stop, focus_main_window, save_text_file])
+        .manage(capture::CaptureState::default())
+        .invoke_handler(tauri::generate_handler![
+            bridge::bridge_start,
+            bridge::bridge_stop,
+            focus_main_window,
+            save_text_file,
+            capture::capture_game_window,
+            capture::set_capture_shortcut
+        ])
         .build(tauri::generate_context!())
         .expect("error while building the application");
 

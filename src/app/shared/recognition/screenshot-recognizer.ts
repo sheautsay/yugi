@@ -1,11 +1,20 @@
-import { ChangeDetectionStrategy, Component, ElementRef, Injector, OnDestroy, afterNextRender, computed, effect, inject, input, output, signal, viewChild } from '@angular/core';
+import { ChangeDetectionStrategy, Component, ElementRef, Injector, OnDestroy, afterNextRender, computed, effect, inject, input, output, signal, untracked, viewChild } from '@angular/core';
 import { CardNamesService } from '../../core/card-names.service';
 import { checkHand } from '../../core/hand';
 import { LayoutRepository } from '../../core/layout-repository';
 import { CardCount, CardRecord, HandLayoutPreset, HandRecognitionSlot, HandRegion, HandSize } from '../../core/models';
 import { regionsFromRow, resolvedHand, screenshotFileError, screenshotSizeError, sortLeftToRight } from '../../core/recognition';
 import { CardTile } from '../card-tile';
+import { GameCaptureService } from './game-capture.service';
 import { HandRecognitionService, thumbnail } from './hand-recognition.service';
+
+/** B4: a capture of the game window handed to the recognizer (it then owns the bitmap and releases it). */
+export interface GameCaptureInput {
+  bitmap: ImageBitmap;
+  regions?: HandRegion[];
+  slots?: HandRecognitionSlot[];
+  note: string;
+}
 
 const STATUS_TEXT: Record<HandRecognitionSlot['status'], string> = {
   confident: '辨識信心高',
@@ -28,11 +37,14 @@ const DEFAULT_ROW: HandRegion = { x: 0.25, y: 0.72, w: 0.5, h: 0.26 };
 export class ScreenshotRecognizer implements OnDestroy {
   private readonly recognition = inject(HandRecognitionService);
   private readonly layouts = inject(LayoutRepository);
+  private readonly gameCapture = inject(GameCaptureService);
 
   readonly main = input.required<CardCount[]>();
   readonly cards = input.required<Map<number, CardRecord>>();
   readonly handSize = input.required<HandSize>();
   readonly confirmed = output<number[]>();
+  /** B4: a game capture to show; the boxes can then be remembered as the game window's hand layout. */
+  readonly capture = input<GameCaptureInput | null>(null);
 
   private readonly overlay = viewChild<ElementRef<HTMLElement>>('overlay');
   private readonly injector = inject(Injector);
@@ -81,6 +93,10 @@ export class ScreenshotRecognizer implements OnDestroy {
       this.slots.set(null);
     });
     effect(() => void this.refreshMissing(this.main().map((c) => c.cardId)));
+    effect(() => {
+      const capture = this.capture();
+      if (capture) void untracked(() => this.loadCapture(capture));
+    });
   }
 
   private async refreshMissing(ids: number[]): Promise<void> {
@@ -146,6 +162,38 @@ export class ScreenshotRecognizer implements OnDestroy {
     this.message.set(`已載入截圖（${bitmap.width}×${bitmap.height}）。截圖只在此頁記憶體中處理，不會儲存或上傳。`);
     // Bring the whole screenshot into view so the boxes can be drawn right away (CR-012).
     afterNextRender(() => this.overlay()?.nativeElement.scrollIntoView({ block: 'nearest' }), { injector: this.injector });
+  }
+
+  /** B4: shows a capture of the game window (kept in memory only), with the boxes and results when there are any. */
+  private async loadCapture(capture: GameCaptureInput): Promise<void> {
+    this.release();
+    this.error.set('');
+    const { bitmap } = capture;
+    this.bitmap = bitmap;
+    const canvas = document.createElement('canvas');
+    canvas.width = bitmap.width;
+    canvas.height = bitmap.height;
+    canvas.getContext('2d')!.drawImage(bitmap, 0, 0);
+    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.85));
+    if (this.bitmap !== bitmap) return; // replaced or released meanwhile
+    this.previewUrl.set(blob ? URL.createObjectURL(blob) : null);
+    this.imageSize.set({ width: bitmap.width, height: bitmap.height });
+    if (capture.regions) this.regions.set(capture.regions.map((r) => ({ ...r })));
+    if (capture.regions && capture.slots) {
+      this.thumbs.set(capture.regions.map((r) => thumbnail(bitmap, r)));
+      this.slots.set(capture.slots);
+    }
+    this.message.set(capture.note);
+    afterNextRender(() => this.overlay()?.nativeElement.scrollIntoView({ block: 'nearest' }), { injector: this.injector });
+  }
+
+  /** B4: remembers the current boxes as the hand position inside the game window, then recognizes this capture. */
+  protected async saveAsGameLayout(): Promise<void> {
+    const size = this.imageSize();
+    if (!size || !this.boxesReady()) return;
+    await this.gameCapture.saveGameLayout(this.handSize(), this.regions(), size.width, size.height);
+    this.message.set(`已記住 ${this.handSize()} 張手牌在遊戲視窗中的位置（只存框線，不含截圖）。之後按快捷鍵會直接套用。`);
+    if (!this.slots()) await this.recognize();
   }
 
   /** Frees the screenshot (object URL + decoded bitmap). */

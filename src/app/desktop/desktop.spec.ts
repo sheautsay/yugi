@@ -45,6 +45,7 @@ function fakeApis(over: Partial<DesktopApis> = {}) {
       files.delete(from);
     },
     remove: async (p) => void files.delete(p),
+    listen: async () => () => undefined,
     ...over,
   };
   return { apis, sent, files };
