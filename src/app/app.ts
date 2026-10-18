@@ -3,6 +3,7 @@ import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@a
 import { NavigationEnd, Router, RouterLink, RouterOutlet } from '@angular/router';
 import { AutoBackupService } from './core/auto-backup.service';
 import { CurrentDeckService } from './core/current-deck.service';
+import { BattleSettingsService } from './core/battle-settings.service';
 import { TEXT } from './core/texts';
 import { Icon } from './shared/icon';
 
@@ -13,6 +14,8 @@ interface NavItem {
   active: (url: string) => boolean;
   /** Shown disabled (with a tooltip) while no deck exists. */
   needsDeck?: boolean;
+  /** Hidden while this returns false (the battle mode is off by default). */
+  visible?: () => boolean;
 }
 
 const DISCLAIMER_KEY = 'ygo.disclaimerSeen';
@@ -37,6 +40,7 @@ export class App {
   private readonly location = inject(Location);
   protected readonly current = inject(CurrentDeckService);
   protected readonly t = TEXT;
+  private readonly battle = inject(BattleSettingsService);
 
   /** First-launch note about what the tool does not do; dismissed once, then only under 設定 → 關於程式. */
   protected readonly showDisclaimer = signal(!disclaimerSeen());
@@ -66,6 +70,7 @@ export class App {
       active: (u) => this.inDeck(u, '/analysis'),
       needsDeck: true,
     },
+    { label: TEXT.battle.nav, icon: 'play', link: () => ['/battle'], active: (u) => u.startsWith('/battle'), visible: () => this.battle.enabled() },
     { label: 'Combo 管理', icon: 'combos', link: () => ['/combos'], active: (u) => u.startsWith('/combos') },
     { label: '設定', icon: 'settings', link: () => ['/settings'], active: (u) => u.startsWith('/settings') },
   ];

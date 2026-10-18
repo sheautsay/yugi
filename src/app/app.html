@@ -13,7 +13,9 @@
 
     <nav aria-label="主要導覽">
       @for (item of nav; track item.label) {
-        @if (item.needsDeck && !deckId()) {
+        @if (item.visible && !item.visible()) {
+          <!-- hidden -->
+        } @else if (item.needsDeck && !deckId()) {
           <span class="nav-disabled" role="link" aria-disabled="true" tabindex="0" [attr.data-tip]="t.nav.needsDeck">
             <app-icon [name]="item.icon" />
             <span class="nav-label">{{ item.label }}</span>

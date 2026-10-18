@@ -1,0 +1,28 @@
+:host { display: block; }
+
+.battle { max-width: 480px; margin-inline: auto; }
+.bar { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-2); flex-wrap: wrap; }
+.bar h1 { margin: 0; font-size: var(--fs-lg); }
+.deck-name { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 60%; }
+.controls, .results { display: flex; flex-direction: column; gap: var(--space-2); margin-top: var(--space-3); }
+.small-head { font-size: var(--fs-md, 1rem); margin: var(--space-2) 0 0; }
+.hand-slots, .ranks { list-style: none; margin: 0; padding: 0; }
+.hand-slots { display: grid; grid-template-columns: repeat(auto-fill, minmax(64px, 1fr)); gap: 6px; }
+.hand-card, .pool-card { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 2px; width: 100%; }
+.pool { display: grid; grid-template-columns: repeat(auto-fill, minmax(56px, 1fr)); gap: 4px; }
+.pool-card .left { font-size: var(--fs-xs); color: var(--muted); }
+.pool-box summary { cursor: pointer; }
+.ranks { display: flex; flex-direction: column; gap: var(--space-2); }
+.rank-btn { display: block; width: 100%; text-align: left; padding: 10px; }
+.rank-btn p { margin: 4px 0; }
+.between { justify-content: space-between; align-items: center; }
+.route-name { font-size: var(--fs-lg); margin: var(--space-1) 0; }
+.steps-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.steps-list li { border-left: 3px solid transparent; padding-left: 6px; }
+.steps-list li.current { border-left-color: var(--primary); background: var(--primary-soft); border-radius: 4px; }
+.steps-list li.done { opacity: 0.6; }
+.steps-list button { display: flex; gap: 8px; align-items: baseline; justify-content: flex-start; width: 100%; text-align: left; background: transparent; border: 0; padding: 6px 4px; }
+.num { min-width: 1.4em; font-weight: 700; }
+.step-desc { margin: 2px 0 6px 2em; }
+.final { position: sticky; top: 0; background: var(--bg, #0b1322); z-index: 1; padding-bottom: var(--space-2); }
+.progress { display: flex; justify-content: space-between; align-items: baseline; margin: var(--space-2) 0 0; }

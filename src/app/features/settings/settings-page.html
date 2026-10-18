@@ -14,6 +14,7 @@
     <nav class="settings-index" aria-label="設定分類">
       <button type="button" class="ghost" (click)="jump('set-chatgpt')">ChatGPT 帳號</button>
       <button type="button" class="ghost" (click)="jump('set-ai')">AI 分析設定</button>
+      <button type="button" class="ghost" (click)="jump('set-battle')">{{ battleText.settingsHeading }}</button>
       <button type="button" class="ghost" (click)="jump('set-cards')">卡片資料</button>
       <button type="button" class="ghost" (click)="jump('set-display')">語言與顯示</button>
       <button type="button" class="ghost" (click)="jump('set-data')">本機資料與備份</button>
@@ -63,6 +64,19 @@
           <a class="button" [routerLink]="['/decks', deck.id, 'analysis']">開啟 AI 展開分析（{{ deck.name }}）</a>
         } @else {
           <a class="button" routerLink="/decks">{{ t.nav.needsDeck }}</a>
+        }
+      </section>
+    </div>
+    <div class="settings-group" id="set-battle">
+      <section class="card" aria-labelledby="battle-heading">
+        <h2 id="battle-heading">{{ battleText.settingsHeading }}</h2>
+        <label class="choice">
+          <input type="checkbox" [checked]="battle.enabled()" (change)="battle.setEnabled($any($event.target).checked)" />
+          {{ battleText.settingsLabel }}
+        </label>
+        <p class="muted">{{ battleText.settingsNote }}</p>
+        @if (battle.enabled()) {
+          <a class="button" routerLink="/battle">{{ battleText.title }}</a>
         }
       </section>
     </div>

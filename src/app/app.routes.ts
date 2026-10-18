@@ -28,6 +28,11 @@ export const routes: Routes = [
     loadComponent: () => import('./features/ai-analysis/analysis-page').then((m) => m.AnalysisPage),
   },
   {
+    path: 'battle',
+    title: '實戰模式｜YGO Combo 助手',
+    loadComponent: () => import('./features/battle/battle-page').then((m) => m.BattlePage),
+  },
+  {
     path: 'combos',
     title: 'Combo 管理｜YGO Combo 助手',
     loadComponent: () => import('./features/combo-editor/combo-list-page').then((m) => m.ComboListPage),

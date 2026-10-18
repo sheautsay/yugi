@@ -4,7 +4,7 @@ import { checkHand } from '../../core/hand';
 import { LayoutRepository } from '../../core/layout-repository';
 import { CardCount, CardRecord, HandLayoutPreset, HandRecognitionSlot, HandRegion, HandSize } from '../../core/models';
 import { regionsFromRow, resolvedHand, screenshotFileError, screenshotSizeError, sortLeftToRight } from '../../core/recognition';
-import { CardTile } from '../../shared/card-tile';
+import { CardTile } from '../card-tile';
 import { HandRecognitionService, thumbnail } from './hand-recognition.service';
 
 const STATUS_TEXT: Record<HandRecognitionSlot['status'], string> = {
