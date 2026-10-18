@@ -1,7 +1,7 @@
 // Hardening (not a reported defect): the opener plugin's script handles only a left-clicked target="_blank" link; a
 // middle click, a plain external link (it would navigate the app window away) and non-https links are covered here.
 import { DesktopApis } from './desktop-apis';
-import { installDesktop, routeExternalLinks } from './install-desktop';
+import { installDesktop, routeExternalLinks, uninstallDesktop } from './install-desktop';
 
 function link(href: string, target?: string): HTMLAnchorElement {
   const a = document.createElement('a');
@@ -82,6 +82,8 @@ describe('routeExternalLinks', () => {
 });
 
 describe('installDesktop link routing', () => {
+  afterEach(uninstallDesktop);
+
   it('routes external links through the host opener, and installing twice does not open a link twice', async () => {
     const urls: string[] = [];
     const apis = { openUrl: async (u: string) => void urls.push(u) } as unknown as DesktopApis;

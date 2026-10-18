@@ -1,15 +1,15 @@
 // CR-010: the desktop adapters against a fake host. They prove how the app talks to the host (rewriting, secret,
 // restart-on-demand, safe file names); that the real host does this is checked on the installed app (Phase 0/D).
 import { TestBed } from '@angular/core/testing';
-import { bridgeHints, setBridgeHints } from '../core/ai/chatgpt';
+import { bridgeHints } from '../core/ai/chatgpt';
 import { AI_FETCH } from '../core/ai/providers';
 import { BACKUP_SINK } from '../core/auto-backup.service';
 import { CARD_IMAGE_BASE_URL, FETCH_FN, YgoProDeckClient } from '../core/card-api';
-import { installPlatformHooks, platformHooks } from '../shared/platform-hooks';
+import { platformHooks } from '../shared/platform-hooks';
 import { DesktopApis } from './desktop-apis';
 import { createDesktopBackupSink } from './desktop-backup-sink';
 import { BRIDGE_TOKEN_HEADER, createDesktopFetch } from './desktop-fetch';
-import { DESKTOP_CARD_IMAGE_BASE, installDesktop, isOpenableUrl } from './install-desktop';
+import { DESKTOP_CARD_IMAGE_BASE, installDesktop, isOpenableUrl, uninstallDesktop } from './install-desktop';
 
 const TOKEN = 'T'.repeat(40);
 
@@ -50,10 +50,7 @@ function fakeApis(over: Partial<DesktopApis> = {}) {
   return { apis, sent, files };
 }
 
-afterEach(() => {
-  installPlatformHooks({});
-  setBridgeHints(null);
-});
+afterEach(uninstallDesktop);
 
 describe('desktop fetch (P0.2/P0.4/P0.6 wiring)', () => {
   it('sends ordinary requests through the host untouched', async () => {
