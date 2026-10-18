@@ -115,6 +115,7 @@ export const TEXT = {
     startChance: '目前成功率',
     ended: '這條路徑到此結束',
     ftkRank: '依成功率排序（同分時需要手牌少、步驟少者優先）',
+    bestChoice: '建議走的分支',
   },
   share: {
     button: '分享碼',

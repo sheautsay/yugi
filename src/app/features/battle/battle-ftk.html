@@ -1,0 +1,104 @@
+@if (selected(); as sel) {
+  <div class="detail">
+    <div class="row between">
+      <button type="button" class="ghost" (click)="select(null)">{{ t.back }}</button>
+      <span class="badge" [class.ok]="sel.tested">{{ sel.tested ? t.tested : sel.route.analysis ? t.candidate : t.untested }}</span>
+    </div>
+    <h2 class="route-name">{{ sel.rank }}. {{ sel.route.name }}</h2>
+    <section class="final" aria-label="目前狀態">
+      @if (chance() !== null) {
+        <p class="chance"><strong>{{ f.startChance }}：{{ pct(chance()!) }}</strong></p>
+      }
+      @if (life(); as l) {
+        <p>{{ f.lpLine(l.opponent, l.self) }} @if (l.killed) { <span class="badge ok">{{ f.killed }}</span> }</p>
+      }
+      <p class="muted small">{{ f.assumptions }}</p>
+    </section>
+
+    <ol class="steps-list" aria-label="步驟">
+      @for (item of shownSteps(); track item.s.id) {
+        <li [class.current]="item.state === 'current'" [class.done]="item.state === 'done'" [attr.aria-current]="item.state === 'current' ? 'step' : null">
+          <span class="step-title"><span class="badge">{{ label(item.s) }}</span> {{ item.s.title }}</span>
+          @if (item.state === 'current') {
+            <p class="step-desc">{{ item.s.description }}</p>
+          }
+        </li>
+      }
+    </ol>
+
+    @if (revealing(); as step) {
+      <section class="reveal" aria-label="輸入抽到的卡">
+        <h3 class="small-head">{{ f.revealTitle(step.random!.count) }}</h3>
+        <ul class="plain odds">
+          @for (o of odds(); track o.branch.id) {
+            <li>
+              <strong>{{ condition(o.branch) }}</strong>：{{ f.branchProb(o.mass, o.success) }}
+              @if (o.mass > 0 && o.success === 0) {
+                <span class="muted">（{{ f.deadBranch }}）</span>
+              }
+            </li>
+          }
+        </ul>
+        <ol class="plain hand-slots" aria-label="已輸入的卡">
+          @for (id of pending(); track $index) {
+            <li>
+              <button type="button" class="hand-card" (click)="unpick($index)" [attr.aria-label]="'移除：' + name(id)">
+                <app-card-tile [cardId]="id" [card]="cards().get(id)" size="s" [caption]="true" />
+              </button>
+            </li>
+          }
+        </ol>
+        <ul class="plain pool">
+          @for (c of pickable(); track c.cardId) {
+            <li>
+              <button type="button" class="pool-card" (click)="pick(c.cardId)" [disabled]="c.left <= 0 || pending().length >= step.random!.count" [attr.aria-label]="'抽到 ' + name(c.cardId) + '（剩 ' + c.left + ' 張）'">
+                <app-card-tile [cardId]="c.cardId" [card]="c.card" size="s" />
+                <span class="left">×{{ c.left }}</span>
+              </button>
+            </li>
+          }
+        </ul>
+        @if (suggested(); as b) {
+          <p class="notice ok" role="status">{{ f.bestChoice }}：{{ condition(b) }}</p>
+        }
+        <div class="row">
+          <button type="button" class="primary" (click)="confirm()" [disabled]="!suggested()">{{ f.revealGo }}</button>
+          <button type="button" (click)="undo()">{{ f.revealUndo }}</button>
+        </div>
+      </section>
+    } @else {
+      <div class="row">
+        <button type="button" (click)="prev()">{{ t.prev }}</button>
+        <button type="button" class="primary" (click)="next()" [disabled]="atEnd()">{{ t.next }}</button>
+        @if (position()?.back) {
+          <button type="button" (click)="undo()">{{ f.revealUndo }}</button>
+        }
+      </div>
+      @if (atEnd()) {
+        <p class="muted">{{ f.ended }}</p>
+      }
+    }
+    <p class="muted small">{{ t.estimateNote }}</p>
+  </div>
+} @else if (ranking().length === 0) {
+  <p class="notice warn">{{ t.noMatch }}</p>
+  <p class="muted">{{ t.noMatchHint }}</p>
+} @else {
+  <h2 class="small-head">{{ t.resultsHeading(ranking().length) }}</h2>
+  <p class="muted small">{{ f.ftkRank }}</p>
+  <ol class="plain ranks">
+    @for (r of ranking(); track r.route.id) {
+      <li class="rank-item">
+        <button type="button" class="rank-btn" (click)="select(r.route.id)">
+          <div class="row between">
+            <strong>{{ r.rank }}. {{ r.route.name }}</strong>
+            <span class="badge" [class.ok]="r.tested">{{ r.tested ? t.tested : r.route.analysis ? t.candidate : t.untested }}</span>
+          </div>
+          <p class="chance"><strong>{{ f.chance }}：{{ pct(r.p) }}</strong></p>
+          <p class="muted small">{{ f.successLeaves(r.check.leaves.filter(l => l.success).length, r.check.leaves.length) }}@if (!r.check.passed) {・檢查 {{ r.check.problems.length }} 項未通過}</p>
+        </button>
+      </li>
+    }
+  </ol>
+  <p class="muted small">{{ f.assumptions }}</p>
+}

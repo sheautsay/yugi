@@ -5,6 +5,9 @@ import { CardDataService } from '../../core/card-data.service';
 import { comboCardIds } from '../../core/combo';
 import { ComboRepository } from '../../core/combo-repository';
 import { DeckRepository } from '../../core/deck-repository';
+import { checkFtkRoute, isFtkRoute } from '../../core/ftk-check';
+import { TEXT, pct } from '../../core/texts';
+import { FtkTree } from '../../shared/combo/ftk-tree';
 import { VERIFICATION_LABEL } from '../../core/labels';
 import { CardRecord, ComboRoute, DeckRecord } from '../../core/models';
 import { RouteAnalysisPanel } from '../../shared/combo/route-analysis-panel';
@@ -12,7 +15,7 @@ import { ComboViewer, ViewerMode } from '../../shared/combo/combo-viewer';
 
 @Component({
   selector: 'app-combo-detail-page',
-  imports: [RouterLink, ComboViewer, RouteAnalysisPanel],
+  imports: [RouterLink, ComboViewer, RouteAnalysisPanel, FtkTree],
   templateUrl: './combo-detail-page.html',
   styleUrl: '../../shared/combo/combo-viewer.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -33,6 +36,18 @@ export class ComboDetailPage {
   protected readonly loaded = signal(false);
   /** CR-004: the deck an AI route was generated for, as it is now (null if deleted). */
   protected readonly analysisDeck = signal<DeckRecord | null>(null);
+  protected readonly f = TEXT.ftk;
+  protected readonly pct = pct;
+  /** B7: a plan with random steps and branches is shown as a tree, with its chance when the deck is known. */
+  protected readonly isFtk = computed(() => {
+    const route = this.route();
+    return !!route && isFtkRoute(route);
+  });
+  protected readonly ftkCheck = computed(() => {
+    const route = this.route();
+    const deck = this.analysisDeck();
+    return route && deck && isFtkRoute(route) ? checkFtkRoute(route, deck, { cards: this.cards() }) : null;
+  });
   protected readonly busy = signal(false);
   protected readonly message = signal('');
   protected readonly mode = signal<ViewerMode>('flow');

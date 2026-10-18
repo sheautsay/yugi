@@ -19,13 +19,18 @@
     @if (!deckCheck()?.queryable) {
       <p class="notice warn" role="alert">{{ t.draftDeck }}</p>
     } @else {
-      @if (!selected()) {
+      @if (!selected() && !ftkOpen()) {
       <section class="controls" aria-label="情境與手牌">
+        @if (!ftk()) {
         <div class="row" role="radiogroup" aria-label="先後攻">
           <label class="choice"><input type="radio" name="battle-turn" [checked]="turnOrder() === 'first'" (change)="setTurn('first')" /> {{ t.turn.first }}</label>
           <label class="choice"><input type="radio" name="battle-turn" [checked]="turnOrder() === 'second'" (change)="setTurn('second')" /> {{ t.turn.second }}</label>
         </div>
+        }
         <div class="row">
+          @if (ftk()) {
+            <p class="muted small">{{ t.goal }}：{{ f.goalLabel }}</p>
+          } @else {
           <label>
             {{ t.goal }}
             <select (change)="goal.set($any($event.target).value)">
@@ -34,6 +39,7 @@
               }
             </select>
           </label>
+          }
           <label>
             {{ t.topN }}
             <select (change)="settings.setTopN(+$any($event.target).value)">
@@ -89,6 +95,12 @@
       <section class="results" aria-live="polite" aria-label="建議展開">
         @if (routes().length === 0) {
           <p class="notice">{{ t.noRoutes }}</p>
+        } @else if (ftk()) {
+          @if (handCheck().complete) {
+            <app-battle-ftk [deck]="deck()!" [cards]="cards()" [hand]="hand()" [routes]="routes()" [topN]="settings.topN()" (opened)="ftkOpen.set($event)" />
+          } @else {
+            <p class="muted">{{ t.needMore(handSize()) }}</p>
+          }
         } @else if (ranking() === null) {
           <p class="muted">{{ t.needMore(handSize()) }}</p>
         } @else if (selected(); as sel) {

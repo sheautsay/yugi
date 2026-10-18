@@ -40,7 +40,7 @@ describe('backup — G9', () => {
   it('rejects foreign files, unknown versions and invalid records without partial results', () => {
     expect(parseBackup('nope')).toEqual({ ok: false, errors: ['不是有效的 JSON 備份檔'] });
     expect(parseBackup(JSON.stringify({ format: 'other' }))).toEqual({ ok: false, errors: ['不是本工具的備份檔'] });
-    expect(parseBackup(JSON.stringify({ ...buildBackup(sample()), backupVersion: 2 })).ok).toBe(false);
+    expect(parseBackup(JSON.stringify({ ...buildBackup(sample()), backupVersion: 3 })).ok).toBe(false);
     const bad = buildBackup(sample());
     bad.decks[0] = { ...bad.decks[0], name: '<script>x</script>' };
     const result = parseBackup(JSON.stringify(bad));

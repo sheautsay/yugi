@@ -85,7 +85,7 @@ describe('validateCombo — G8 structure', () => {
   });
 
   it('rejects an unknown schemaVersion', () => {
-    expect(validateCombo({ ...valid(), schemaVersion: 2 }).ok).toBe(false);
+    expect(validateCombo({ ...valid(), schemaVersion: 3 }).ok).toBe(false);
   });
 });
 
