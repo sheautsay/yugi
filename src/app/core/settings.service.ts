@@ -1,4 +1,5 @@
 import { Injectable, inject, signal } from '@angular/core';
+import { CARD_LANGUAGES, CardLanguage, DEFAULT_CARD_LANGUAGE } from './card-names';
 import { AppDb } from './db';
 import { CardPool } from './models';
 
@@ -6,9 +7,11 @@ export interface AppSettings {
   cardPool: CardPool;
   /** Download a card's thumbnail when it appears on screen (CR-002). */
   autoThumbnails: boolean;
+  /** How card names are shown: Traditional Chinese (default), English or both (CR-009, G66). */
+  cardLanguage: CardLanguage;
 }
 
-const DEFAULTS: AppSettings = { cardPool: 'master-duel', autoThumbnails: true };
+const DEFAULTS: AppSettings = { cardPool: 'master-duel', autoThumbnails: true, cardLanguage: DEFAULT_CARD_LANGUAGE };
 const KEY = 'settings';
 
 @Injectable({ providedIn: 'root' })
@@ -28,7 +31,11 @@ export class SettingsService {
   private async load(): Promise<void> {
     try {
       const entry = await (await this.appDb.db()).get('meta', KEY);
-      if (entry) this.settings.set({ ...DEFAULTS, ...(entry.value as Partial<AppSettings>) });
+      if (entry) {
+        const stored = entry.value as Partial<AppSettings>;
+        const cardLanguage = CARD_LANGUAGES.includes(stored.cardLanguage as CardLanguage) ? stored.cardLanguage : DEFAULT_CARD_LANGUAGE;
+        this.settings.set({ ...DEFAULTS, ...stored, cardLanguage: cardLanguage as CardLanguage });
+      }
     } catch {
       // keep defaults
     }

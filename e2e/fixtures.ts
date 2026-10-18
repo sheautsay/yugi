@@ -109,11 +109,18 @@ type ApiCardFixture = { id: number; name: string; type: string; frameType: strin
 
 const MD = { misc_info: [{ formats: ['TCG', 'OCG', 'Master Duel'] }] };
 
+/** Real Link arrows of the Maliss Link Monsters above (YGOPRODeck); CR-006 needs arrows for every Link Monster. */
+const MALISS_ARROWS: Record<number, string[]> = {
+  [MALISS.redRansom]: ['Left', 'Right', 'Bottom'],
+  [MALISS.whiteBinder]: ['Top', 'Left', 'Right'],
+  [MALISS.heartsCrypter]: ['Top', 'Bottom-Left', 'Bottom-Right'],
+};
+
 /** TEST DATA for the mocked full download (cards beyond Maliss are invented test cards). */
 export const FULL_DATASET: ApiCardFixture[] = [
-  ...Object.entries(MALISS_CARDS).map(([id, c]) => ({ id: Number(id), ...c, archetype: 'Maliss', attribute: 'DARK', race: c.type.includes('Monster') ? 'Cyberse' : 'Normal', level: c.frameType === 'effect' ? 3 : undefined, desc: `${c.name} 的測試效果文字（fixture）。`, ...MD })),
+  ...Object.entries(MALISS_CARDS).map(([id, c]) => ({ id: Number(id), ...c, archetype: 'Maliss', attribute: 'DARK', race: c.type.includes('Monster') ? 'Cyberse' : 'Normal', level: c.frameType === 'effect' ? 3 : undefined, ...(MALISS_ARROWS[Number(id)] ? { linkmarkers: MALISS_ARROWS[Number(id)] } : {}), desc: `${c.name} 的測試效果文字（fixture）。`, ...MD })),
   ...FILLER_MAIN.map((id) => ({ id, name: `Test Filler ${id}`, type: 'Effect Monster', frameType: 'effect', archetype: 'Filler', attribute: 'EARTH', race: 'Warrior', level: 4, desc: 'Filler effect.', ...MD })),
-  ...FILLER_EXTRA.map((id) => ({ id, name: `Test Filler ${id}`, type: 'Link Monster', frameType: 'link', archetype: 'Filler', attribute: 'EARTH', race: 'Warrior', linkval: 2, desc: 'Filler link.', ...MD })),
+  ...FILLER_EXTRA.map((id) => ({ id, name: `Test Filler ${id}`, type: 'Link Monster', frameType: 'link', archetype: 'Filler', attribute: 'EARTH', race: 'Warrior', linkval: 2, linkmarkers: ['Bottom-Left', 'Bottom-Right'], desc: 'Filler link.', ...MD })),
   ...Array.from({ length: 60 }, (_, i) => ({ id: 92_000_001 + i, name: `Test Dragon ${String(i + 1).padStart(2, '0')}`, type: 'Normal Monster', frameType: 'normal', attribute: 'LIGHT', race: 'Dragon', level: (i % 8) + 1, desc: 'A test dragon.', ...MD })),
   { id: 91_000_001, name: 'Test Spell Alpha', type: 'Spell Card', frameType: 'spell', race: 'Quick-Play', desc: 'Spell text.', ...MD },
   { id: 91_000_002, name: 'Test Trap Beta', type: 'Trap Card', frameType: 'trap', race: 'Counter', desc: 'Trap text.', ...MD },
@@ -313,3 +320,15 @@ export async function dumpUserData(page: Page): Promise<{ decks: unknown[]; comb
       }),
   );
 }
+
+/**
+ * CR-012: the AI analysis page folds 「進階設定」 (candidate counts, limits, budgets). Opens it before those fields are
+ * used, the way a user would; does nothing when it is already open. Assertions in the tests are unchanged.
+ */
+export async function openAdvanced(page: Page): Promise<void> {
+  const panel = page.locator('details.advanced');
+  if (!(await panel.evaluate((el) => (el as HTMLDetailsElement).open))) await panel.locator('summary').click();
+}
+
+/** CR-012: design tokens every page must use (src/styles.css), checked on the browser build and the installed app. */
+export const TOKENS = { bg: 'rgb(11, 19, 34)', primary: 'rgb(115, 87, 255)', text: 'rgb(233, 238, 248)' };

@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, ElementRef, effect, inject, input, output, signal, viewChild } from '@angular/core';
 import { CardDataService } from '../core/card-data.service';
 import { CardImageService } from '../core/card-image.service';
+import { CardNamesService } from '../core/card-names.service';
 import { CardRecord, MdBan } from '../core/models';
 
 const KIND_LABEL = { monster: '怪獸', spell: '魔法', trap: '陷阱', unknown: '其他' } as const;
@@ -15,18 +16,19 @@ const BAN_LABEL: Record<string, string> = { Forbidden: '禁止', Limited: '限�
         <div class="layout">
           <div class="image">
             @if (fullUrl(); as url) {
-              <img [src]="url" [alt]="c.nameEn" />
+              <img [src]="url" [alt]="cardNames.labelOf(c.cardId, c)" />
             } @else {
               <div class="fallback">
-                <strong>{{ c.nameZhTw ?? c.nameEn }}</strong>
+                <strong>{{ cardNames.labelOf(c.cardId, c) }}</strong>
                 <span>ID {{ c.cardId }}</span>
                 <span class="muted">{{ imageState() }}</span>
               </div>
             }
           </div>
           <div class="info">
-            <h2 id="card-detail-title">{{ c.nameZhTw ?? c.nameEn }}</h2>
-            <p class="muted">{{ c.nameZhTw ? c.nameEn : '（尚無繁體中文名稱）' }}</p>
+            <h2 id="card-detail-title">{{ cardNames.labelOf(c.cardId, c) }}</h2>
+            <p class="muted">{{ cardNames.zhOf(c) ? c.nameEn : '（尚無繁體中文名稱）' }}</p>
+            <p class="muted">英文原名：{{ c.nameEn }}・繁體中文來源：{{ cardNames.statusOf(c) }}</p>
             <dl>
               <dt>卡片 ID</dt>
               <dd>{{ c.cardId }}</dd>
@@ -87,7 +89,7 @@ const BAN_LABEL: Record<string, string> = { Forbidden: '禁止', Limited: '限�
     .layout { display: grid; grid-template-columns: 1fr; gap: 16px; }
     @media (min-width: 640px) { .layout { grid-template-columns: 260px 1fr; } }
     .image img, .fallback { width: 100%; max-width: 300px; aspect-ratio: 59 / 86; border-radius: 6px; }
-    .fallback { border: 2px solid #8a93a3; background: #eef0f4; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 6px; padding: 8px; text-align: center; }
+    .fallback { border: 2px solid var(--border-strong); background: var(--surface-2); color: var(--text); display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 6px; padding: 8px; text-align: center; }
     dl { display: grid; grid-template-columns: max-content 1fr; gap: 2px 10px; }
     dt { color: var(--muted); }
     dd { margin: 0; }
@@ -99,6 +101,7 @@ const BAN_LABEL: Record<string, string> = { Forbidden: '禁止', Limited: '限�
 export class CardDetail {
   private readonly images = inject(CardImageService);
   private readonly cardData = inject(CardDataService);
+  protected readonly cardNames = inject(CardNamesService);
 
   /** The card to show; null closes the dialog. */
   readonly card = input<CardRecord | null>(null);

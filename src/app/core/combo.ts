@@ -42,7 +42,7 @@ export function comboCardIds(route: ComboRoute): number[] {
       ...(c.mustRemainInMain ?? []).map((r) => r.cardId),
       ...(c.mustExistInExtra ?? []).map((r) => r.cardId),
       ...(c.forbiddenInHand ?? []),
-      ...route.steps.flatMap((s) => [...s.actorCardIds, ...(s.targetCardIds ?? []), ...(s.materialCardIds ?? [])]),
+      ...route.steps.flatMap((s) => [...s.actorCardIds, ...(s.targetCardIds ?? []), ...(s.materialCardIds ?? []), ...(s.moves ?? []).map((m) => m.cardId)]),
       ...route.endBoard.map((e) => e.cardId),
     ]),
   ];

@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, DestroyRef, ElementRef, afterNextRender, computed, effect, inject, input, signal, untracked } from '@angular/core';
 import { CardImageService } from '../core/card-image.service';
+import { CardNamesService } from '../core/card-names.service';
 import { SettingsService } from '../core/settings.service';
-import { displayName } from '../core/deck';
 import { CardRecord } from '../core/models';
 
 /**
@@ -11,7 +11,7 @@ import { CardRecord } from '../core/models';
 @Component({
   selector: 'app-card-tile',
   template: `
-    <figure class="tile" [class.small]="size() === 's'" [attr.aria-label]="label()">
+    <figure class="tile" [class.small]="size() === 's'" [class.xs]="size() === 'xs'" [class.fit]="size() === 'fit'" [attr.aria-label]="label()">
       @if (src(); as url) {
         <img [src]="url" [alt]="label()" (error)="onImageError()" />
       } @else {
@@ -31,12 +31,18 @@ import { CardRecord } from '../core/models';
   styles: `
     .tile { position: relative; margin: 0; width: 96px; }
     .tile.small { width: 64px; }
+    .tile.xs { width: 34px; }
+    .tile.fit { width: 100%; }
     img, .fallback { display: block; width: 100%; aspect-ratio: 59 / 86; border-radius: 4px; object-fit: cover; }
-    .fallback { border: 2px solid #8a93a3; background: #eef0f4; padding: 4px; display: flex; flex-direction: column; justify-content: space-between; font-size: 0.7rem; line-height: 1.25; overflow: hidden; }
+    .fallback { border: 2px solid var(--border-strong); background: var(--surface-2); color: var(--text); padding: 4px; display: flex; flex-direction: column; justify-content: space-between; font-size: 0.7rem; line-height: 1.25; overflow: hidden; }
     .small .fallback { font-size: 0.6rem; }
+    .xs .fallback { font-size: 0.4rem; padding: 1px; border-width: 1px; }
+    .xs .id { display: none; }
+    .fit .fallback { font-size: 0.55rem; padding: 2px; border-width: 1px; }
+    .fit .id { display: none; }
     .name { overflow-wrap: anywhere; }
-    .id { color: #5b6270; }
-    .count { position: absolute; top: 2px; right: 2px; background: #16263f; color: #fff; border-radius: 999px; padding: 0 6px; font-size: 0.8rem; font-weight: 700; }
+    .id { color: var(--faint); }
+    .count { position: absolute; top: 2px; right: 2px; background: var(--primary); color: #fff; border-radius: 999px; padding: 0 6px; font-size: 0.8rem; font-weight: 700; }
     figcaption { font-size: 0.75rem; line-height: 1.3; margin-top: 2px; overflow-wrap: anywhere; }
   `,
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -44,11 +50,13 @@ import { CardRecord } from '../core/models';
 export class CardTile {
   private readonly images = inject(CardImageService);
   private readonly settings = inject(SettingsService);
+  private readonly cardNames = inject(CardNamesService);
 
   readonly cardId = input.required<number>();
   readonly card = input<CardRecord | undefined>();
   readonly count = input(1);
-  readonly size = input<'s' | 'm'>('m');
+  /** "fit" fills the width of whatever holds it (the end-board zones). */
+  readonly size = input<'xs' | 's' | 'm' | 'fit'>('m');
   readonly caption = input(false);
 
   protected readonly src = signal<string | null>(null);
@@ -57,7 +65,7 @@ export class CardTile {
   private readonly visible = signal(false);
   /** The cached image could not be decoded; show the frame and stop requesting it. */
   private readonly broken = signal(false);
-  protected readonly name = computed(() => displayName(this.card()));
+  protected readonly name = computed(() => this.cardNames.labelOf(this.cardId(), this.card()));
   protected readonly label = computed(() => `${this.name()}（ID ${this.cardId()}）${this.count() > 1 ? `×${this.count()}` : ''}`);
 
   constructor() {

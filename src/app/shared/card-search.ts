@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, inject, input, output, signal } from '@angular/core';
 import { CardDataService } from '../core/card-data.service';
+import { CardNamesService } from '../core/card-names.service';
 import { CardRecord } from '../core/models';
 import { CardTile } from './card-tile';
 
@@ -11,7 +12,7 @@ import { CardTile } from './card-tile';
     <form class="row" (submit)="$event.preventDefault(); searchLocal()">
       <label>
         {{ label() }}
-        <input [value]="query()" (input)="query.set($any($event.target).value)" placeholder="卡名（英文）或卡片 ID" />
+        <input [value]="query()" (input)="query.set($any($event.target).value)" placeholder="卡名（繁中、簡中、英文或俗稱）或卡片 ID" />
       </label>
       <button type="submit">搜尋</button>
       @if (allowOnline()) {
@@ -26,7 +27,7 @@ import { CardTile } from './card-tile';
         @for (card of results(); track card.cardId) {
           <li class="row">
             <app-card-tile [cardId]="card.cardId" [card]="card" size="s" />
-            <span class="grow">{{ card.nameEn }} <span class="muted">（ID {{ card.cardId }}）</span></span>
+            <span class="grow">{{ cardNames.labelOf(card.cardId, card) }} <span class="muted">（ID {{ card.cardId }}）</span></span>
             <button type="button" (click)="picked.emit(card)">{{ actionLabel() }}</button>
           </li>
         }
@@ -41,6 +42,7 @@ import { CardTile } from './card-tile';
 })
 export class CardSearch {
   private readonly cards = inject(CardDataService);
+  protected readonly cardNames = inject(CardNamesService);
 
   readonly label = input('搜尋卡片');
   readonly actionLabel = input('選擇');
@@ -55,7 +57,7 @@ export class CardSearch {
   protected readonly busy = signal(false);
 
   protected async searchLocal(): Promise<void> {
-    const found = this.restrict(await this.cards.search(this.query()));
+    const found = this.restrict(await this.cards.search(this.query(), 30, this.cardNames.entries()));
     this.results.set(found);
     this.message.set(found.length ? '' : '本機快取中找不到符合的卡片。可改用線上搜尋，或先在牌組頁下載卡片資料。');
   }

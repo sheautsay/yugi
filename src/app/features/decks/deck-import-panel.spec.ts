@@ -66,9 +66,10 @@ function setInput(fixture: ComponentFixture<DeckImportPanel>, label: string, val
   input.dispatchEvent(new Event('input'));
 }
 
+/** Real IndexedDB reads finish on later macro tasks; 5 empty ticks were not always enough under a loaded full run (N6 flaked twice), so wait a little longer. Waiting more cannot weaken an assertion. */
 async function settle(fixture: ComponentFixture<unknown>) {
-  for (let i = 0; i < 5; i++) {
-    await new Promise((r) => setTimeout(r, 0));
+  for (let i = 0; i < 20; i++) {
+    await new Promise((r) => setTimeout(r, 2));
     await fixture.whenStable();
   }
 }

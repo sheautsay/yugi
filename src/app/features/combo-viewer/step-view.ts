@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, input, output, signal } f
 import { RouterLink } from '@angular/router';
 import { ACTION_LABEL } from '../../core/labels';
 import { CardRecord, ComboRoute } from '../../core/models';
+import { StepState } from '../../core/rule-check';
 import { StepNavigator } from '../../core/step-navigator';
 import { CardTile } from '../../shared/card-tile';
 import { StepDetails } from './step-details';
@@ -23,7 +24,7 @@ import { StepDetails } from './step-details';
         <p class="notice warn" role="note">⚠ 注意事項：{{ s.warning }}</p>
       }
       @if (detailed()) {
-        <app-step-details [step]="s" [cards]="cards()" />
+        <app-step-details [step]="s" [cards]="cards()" [state]="stateOf(s.order)" />
       } @else {
         <p>位置：{{ s.fromZone ?? '未填' }} → {{ s.toZone ?? '未填' }}</p>
       }
@@ -58,6 +59,8 @@ export class StepView {
   readonly route = input.required<ComboRoute>();
   readonly cards = input.required<Map<number, CardRecord>>();
   readonly navigator = input.required<StepNavigator>();
+  /** CR-008: per-step rule states (only when the viewer knows the deck). */
+  readonly states = input<StepState[]>([]);
   /** The result list this route was opened from (hand query or Combo list). */
   readonly backLink = input<string[]>(['/combos']);
   readonly jumpToEnd = output<void>();
@@ -66,4 +69,8 @@ export class StepView {
   /** 精簡 hides secondary fields but never the warning (F08). */
   protected readonly detailed = signal(true);
   protected readonly step = computed(() => this.route().steps[this.navigator().current() - 1]);
+
+  protected stateOf(order: number): StepState | null {
+    return this.states().find((x) => x.order === order) ?? null;
+  }
 }

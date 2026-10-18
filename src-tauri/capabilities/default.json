@@ -1,0 +1,122 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Least privilege for the main window: network only to the hosts the app is approved to contact (see scripts/g11-audit.mjs), links only to the approved sites, files only in the backup folder and where the user picks.",
+  "windows": [
+    "main"
+  ],
+  "permissions": [
+    "core:default",
+    {
+      "identifier": "http:default",
+      "allow": [
+        {
+          "url": "https://db.ygoprodeck.com/*"
+        },
+        {
+          "url": "https://images.ygoprodeck.com/*"
+        },
+        {
+          "url": "http://127.0.0.1:*/*"
+        }
+      ]
+    },
+    {
+      "identifier": "opener:allow-open-url",
+      "allow": [
+        {
+          "url": "https://auth.openai.com/*"
+        },
+        {
+          "url": "https://chatgpt.com/*"
+        },
+        {
+          "url": "https://www.db.yugioh-card.com/*"
+        },
+        {
+          "url": "https://www.youtube.com/*"
+        },
+        {
+          "url": "https://youtube.com/*"
+        },
+        {
+          "url": "https://m.youtube.com/*"
+        },
+        {
+          "url": "https://youtu.be/*"
+        },
+        {
+          "url": "https://www.bilibili.com/*"
+        },
+        {
+          "url": "https://ygoprodeck.com/*"
+        },
+        {
+          "url": "https://www.masterduelmeta.com/*"
+        },
+        {
+          "url": "https://masterduelmeta.com/*"
+        }
+      ]
+    },
+    {
+      "identifier": "fs:allow-write-text-file",
+      "allow": [
+        {
+          "path": "$DOCUMENT/YGO Combo 助手/backups/*"
+        }
+      ]
+    },
+    {
+      "identifier": "fs:allow-read-text-file",
+      "allow": [
+        {
+          "path": "$DOCUMENT/YGO Combo 助手/backups/*"
+        }
+      ]
+    },
+    {
+      "identifier": "fs:allow-read-dir",
+      "allow": [
+        {
+          "path": "$DOCUMENT/YGO Combo 助手/backups"
+        }
+      ]
+    },
+    {
+      "identifier": "fs:allow-mkdir",
+      "allow": [
+        {
+          "path": "$DOCUMENT/YGO Combo 助手"
+        },
+        {
+          "path": "$DOCUMENT/YGO Combo 助手/backups"
+        }
+      ]
+    },
+    {
+      "identifier": "fs:allow-rename",
+      "allow": [
+        {
+          "path": "$DOCUMENT/YGO Combo 助手/backups/*"
+        }
+      ]
+    },
+    {
+      "identifier": "fs:allow-remove",
+      "allow": [
+        {
+          "path": "$DOCUMENT/YGO Combo 助手/backups/*"
+        }
+      ]
+    },
+    {
+      "identifier": "fs:allow-exists",
+      "allow": [
+        {
+          "path": "$DOCUMENT/YGO Combo 助手/backups"
+        }
+      ]
+    }
+  ]
+}

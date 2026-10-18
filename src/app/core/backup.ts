@@ -1,3 +1,4 @@
+import { BackupSettings, parseBackupSettings } from './backup-settings';
 import type { CardNote } from './card-data.service';
 import { validateCombo } from './combo';
 import { ComboRoute, DeckRecord, HandLayoutPreset } from './models';
@@ -19,14 +20,16 @@ export interface BackupFile extends UserData {
   exportedAt: string;
   /** Optional (CR-002): the user's own card names / aliases / Master Duel ban marks. */
   cardNotes?: CardNote[];
+  /** Optional (CR-010): the non-secret settings. Never an API key, token or other credential. */
+  settings?: BackupSettings;
 }
 
 /** Full user data without card images or the card cache (F11). */
-export function buildBackup(data: UserData, now = new Date().toISOString(), cardNotes: CardNote[] = []): BackupFile {
-  return { format: BACKUP_FORMAT, backupVersion: BACKUP_VERSION, exportedAt: now, ...data, ...(cardNotes.length ? { cardNotes } : {}) };
+export function buildBackup(data: UserData, now = new Date().toISOString(), cardNotes: CardNote[] = [], settings?: BackupSettings): BackupFile {
+  return { format: BACKUP_FORMAT, backupVersion: BACKUP_VERSION, exportedAt: now, ...data, ...(cardNotes.length ? { cardNotes } : {}), ...(settings ? { settings } : {}) };
 }
 
-export function parseBackup(json: string): { ok: true; data: UserData; exportedAt: string; cardNotes?: CardNote[] } | { ok: false; errors: string[] } {
+export function parseBackup(json: string): { ok: true; data: UserData; exportedAt: string; cardNotes?: CardNote[]; settings?: BackupSettings } | { ok: false; errors: string[] } {
   if (json.length > MAX_BACKUP_LENGTH) return { ok: false, errors: ['檔案過大（超過 20 MB）'] };
   let raw: Partial<BackupFile>;
   try {
@@ -61,6 +64,12 @@ export function parseBackup(json: string): { ok: true; data: UserData; exportedA
     if (!r.success) errors.push(...issues(r.error).map((e) => `卡片標註 ${i + 1}：${e}`));
     return r.success ? [r.data as CardNote] : [];
   });
+  let settings: BackupSettings | undefined;
+  if (raw.settings !== undefined) {
+    const r = parseBackupSettings(raw.settings);
+    if (r.ok) settings = r.settings;
+    else errors.push(...r.errors);
+  }
   for (const [label, list] of [
     ['牌組', decks],
     ['Combo', combos],
@@ -69,7 +78,7 @@ export function parseBackup(json: string): { ok: true; data: UserData; exportedA
     const ids = list.map((x) => x.id);
     if (new Set(ids).size !== ids.length) errors.push(`${label}的 ID 在備份檔中重複`);
   }
-  return errors.length ? { ok: false, errors } : { ok: true, data: { decks, combos, layouts }, exportedAt: String(raw.exportedAt ?? ''), ...(cardNotes.length ? { cardNotes } : {}) };
+  return errors.length ? { ok: false, errors } : { ok: true, data: { decks, combos, layouts }, exportedAt: String(raw.exportedAt ?? ''), ...(cardNotes.length ? { cardNotes } : {}), ...(settings ? { settings } : {}) };
 }
 
 export type ConflictStrategy = 'skip' | 'overwrite' | 'keep-both';

@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, ElementRef, computed, effect, inject, input, signal } from '@angular/core';
 import { ACTION_LABEL } from '../../core/labels';
 import { CardRecord, ComboRoute } from '../../core/models';
+import { StepState } from '../../core/rule-check';
 import { StepNavigator } from '../../core/step-navigator';
 import { CardTile } from '../../shared/card-tile';
 import { StepDetails } from './step-details';
@@ -45,7 +46,7 @@ const SCALES = [0.6, 0.75, 0.9, 1, 1.15, 1.3];
             }
             <details>
               <summary>展開說明</summary>
-              <app-step-details [step]="step" [cards]="cards()" />
+              <app-step-details [step]="step" [cards]="cards()" [state]="stateOf(step.order)" />
             </details>
           </li>
         }
@@ -67,16 +68,16 @@ const SCALES = [0.6, 0.75, 0.9, 1, 1.15, 1.3];
     .toolbar { margin-bottom: 8px; }
     .toolbar button { min-width: 44px; }
     .toolbar button[aria-pressed='true'] { background: var(--primary); color: var(--primary-text); border-color: var(--primary); }
-    .canvas { max-height: 70vh; overflow: auto; border: 1px solid var(--border); border-radius: var(--radius); padding: 8px; background: #fbfcfe; }
+    .canvas { max-height: 70vh; overflow: auto; border: 1px solid var(--border); border-radius: var(--radius); padding: 8px; background: var(--bg-elev); }
     .flow { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 22px; }
     .horizontal .flow { flex-direction: row; align-items: flex-start; width: max-content; }
     .node { position: relative; border: 2px solid var(--border); border-radius: var(--radius); background: var(--surface); padding: 8px; max-width: 520px; }
     .horizontal .node { width: 220px; }
-    .node.current { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(31, 95, 191, 0.25); }
+    .node.current { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-soft); }
     .node:not(:last-child)::after { content: '↓'; position: absolute; left: 50%; bottom: -21px; transform: translateX(-50%); color: var(--muted); font-weight: 700; }
     .horizontal .node:not(:last-child)::after { content: '→'; left: auto; right: -19px; bottom: auto; top: 40%; transform: none; }
     .node-head { width: 100%; justify-content: flex-start; flex-wrap: wrap; text-align: left; border: none; padding: 4px; background: transparent; }
-    .num { background: #16263f; color: #fff; border-radius: 999px; min-width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center; font-weight: 700; }
+    .num { background: var(--surface-3); color: var(--text-strong); border-radius: 999px; min-width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center; font-weight: 700; }
     .tiles { display: flex; gap: 4px; }
     .summary { flex: 1 1 140px; }
     .warning { color: var(--warn); background: var(--warn-bg); border-radius: 6px; padding: 4px 8px; margin: 4px 0; }
@@ -91,6 +92,8 @@ export class FlowView {
   readonly route = input.required<ComboRoute>();
   readonly cards = input.required<Map<number, CardRecord>>();
   readonly navigator = input.required<StepNavigator>();
+  /** CR-008: per-step rule states (only when the viewer knows the deck). */
+  readonly states = input<StepState[]>([]);
 
   protected readonly actionLabel = ACTION_LABEL;
   protected readonly scales = SCALES;
@@ -104,6 +107,10 @@ export class FlowView {
       const order = this.navigator().current();
       queueMicrotask(() => this.host.nativeElement.querySelector(`.node[data-order="${order}"]`)?.scrollIntoView?.({ block: 'nearest', inline: 'nearest' }));
     });
+  }
+
+  protected stateOf(order: number): StepState | null {
+    return this.states().find((x) => x.order === order) ?? null;
   }
 
   protected zoom(delta: 1 | -1): void {

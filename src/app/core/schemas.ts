@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { ACTION_TYPES } from './models';
+import { ACTION_TYPES, FIELD_SLOTS, PLAY_ZONES } from './models';
 
 // Runtime validation for everything that enters storage from outside (JSON import, backup
 // restore). Every object is `.strict()`: unknown keys — e.g. "script", "onload" — are rejected.
@@ -90,6 +90,42 @@ const stepSchema = z.strictObject({
   resultText: text(1000).optional(),
   reason: text(1000).optional(),
   warning: text(1000).optional(),
+  moves: z.array(z.strictObject({ cardId, from: z.enum(PLAY_ZONES), to: z.enum(PLAY_ZONES), slot: z.enum(FIELD_SLOTS).optional() })).max(40).optional(),
+  effectRef: z.string().regex(/^\d{1,10}#\d{1,2}$/, '效果代號格式不正確').optional(),
+  /** CR-008: why the step could not be worked out (non-empty = unfinished). */
+  unresolved: text(500).optional(),
+});
+
+const fingerprint = z.string().regex(/^fp1-[0-9a-f]{14}$/, '牌表指紋格式不正確');
+
+/** CR-004: provenance of an AI route. Nothing here can raise a route's trust level. */
+const analysisSchema = z.strictObject({
+  origin: z.literal('ai'),
+  runId: id,
+  deckId: id,
+  deckName: required(80),
+  deckVersion: z.number().int().min(1),
+  deckFingerprint: fingerprint,
+  cardDataVersion: text(60),
+  provider: z.enum(['anthropic', 'ollama', 'chatgpt']),
+  model: required(100),
+  servedModel: text(100).optional(),
+  promptVersion: required(40),
+  generatedAt: isoDateTime,
+  starterCardIds: z.array(cardId).max(6),
+  preconditions: z.array(text(500)).max(20),
+  pros: z.array(text(500)).max(20),
+  cons: z.array(text(500)).max(20),
+  /** CR-008: who the starters are (only routes written in the 1–3 card format have it). */
+  combo: z
+    .strictObject({
+      required: z.array(cardId).min(1).max(6),
+      alternatives: z.array(z.strictObject({ cardId, instead: z.array(cardId).max(6), note: text(300).optional() })).max(10),
+      extenders: z.array(cardId).max(10),
+      avoidInHand: z.array(cardId).max(10),
+    })
+    .optional(),
+  check: z.strictObject({ passed: z.boolean(), checkedAt: isoDateTime, deckFingerprint: fingerprint, problems: z.array(text(1000)).max(200) }),
 });
 
 export const comboSchema = z.strictObject({
@@ -138,6 +174,7 @@ export const comboSchema = z.strictObject({
     verifiedBy: text(80).optional(),
     evidenceNote: text(2000).optional(),
   }),
+  analysis: analysisSchema.optional(),
   createdAt: isoDateTime,
   updatedAt: isoDateTime,
 });

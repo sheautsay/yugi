@@ -1,0 +1,45 @@
+.methods {
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
+  gap: var(--gap);
+  margin-bottom: var(--space-3);
+}
+
+@media (max-width: 900px) {
+  .methods {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.method {
+  padding: var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-elev);
+  min-width: 0;
+}
+
+.method h3 {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+}
+
+.method p {
+  margin: 0;
+}
+
+.how {
+  margin: 0;
+  padding-left: 1.2em;
+}
+
+.preview {
+  margin-top: var(--space-3);
+  padding: var(--space-4);
+  border: 1px solid rgba(115, 87, 255, 0.55);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+}

@@ -1,5 +1,5 @@
-import { ChangeDetectionStrategy, Component, computed, input, output, signal } from '@angular/core';
-import { displayName } from '../core/deck';
+import { ChangeDetectionStrategy, Component, computed, inject, input, output, signal } from '@angular/core';
+import { CardNamesService } from '../core/card-names.service';
 import { CardCount, CardRecord } from '../core/models';
 import { CardSearch } from './card-search';
 
@@ -40,7 +40,7 @@ import { CardSearch } from './card-search';
   `,
   styles: `
     .chips { display: flex; flex-wrap: wrap; gap: 6px; }
-    .chip { display: flex; align-items: center; gap: 6px; border: 1px solid var(--border); border-radius: 999px; padding: 2px 4px 2px 10px; background: #f7f8fa; }
+    .chip { display: flex; align-items: center; gap: 6px; border: 1px solid var(--border); border-radius: 999px; padding: 2px 4px 2px 10px; background: var(--surface-2); }
     .chip button { min-height: 32px; padding: 2px 8px; }
     .inline { flex-direction: row; align-items: center; gap: 4px; }
     .inline input { width: 4em; }
@@ -49,6 +49,8 @@ import { CardSearch } from './card-search';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class CardIdList {
+  private readonly cardNames = inject(CardNamesService);
+
   readonly label = input.required<string>();
   readonly cards = input.required<Map<number, CardRecord>>();
   readonly ids = input<readonly number[] | undefined>(undefined);
@@ -61,7 +63,7 @@ export class CardIdList {
   protected readonly rows = computed<readonly CardCount[]>(() => this.counts() ?? (this.ids() ?? []).map((cardId) => ({ cardId, count: 1 })));
 
   protected name(cardId: number): string {
-    return displayName(this.cards().get(cardId));
+    return this.cardNames.labelOf(cardId, this.cards().get(cardId));
   }
 
   protected add(card: CardRecord): void {

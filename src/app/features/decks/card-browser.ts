@@ -1,9 +1,11 @@
 import { ChangeDetectionStrategy, Component, computed, effect, inject, input, output, signal } from '@angular/core';
 import { CardDataService, SyncInfo } from '../../core/card-data.service';
-import { CardQuery, facets, isDeckCard, pageOf, searchCards } from '../../core/card-search';
+import { CardNamesService } from '../../core/card-names.service';
+import { CardQuery, facets, isDeckCard, pageOf } from '../../core/card-search';
 import { ParsedDeck, countOf } from '../../core/deck';
 import { CardKind, CardPool, CardRecord } from '../../core/models';
 import { SettingsService } from '../../core/settings.service';
+import { localDate } from '../../core/time';
 import { CardDetail } from '../../shared/card-detail';
 import { CardTile } from '../../shared/card-tile';
 
@@ -26,6 +28,7 @@ const POOL_LABEL: Record<CardPool, string> = { 'master-duel': 'Master Duel Âç°Ê±
 export class CardBrowser {
   private readonly cardData = inject(CardDataService);
   private readonly settings = inject(SettingsService);
+  protected readonly cardNames = inject(CardNamesService);
 
   readonly deck = input.required<ParsedDeck>();
   readonly adjust = output<CardAdjust>();
@@ -34,6 +37,7 @@ export class CardBrowser {
 
   protected readonly kindLabel = KIND_LABEL;
   protected readonly poolLabel = POOL_LABEL;
+  protected readonly date = localDate;
 
   protected readonly cards = signal<CardRecord[]>([]);
   protected readonly loading = signal(true);
@@ -62,7 +66,7 @@ export class CardBrowser {
     level: this.level(),
     pool: this.pool(),
   }));
-  protected readonly results = computed(() => searchCards(this.cards(), this.query()));
+  protected readonly results = computed(() => this.cardNames.search(this.cards(), this.query()));
   protected readonly paged = computed(() => pageOf(this.results(), this.page()));
   protected readonly facetValues = computed(() => facets(this.cards(), this.pool()));
 

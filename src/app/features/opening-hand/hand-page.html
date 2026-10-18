@@ -20,8 +20,14 @@
   } @else {
     <p class="row">
       <span>牌組：<strong>{{ deck()!.name }}</strong>（主牌 {{ deckCheck()!.totals.main }}／額外 {{ deckCheck()!.totals.extra }}）</span>
-      <a [routerLink]="['/decks', deck()!.id]">編輯牌組</a>
+      <a class="button ghost small" [routerLink]="['/decks', deck()!.id]">編輯牌組</a>
     </p>
+    <ol class="steps" aria-label="查詢步驟">
+      <li class="done">選擇牌組</li>
+      <li [class.current]="!results()" [class.done]="!!results()">輸入或辨識起手</li>
+      <li [class.done]="!!results()">查詢展開</li>
+      <li [class.current]="!!results()">查看結果</li>
+    </ol>
     @if (notice()) {
       <p class="notice warn" role="status">{{ notice() }}</p>
     }
@@ -96,7 +102,7 @@
                   class="pool-card"
                   (click)="add(c.cardId)"
                   [disabled]="c.left <= 0 || hand().length >= handSize()"
-                  [attr.aria-label]="'加入 ' + displayName(c.card) + '（剩 ' + c.left + ' 張）'"
+                  [attr.aria-label]="'加入 ' + cardNames.labelOf(c.cardId, c.card) + '（剩 ' + c.left + ' 張）'"
                 >
                   <app-card-tile [cardId]="c.cardId" [card]="c.card" size="s" />
                   <span>剩 {{ c.left }}/{{ c.count }}</span>

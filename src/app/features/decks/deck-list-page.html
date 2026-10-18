@@ -1,5 +1,11 @@
 <div class="page">
-  <h1>牌組</h1>
+  <header class="page-head">
+    <div>
+      <h1>牌組</h1>
+      <p class="page-sub">選一副牌組來使用、編輯，或直接進行起手查詢與 AI 展開分析。</p>
+    </div>
+    <a class="button primary" href="#add-deck" (click)="$event.preventDefault(); scrollToAdd()">＋ 新增牌組</a>
+  </header>
 
   @if (loadError()) {
     <p class="notice bad" role="alert">{{ loadError() }}</p>
@@ -8,56 +14,86 @@
     <p class="notice ok" role="status">{{ message() }}</p>
   }
 
-  <div class="split">
-    <section class="card" aria-labelledby="list-heading">
-      <h2 id="list-heading">我的牌組</h2>
-      @if (rows().length === 0) {
-        <p class="muted">尚未建立任何牌組。請匯入 ydke:// 或 YDK，或建立空白牌組。</p>
-      } @else {
-        <ul class="plain stack">
-          @for (row of rows(); track row.deck.id) {
-            <li class="deck-row card">
+  <section aria-labelledby="list-heading">
+    <h2 id="list-heading" class="section-title">我的牌組 <span class="faint">（{{ rows().length }}）</span></h2>
+    @if (rows().length === 0) {
+      <div class="empty-state">
+        <strong>還沒有牌組</strong>
+        <span class="muted">尚未建立任何牌組。請匯入 ydke:// 或 YDK，或建立空白牌組。</span>
+      </div>
+    } @else {
+      <ul class="plain deck-grid">
+        @for (row of rows(); track row.deck.id) {
+          <li class="deck-row deck-card" [class.current]="row.deck.id === current.deck()?.id">
+            <div class="deck-cover">
+              @if (coverOf(row.deck); as id) {
+                <app-card-tile [cardId]="id" [card]="cards().get(id)" size="fit" />
+              } @else {
+                <div class="cover-empty" aria-hidden="true">空</div>
+              }
+            </div>
+            <div class="deck-body">
               <div class="row">
-                <strong>{{ row.deck.name }}</strong>
+                <strong class="deck-title">{{ row.deck.name }}</strong>
                 @if (row.check.queryable) {
                   <span class="badge ok">可查詢</span>
                 } @else {
                   <span class="badge warn">草稿</span>
+                }
+                @if (row.deck.id === current.deck()?.id) {
+                  <span class="badge info">目前使用</span>
                 }
               </div>
               <p class="muted">
                 主牌 {{ row.check.totals.main }}／額外 {{ row.check.totals.extra }}／備牌 {{ row.check.totals.side }}
                 · 版本 {{ row.deck.version }}
               </p>
-              @if (!row.check.queryable) {
-                <p class="muted">原因：{{ row.check.errors[0] }}@if (row.check.errors.length > 1) {（另有 {{ row.check.errors.length - 1 }} 項）}</p>
+              @if (row.deck.updatedAt) {
+                <p class="faint small">最後修改 {{ time(row.deck.updatedAt) }}</p>
               }
+              @if (!row.check.queryable) {
+                <p class="muted small">原因：{{ row.check.errors[0] }}@if (row.check.errors.length > 1) {（另有 {{ row.check.errors.length - 1 }} 項）}</p>
+              }
+            </div>
+            <div class="deck-actions">
               <div class="row">
                 <a class="button primary" [routerLink]="['/decks', row.deck.id, 'hand']">起手查詢</a>
+                <a class="button" [routerLink]="['/decks', row.deck.id, 'analysis']">AI 展開分析</a>
                 <a class="button" [routerLink]="['/decks', row.deck.id]">編輯</a>
-                <button type="button" (click)="copy(row.deck)">複製</button>
-                <button type="button" class="danger" (click)="remove(row.deck)">刪除</button>
               </div>
-            </li>
-          }
-        </ul>
-      }
-      <p class="muted">禁限表尚未進行當期核對，不作為阻擋條件；請自行確認牌組符合 Master Duel 當期規定。</p>
-    </section>
+              <div class="row">
+                @if (row.deck.id !== current.deck()?.id) {
+                  <button type="button" class="small" (click)="use(row.deck)">使用此牌組</button>
+                }
+                <button type="button" class="small ghost" (click)="copy(row.deck)">複製</button>
+                <button type="button" class="small danger" (click)="remove(row.deck)">刪除</button>
+              </div>
+            </div>
+          </li>
+        }
+      </ul>
+    }
+    <p class="faint small">禁限表尚未進行當期核對，不作為阻擋條件；請自行確認牌組符合 Master Duel 當期規定。</p>
+  </section>
 
-    <div>
+  <section id="add-deck" class="add-deck" aria-labelledby="add-heading">
+    <h2 id="add-heading" class="section-title">新增牌組</h2>
+    <div class="add-grid">
       <app-deck-import-panel [decks]="decks()" (imported)="onImported($event)" />
 
       <section class="card" aria-labelledby="create-heading">
         <h2 id="create-heading">建立空白牌組</h2>
-        <form class="row" (submit)="$event.preventDefault(); create()">
+        <p class="muted small">從空白開始，在編輯頁搜尋並加入卡片。</p>
+        <form class="stack" (submit)="$event.preventDefault(); create()">
           <label>
             牌組名稱
             <input name="deckName" [value]="newName()" (input)="newName.set($any($event.target).value)" maxlength="80" />
           </label>
-          <button type="submit" [disabled]="!newName().trim()">建立</button>
+          <div class="row">
+            <button type="submit" [disabled]="!newName().trim()">建立</button>
+          </div>
         </form>
       </section>
     </div>
-  </div>
+  </section>
 </div>

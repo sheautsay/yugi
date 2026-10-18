@@ -1,0 +1,140 @@
+<div class="page home">
+  <header class="page-head">
+    <div>
+      <h1>首頁</h1>
+      <p class="page-sub">選擇牌組、查詢起手的固定展開，或請 AI 提出候選路線。</p>
+    </div>
+  </header>
+
+  <div class="home-grid">
+    <!-- Current deck -->
+    <section class="card deck-panel" aria-labelledby="home-deck">
+      <h2 id="home-deck">目前使用的牌組</h2>
+      @if (loading()) {
+        <div class="skeleton" style="height: 120px"></div>
+      } @else if (current.deck(); as deck) {
+        <div class="deck-summary">
+          <div class="cover">
+            @if (cover(); as id) {
+              <app-card-tile [cardId]="id" [card]="cards().get(id)" size="fit" />
+            }
+          </div>
+          <div class="deck-info">
+            <p class="deck-name">{{ deck.name }}</p>
+            <p class="muted">主牌 {{ total(deck.main) }}／額外 {{ total(deck.extra) }}／備牌 {{ total(deck.side) }} · 版本 {{ deck.version }}</p>
+            @if (check(); as c) {
+              @if (c.queryable) {
+                <span class="badge ok">牌表檢核通過</span>
+              } @else {
+                <span class="badge warn">草稿：{{ c.errors[0] }}</span>
+              }
+            }
+            <div class="row actions">
+              <a class="button primary" [routerLink]="['/decks', deck.id, 'hand']"><app-icon name="hand" [size]="18" />起手查詢</a>
+              <a class="button" [routerLink]="['/decks', deck.id, 'analysis']"><app-icon name="ai" [size]="18" />AI 展開分析</a>
+              <a class="button ghost" [routerLink]="['/decks', deck.id]">編輯牌組</a>
+              <a class="button ghost" routerLink="/decks">換一副牌組</a>
+            </div>
+          </div>
+        </div>
+      } @else {
+        <div class="empty-state">
+          <strong>還沒有牌組</strong>
+          先匯入 Master Duel 牌組或建立空白牌組，就能開始查詢起手展開。
+          <div class="row center"><a class="button primary" routerLink="/decks"><app-icon name="import" [size]="18" />匯入牌組</a></div>
+        </div>
+      }
+    </section>
+
+    <!-- ChatGPT -->
+    <section class="card ai-panel" aria-labelledby="home-ai">
+      <h2 id="home-ai">ChatGPT 帳號</h2>
+      @let g = ai.chatgpt();
+      @if (!g.reachable) {
+        <p class="status-line"><span class="dot off" aria-hidden="true"></span>尚未連線</p>
+        <p class="muted small">AI 展開分析使用你的 ChatGPT 帳號與方案額度。按「檢查連線」或到 AI 展開分析頁登入。</p>
+      } @else if (!g.signedIn) {
+        <p class="status-line"><span class="dot off" aria-hidden="true"></span>尚未登入</p>
+        <p class="muted small">在 AI 展開分析頁按「Continue with ChatGPT」，以 OpenAI 官方頁登入。</p>
+      } @else if (!g.sharing) {
+        <p class="status-line"><span class="dot warn" aria-hidden="true"></span>已登入，未授權方案額度</p>
+        <p class="muted small">重新登入並同意使用 ChatGPT 方案額度後才能分析。</p>
+      } @else {
+        <p class="status-line"><span class="dot on" aria-hidden="true"></span>已連線</p>
+        <p class="muted small">{{ g.account?.email || g.account?.name || 'ChatGPT 帳號' }} · 使用你的 ChatGPT 方案額度</p>
+      }
+      <div class="row">
+        <button type="button" (click)="refreshChatGpt()" [disabled]="checking()">
+          @if (checking()) {
+            <span class="spinner" aria-hidden="true"></span>
+          }
+          檢查連線
+        </button>
+        @if (current.deck(); as deck) {
+          <a class="button ghost" [routerLink]="['/decks', deck.id, 'analysis']">前往 AI 展開分析</a>
+        }
+      </div>
+    </section>
+  </div>
+
+  <!-- Quick actions -->
+  <section aria-labelledby="home-actions">
+    <h2 id="home-actions" class="section-title">快速開始</h2>
+    <div class="actions-grid">
+      <a class="action" routerLink="/decks">
+        <span class="action-icon"><app-icon name="import" /></span>
+        <span class="action-title">匯入牌組</span>
+        <span class="action-text">ydke://、YDK 檔、官方牌組頁或 Master Duel 代碼</span>
+      </a>
+      <a class="action" [routerLink]="current.deck() ? ['/decks', current.deck()!.id, 'hand'] : ['/decks']">
+        <span class="action-icon"><app-icon name="hand" /></span>
+        <span class="action-title">起手查詢</span>
+        <span class="action-text">選 5／6 張起手或用截圖辨識，找出已收錄的固定展開</span>
+      </a>
+      <a class="action" [routerLink]="current.deck() ? ['/decks', current.deck()!.id, 'analysis'] : ['/decks']">
+        <span class="action-icon"><app-icon name="ai" /></span>
+        <span class="action-title">AI 展開分析</span>
+        <span class="action-text">AI 依牌表提出單卡／雙卡／三卡的候選路線（未驗證）</span>
+      </a>
+      <a class="action" routerLink="/combos">
+        <span class="action-icon"><app-icon name="combos" /></span>
+        <span class="action-title">查看 Combo</span>
+        <span class="action-text">圖像流程與逐步教學，共 {{ comboCount() }} 條</span>
+      </a>
+    </div>
+  </section>
+
+  <div class="home-grid">
+    <!-- Recent combos -->
+    <section class="card" aria-labelledby="home-recent">
+      <h2 id="home-recent">最近的 Combo</h2>
+      @if (!loading() && recent().length === 0) {
+        <div class="empty-state">
+          <strong>尚未收錄 Combo</strong>
+          可以在 Combo 管理新增或匯入，或把 AI 候選路線存成固定 Combo。
+        </div>
+      } @else {
+        <ul class="plain recent">
+          @for (r of recent(); track r.id) {
+            <li>
+              <a [routerLink]="['/combos', r.id]">{{ r.name }}</a>
+              <span class="badge" [class.ok]="r.verification.status === 'verified'" [class.warn]="r.verification.status !== 'verified'">{{ statusLabel[r.verification.status] }}</span>
+              <span class="faint small">{{ time(r.updatedAt) }}</span>
+            </li>
+          }
+        </ul>
+      }
+    </section>
+
+    <!-- Card data -->
+    <section class="card" aria-labelledby="home-data">
+      <h2 id="home-data">卡片資料</h2>
+      @if (sync(); as s) {
+        <p>已同步 <strong>{{ s.count }}</strong> 張（資料版本 {{ s.dbVersion }}），同步於 {{ time(s.syncedAt) }}。</p>
+      } @else {
+        <p class="muted">本機有 {{ cardCount() ?? '…' }} 張卡片資料；尚未下載完整卡片資料庫（搜尋與 AI 分析需要）。</p>
+      }
+      <a class="button ghost" routerLink="/settings">管理卡片資料</a>
+    </section>
+  </div>
+</div>

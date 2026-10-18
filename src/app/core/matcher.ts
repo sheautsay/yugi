@@ -1,6 +1,7 @@
 import { ParsedDeck, countOf, deckFingerprint } from './deck';
 import { remainingInMain, tally } from './hand';
-import { ComboRoute, HandClause, MatchKind, MatchReasonCode, RouteConditions, RouteMatch, TurnOrder } from './models';
+import { CardRecord, ComboRoute, HandClause, MatchKind, MatchReasonCode, RouteConditions, RouteMatch, TurnOrder } from './models';
+import { checkRoute } from './route-check';
 
 /** The player's situation; hand size follows `turnOrder` (rev1 R3/R4). */
 export interface MatchContext {
@@ -14,6 +15,8 @@ export interface MatchOptions {
   name?: (cardId: number) => string;
   /** When given, routes referencing cards outside this set are `unknown` (missing card data). */
   knownCardIds?: ReadonlySet<number>;
+  /** Card data: AI routes are then also checked against the rule table (CR-006). */
+  cards?: ReadonlyMap<number, CardRecord>;
 }
 
 export interface RouteResult {
@@ -153,6 +156,12 @@ export function matchRoute(route: ComboRoute, deck: ParsedDeck, hand: readonly n
   if (s.noInterruption && !context.noInterruption) add('CONTEXT_MISMATCH', '此路線假設對手不干擾');
 
   if (route.verification.status === 'invalidated') add('UNVERIFIED', '此路線已標記為失效，不再建議使用');
+  // CR-004 / G26: an AI route that no longer fits this deck list is never offered.
+  if (route.analysis) {
+    for (const p of checkRoute(route, deck, { name, cards: options.cards }).problems) {
+      add('DECK_MISMATCH', `AI 路線不適用於目前牌組${p.step ? `（第 ${p.step} 步）` : ''}：${p.message}`);
+    }
+  }
   if (reasons.length) return result('unavailable');
 
   const missing = options.knownCardIds ? conditionCardIds(c).filter((id) => !options.knownCardIds!.has(id)) : [];

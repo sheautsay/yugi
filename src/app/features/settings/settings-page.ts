@@ -1,29 +1,62 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
-import { ConflictStrategy, UserData, buildBackup, parseBackup, planRestore } from '../../core/backup';
+import { AiAnalysisService } from '../../core/ai/analysis.service';
+import { AutoBackupService } from '../../core/auto-backup.service';
+import { ConflictStrategy, UserData, parseBackup, planRestore } from '../../core/backup';
+import { BackupSettings } from '../../core/backup-settings';
+import { BackupService } from '../../core/backup.service';
 import { CardDataService, CardNote, SyncInfo } from '../../core/card-data.service';
+import { CARD_LANGUAGES, CARD_LANGUAGE_LABEL, CardLanguage, CoverageStats } from '../../core/card-names';
+import { CardNamesService } from '../../core/card-names.service';
+import { inPool } from '../../core/card-search';
 import { CardImageService } from '../../core/card-image.service';
 import { DB_VERSION } from '../../core/db';
 import { CardPool } from '../../core/models';
 import { cardNoteSchema, issues } from '../../core/schemas';
 import { SettingsService } from '../../core/settings.service';
+import { localDate, localDateTime } from '../../core/time';
 import { UserDataService } from '../../core/user-data.service';
+import { RouterLink } from '@angular/router';
+import { CurrentDeckService } from '../../core/current-deck.service';
+import { APP_VERSION } from '../../core/version';
+import { openExternal } from '../../shared/open-external';
+import { focusApp, hasExternalOpener } from '../../shared/platform-hooks';
 import { saveTextFile } from '../../shared/save-file';
 
 @Component({
   selector: 'app-settings-page',
+  imports: [RouterLink],
   templateUrl: './settings-page.html',
+  styleUrl: './settings-page.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class SettingsPage {
   private readonly cardData = inject(CardDataService);
   private readonly images = inject(CardImageService);
   private readonly userData = inject(UserDataService);
+  private readonly backups = inject(BackupService);
+  protected readonly ai = inject(AiAnalysisService);
+  protected readonly current = inject(CurrentDeckService);
+  protected readonly version = APP_VERSION;
+  /** Inside the Windows app (the host opens links in the system browser). */
+  protected readonly desktop = hasExternalOpener();
+  protected readonly chatgptMessage = signal('');
+  protected readonly signingIn = signal(false);
+  protected readonly autoBackup = inject(AutoBackupService);
   protected readonly appSettings = inject(SettingsService);
+  protected readonly cardNames = inject(CardNamesService);
+
+  protected readonly languages = CARD_LANGUAGES;
+  protected readonly languageLabel = CARD_LANGUAGE_LABEL;
+  protected readonly coverage = signal<CoverageStats | null>(null);
+  protected readonly lastNameImport = signal('尚未匯入');
+  protected readonly nameErrors = signal<string[]>([]);
+  protected readonly nameMessage = signal('');
 
   protected readonly syncInfo = signal<SyncInfo | null>(null);
   protected readonly remote = signal('');
 
   protected readonly dbVersion = DB_VERSION;
+  protected readonly time = localDateTime;
   protected readonly cardCount = signal<number | null>(null);
   protected readonly imageCount = signal<number | null>(null);
   protected readonly online = signal(navigator.onLine);
@@ -31,7 +64,9 @@ export class SettingsPage {
   protected readonly busy = signal(false);
 
   protected readonly restoreErrors = signal<string[]>([]);
-  protected readonly incoming = signal<{ data: UserData; exportedAt: string; fileName: string; cardNotes: CardNote[] } | null>(null);
+  protected readonly incoming = signal<{ data: UserData; exportedAt: string; fileName: string; cardNotes: CardNote[]; settings?: BackupSettings } | null>(null);
+  /** Restore the non-secret settings that came with the backup (CR-010). */
+  protected readonly restoreSettings = signal(true);
   protected readonly existing = signal<UserData | null>(null);
   protected readonly strategy = signal<ConflictStrategy>('keep-both');
   protected readonly plan = computed(() => {
@@ -42,6 +77,65 @@ export class SettingsPage {
 
   constructor() {
     void this.refreshStats();
+    void this.autoBackup.refresh();
+    void this.ai.refreshChatGpt();
+  }
+
+  protected jump(id: string): void {
+    document.getElementById(id)?.scrollIntoView({ block: 'start' });
+  }
+
+  // ---- ChatGPT account (same service and flow as the AI analysis page) ----
+
+  protected refreshChatGpt(): Promise<void> {
+    return this.ai.refreshChatGpt();
+  }
+
+  /** Opens the official OpenAI sign-in in the system browser and waits (up to 5 minutes) for the result. */
+  protected async signInChatGpt(): Promise<void> {
+    this.chatgptMessage.set('');
+    this.signingIn.set(true);
+    try {
+      openExternal(await this.ai.chatgptSignIn());
+      this.chatgptMessage.set('已開啟 OpenAI 官方登入頁，請在瀏覽器完成登入與授權。');
+      const started = Date.now();
+      while (Date.now() - started < 5 * 60 * 1000) {
+        await new Promise((r) => setTimeout(r, 2000));
+        await this.ai.refreshChatGpt();
+        const g = this.ai.chatgpt();
+        if (g.signedIn || g.lastError || !g.reachable) {
+          this.chatgptMessage.set(g.signedIn ? (g.sharing ? '已登入 ChatGPT，並已授權使用你的 ChatGPT 方案額度。' : '已登入 ChatGPT，但沒有授權使用方案額度；請重新登入並同意。') : '');
+          focusApp();
+          return;
+        }
+      }
+      this.chatgptMessage.set('等待登入逾時，請再按一次「Continue with ChatGPT」。');
+    } catch (error) {
+      this.chatgptMessage.set(error instanceof Error ? error.message : String(error));
+    } finally {
+      this.signingIn.set(false);
+    }
+  }
+
+  /** Another ChatGPT account: sign out, drop this account's registration, then start a new sign-in. */
+  protected async switchChatGptAccount(): Promise<void> {
+    if (!confirm('切換帳號會登出目前的 ChatGPT 帳號並撤銷此 App 的授權，接著開啟官方登入頁讓你選擇另一個帳號。要繼續嗎？')) return;
+    try {
+      await this.ai.chatgptSignOut(true);
+    } catch (error) {
+      this.chatgptMessage.set(error instanceof Error ? error.message : String(error));
+      return;
+    }
+    await this.signInChatGpt();
+  }
+
+  protected async signOutChatGpt(): Promise<void> {
+    try {
+      const result = await this.ai.chatgptSignOut();
+      this.chatgptMessage.set(result.revoked ? '已登出，並已撤銷此 App 的授權。' : `已在本機登出。${result.message ?? ''}`);
+    } catch (error) {
+      this.chatgptMessage.set(error instanceof Error ? error.message : String(error));
+    }
   }
 
   private async refreshStats(): Promise<void> {
@@ -49,6 +143,16 @@ export class SettingsPage {
     this.cardCount.set(await this.cardData.count());
     this.imageCount.set(await this.images.count());
     this.online.set(navigator.onLine);
+    await this.refreshNames();
+  }
+
+  /** Coverage is counted over the card pool the user chose (CR-009, G65). */
+  private async refreshNames(): Promise<void> {
+    const pool = this.appSettings.settings().cardPool;
+    const cards = (await this.cardData.allCards()).filter((c) => inPool(c, pool));
+    this.coverage.set(this.cardNames.coverageOf(cards));
+    const last = await this.cardNames.lastImport();
+    this.lastNameImport.set(last ? `${this.time(last.importedAt)}（${last.count} 筆）` : '尚未匯入');
   }
 
   protected async setPool(pool: CardPool): Promise<void> {
@@ -82,9 +186,39 @@ export class SettingsPage {
     await this.refreshStats();
   }
 
+  /** Stored on this device only; a reload keeps it (G66). Names already shown update at once. */
+  protected async setLanguage(language: CardLanguage): Promise<void> {
+    await this.cardNames.setLanguage(language);
+    this.nameMessage.set(`卡名顯示已改為：${CARD_LANGUAGE_LABEL[language]}。`);
+  }
+
+  /**
+   * Explicit user action (G63, G68): the file is checked as a whole before anything is written. On any error the
+   * stored table is left exactly as it was, and the message says so.
+   */
+  protected async importNameFile(event: Event): Promise<void> {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    input.value = '';
+    if (!file) return;
+    this.nameErrors.set([]);
+    const known = new Set((await this.cardData.allCards()).map((c) => c.cardId));
+    const outcome = await this.cardNames.importText(await file.text(), known);
+    if (outcome.status === 'rejected') {
+      this.nameErrors.set(outcome.errors.slice(0, 10));
+      this.nameMessage.set('格式錯誤，未改動任何中文名稱資料。');
+    } else if (outcome.status === 'failed') {
+      this.nameMessage.set(`寫入失敗，未改動任何中文名稱資料：${outcome.error}`);
+    } else {
+      const unknown = outcome.unknownIds.length ? `；${outcome.unknownIds.length} 筆 ID 不在本機卡片資料庫（同步卡片資料後才會顯示）` : '';
+      this.nameMessage.set(`已匯入：寫入 ${outcome.applied} 筆，保留較高等級的既有資料 ${outcome.kept} 筆${unknown}。`);
+    }
+    await this.refreshNames();
+  }
+
   protected async exportNotes(): Promise<void> {
     const notes = await this.cardData.notes();
-    saveTextFile(`ygo-card-notes-${new Date().toISOString().slice(0, 10)}.json`, JSON.stringify(notes, null, 2));
+    saveTextFile(`ygo-card-notes-${localDate()}.json`, JSON.stringify(notes, null, 2));
     this.message.set(`已匯出 ${notes.length} 筆卡片標註。`);
   }
 
@@ -136,10 +270,9 @@ export class SettingsPage {
   }
 
   protected async exportBackup(): Promise<void> {
-    const data = await this.userData.readAll();
-    const notes = await this.cardData.notes();
-    saveTextFile(`ygo-combo-backup-${new Date().toISOString().slice(0, 10)}.json`, JSON.stringify(buildBackup(data, undefined, notes), null, 2));
-    this.message.set(`已匯出備份：牌組 ${data.decks.length}、Combo ${data.combos.length}、版型 ${data.layouts.length}（不含卡圖與卡片快取）。`);
+    const backup = await this.backups.snapshot();
+    saveTextFile(`ygo-combo-backup-${localDate()}.json`, JSON.stringify(backup, null, 2));
+    this.message.set(`已匯出備份：牌組 ${backup.decks.length}、Combo ${backup.combos.length}、版型 ${backup.layouts.length}（含非機密設定；不含卡圖、卡片快取與任何金鑰）。`);
   }
 
   /** Preview first; nothing is written until the user confirms (N6). */
@@ -150,13 +283,35 @@ export class SettingsPage {
     this.incoming.set(null);
     this.restoreErrors.set([]);
     if (!file) return;
-    const result = parseBackup(await file.text());
+    await this.previewBackup(await file.text(), file.name);
+  }
+
+  /** Desktop: restore from one of the automatic backups. Same preview and confirmation as a chosen file. */
+  protected async restoreFromAuto(name: string): Promise<void> {
+    this.incoming.set(null);
+    this.restoreErrors.set([]);
+    try {
+      await this.previewBackup(await this.autoBackup.read(name), name);
+    } catch (error) {
+      this.restoreErrors.set([error instanceof Error ? error.message : String(error)]);
+    }
+  }
+
+  protected async backupNow(): Promise<void> {
+    this.busy.set(true);
+    const result = await this.autoBackup.run({ force: true });
+    this.busy.set(false);
+    this.message.set(result.status === 'created' ? `已建立備份：${result.file}` : result.status === 'failed' ? `備份失敗：${result.error}` : '沒有資料需要備份。');
+  }
+
+  private async previewBackup(text: string, fileName: string): Promise<void> {
+    const result = parseBackup(text);
     if (!result.ok) {
       this.restoreErrors.set(result.errors);
       return;
     }
     this.existing.set(await this.userData.readAll());
-    this.incoming.set({ data: result.data, exportedAt: result.exportedAt, fileName: file.name, cardNotes: result.cardNotes ?? [] });
+    this.incoming.set({ data: result.data, exportedAt: result.exportedAt, fileName, cardNotes: result.cardNotes ?? [], settings: result.settings });
   }
 
   protected async confirmRestore(): Promise<void> {
@@ -165,7 +320,12 @@ export class SettingsPage {
     this.busy.set(true);
     try {
       await this.userData.write(plan.writes);
-      const notes = this.incoming()?.cardNotes ?? [];
+      const incoming = this.incoming();
+      if (incoming?.settings && this.restoreSettings()) {
+        await this.appSettings.update(incoming.settings.app);
+        await this.ai.updateSettings(incoming.settings.ai);
+      }
+      const notes = incoming?.cardNotes ?? [];
       const noteResult = notes.length ? await this.cardData.applyNotes(notes) : null;
       const noteText = noteResult
         ? `卡片標註套用 ${noteResult.applied} 筆${noteResult.missing.length ? `（${noteResult.missing.length} 筆需先同步卡片資料再匯入）` : ''}。`

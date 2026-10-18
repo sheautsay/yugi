@@ -1,8 +1,9 @@
 import { ChangeDetectionStrategy, Component, computed, effect, inject, input, signal } from '@angular/core';
+import { CardNamesService } from '../../core/card-names.service';
 import { RouterLink } from '@angular/router';
 import { CardDataService } from '../../core/card-data.service';
 import { ComboRepository } from '../../core/combo-repository';
-import { checkDeck, deckCardIds, displayName } from '../../core/deck';
+import { checkDeck, deckCardIds } from '../../core/deck';
 import { DeckRepository } from '../../core/deck-repository';
 import { checkHand, drawHand, randomSeed, remainingInMain } from '../../core/hand';
 import { MatchContext, RouteResult, matchRoutes } from '../../core/matcher';
@@ -28,7 +29,7 @@ export class HandPage {
   readonly deckId = input.required<string>();
 
   protected readonly kindLabel = KIND_LABEL;
-  protected readonly displayName = displayName;
+  protected readonly cardNames = inject(CardNamesService);
 
   protected readonly loaded = signal(false);
   protected readonly deck = signal<DeckRecord | null>(null);
@@ -47,10 +48,10 @@ export class HandPage {
   protected readonly poolFilter = signal('');
   protected readonly showRecognizer = signal(false);
 
-  protected readonly name = (id: number) => displayName(this.cards().get(id));
+  protected readonly name = (id: number) => this.cardNames.labelOf(id, this.cards().get(id));
   protected readonly deckCheck = computed(() => {
     const deck = this.deck();
-    return deck ? checkDeck(deck, this.cards()) : null;
+    return deck ? checkDeck(deck, this.cards(), this.cardNames.nameLabel) : null;
   });
   protected readonly handSize = computed(() => HAND_SIZE[this.turnOrder()]);
   protected readonly handCheck = computed(() => checkHand(this.deck()?.main ?? [], this.hand(), this.handSize(), this.name));
@@ -66,7 +67,7 @@ export class HandPage {
     const q = this.poolFilter().trim().toLowerCase();
     return (deck?.main ?? [])
       .map((c) => ({ ...c, left: remainingInMain(deck!.main, this.hand(), c.cardId), card: this.cards().get(c.cardId) }))
-      .filter((c) => !q || String(c.cardId) === q || displayName(c.card).toLowerCase().includes(q));
+      .filter((c) => !q || String(c.cardId) === q || this.cardNames.labelOf(c.cardId, c.card).toLowerCase().includes(q));
   });
 
   /** Routes whose opening cards appear in this deck; the rest belong to other decks. */
@@ -80,7 +81,7 @@ export class HandPage {
   protected readonly results = computed<RouteResult[] | null>(() => {
     const deck = this.deck();
     if (!deck || !this.deckCheck()?.queryable || !this.handCheck().complete) return null;
-    return matchRoutes(this.relevantRoutes(), deck, this.hand(), this.context(), { name: this.name, knownCardIds: new Set(this.cards().keys()) });
+    return matchRoutes(this.relevantRoutes(), deck, this.hand(), this.context(), { name: this.name, knownCardIds: new Set(this.cards().keys()), cards: this.cards() });
   });
   protected readonly grouped = computed(() => {
     const results = this.results() ?? [];

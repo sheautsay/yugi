@@ -48,11 +48,17 @@ test('G4/G6: manual 5-card hand → verified route is 可用, unverified stays �
 
 test('G4: random draw with a typed seed is reproducible; a single-copy card cannot be picked twice', async ({ page }) => {
   await page.getByLabel('種子（選填，可重現）').fill('20261008');
+  // CR-007 G45: `evaluateAll` reads the DOM once, without retrying. Wait for the rendered state first
+  // (a retrying assertion), then read; the assertions below are unchanged.
+  const fullHand = page.getByRole('heading', { name: '起手（5 / 5 張）' });
   await page.getByRole('button', { name: '隨機抽 5 張' }).click();
+  await expect(fullHand).toBeVisible();
   const first = await page.locator('.hand-slots figure').evaluateAll((els) => els.map((e) => e.getAttribute('aria-label')));
   expect(first).toHaveLength(5);
   await page.getByRole('button', { name: '清除' }).click();
+  await expect(page.getByRole('heading', { name: '起手（0 / 5 張）' })).toBeVisible();
   await page.getByRole('button', { name: '隨機抽 5 張' }).click();
+  await expect(fullHand).toBeVisible();
   expect(await page.locator('.hand-slots figure').evaluateAll((els) => els.map((e) => e.getAttribute('aria-label')))).toEqual(first);
 
   await page.getByRole('button', { name: '清除' }).click();

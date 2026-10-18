@@ -41,7 +41,8 @@
       <button type="button" (click)="release()">移除截圖</button>
     </div>
 
-    <div class="shot">
+    <!-- The box has the screenshot's shape before the image finishes loading (no layout jump; it can be scrolled into view at once). -->
+    <div class="shot" [style.aspect-ratio]="imageSize() ? imageSize()!.width + ' / ' + imageSize()!.height : null">
       <img [src]="url" alt="起手截圖預覽" />
       <div
         #overlay
@@ -116,7 +117,7 @@
             <div class="row">
               <span class="muted">候選：</span>
               @for (c of slot.candidates; track c.cardId) {
-                <button type="button" (click)="choose(slot.index, '' + c.cardId)">{{ displayName(cards().get(c.cardId)) }}（{{ percent(c.score) }}）</button>
+                <button type="button" (click)="choose(slot.index, '' + c.cardId)">{{ cardNames.labelOf(c.cardId, cards().get(c.cardId)) }}（{{ percent(c.score) }}）</button>
               }
             </div>
           }

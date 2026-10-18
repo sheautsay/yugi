@@ -46,6 +46,18 @@ export function openAppDb(name: string): Promise<AppDatabase> {
   });
 }
 
+/**
+ * Asks the browser not to evict this origin's data under storage pressure (CR-010). Best effort: where it is
+ * unsupported or refused nothing changes, and the result is never required for the app to work.
+ */
+export function requestPersistentStorage(): void {
+  try {
+    void navigator.storage?.persist?.().catch(() => undefined);
+  } catch {
+    // storage manager unavailable
+  }
+}
+
 export const DB_NAME = new InjectionToken<string>('DB_NAME', {
   providedIn: 'root',
   factory: () => 'ygo-combo-assistant',
@@ -57,10 +69,15 @@ export class AppDb {
   private dbPromise?: Promise<AppDatabase>;
 
   db(): Promise<AppDatabase> {
-    this.dbPromise ??= openAppDb(this.name).catch((error: unknown) => {
-      this.dbPromise = undefined;
-      throw error;
-    });
+    this.dbPromise ??= openAppDb(this.name)
+      .then((db) => {
+        requestPersistentStorage();
+        return db;
+      })
+      .catch((error: unknown) => {
+        this.dbPromise = undefined;
+        throw error;
+      });
     return this.dbPromise;
   }
 }

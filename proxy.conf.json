@@ -4,5 +4,10 @@
     "secure": true,
     "changeOrigin": true,
     "pathRewrite": { "^/ygo-images": "/images" }
+  },
+  "/chatgpt-bridge": {
+    "target": "http://127.0.0.1:47321",
+    "changeOrigin": true,
+    "pathRewrite": { "^/chatgpt-bridge": "" }
   }
 }

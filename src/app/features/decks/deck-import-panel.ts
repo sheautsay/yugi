@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, inject, input, output, signal } from '@angular/core';
+import { CardNamesService } from '../../core/card-names.service';
 import { CardDataService } from '../../core/card-data.service';
 import { DECK_ZONES, DeckCheck, ParseIssue, ParsedDeck, ZONE_LABEL, checkDeck, deckCardIds, newDeck } from '../../core/deck';
 import { DeckTextFormat, detectDeckFormat, parseDeckText } from '../../core/deck-import';
@@ -8,6 +9,8 @@ import { deckCodeError, officialDeckSearchUrl, parseNeuronDeckText, resolveNeuro
 import { SettingsService } from '../../core/settings.service';
 import { MAX_YDK_LENGTH } from '../../core/ydk';
 import { CardTile } from '../../shared/card-tile';
+import { openExternal } from '../../shared/open-external';
+import { hasExternalOpener } from '../../shared/platform-hooks';
 
 interface Preview {
   format: Exclude<DeckTextFormat, 'unknown'>;
@@ -26,12 +29,16 @@ const PREVIEW_PER_ZONE = 12;
   selector: 'app-deck-import-panel',
   imports: [CardTile],
   templateUrl: './deck-import-panel.html',
+  styleUrl: './deck-import-panel.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class DeckImportPanel {
   private readonly cardData = inject(CardDataService);
   private readonly repo = inject(DeckRepository);
   private readonly settings = inject(SettingsService);
+  protected readonly cardNames = inject(CardNamesService);
+  /** Desktop app: links open in the system browser, not a new tab. */
+  protected readonly systemBrowser = hasExternalOpener();
 
   /** Existing decks that may be replaced by the import. */
   readonly decks = input<DeckRecord[]>([]);
@@ -83,7 +90,7 @@ export class DeckImportPanel {
     const error = deckCodeError(this.deckCode());
     this.codeError.set(error ?? '');
     this.codeOpened.set(!error);
-    if (!error) window.open(officialDeckSearchUrl(this.deckCode()), '_blank', 'noopener,noreferrer');
+    if (!error) openExternal(officialDeckSearchUrl(this.deckCode()));
   }
 
   protected async parse(): Promise<void> {
@@ -101,7 +108,7 @@ export class DeckImportPanel {
     }
     this.errors.set([]);
     const cards = await this.cardData.getMany(deckCardIds(result.deck));
-    this.preview.set({ format, deck: result.deck, cards, check: checkDeck(result.deck, cards) });
+    this.preview.set({ format, deck: result.deck, cards, check: checkDeck(result.deck, cards, this.cardNames.nameLabel) });
   }
 
   /** Deck list copied from the official deck page: check section totals, then map names locally. */
@@ -119,7 +126,7 @@ export class DeckImportPanel {
     }
     this.errors.set([]);
     const cards = await this.cardData.getMany(deckCardIds(deck));
-    this.preview.set({ format: 'neuron', deck, cards, check: checkDeck(deck, cards), sections: parsed.sections.map((s) => ({ title: s.title, declared: s.declared })) });
+    this.preview.set({ format: 'neuron', deck, cards, check: checkDeck(deck, cards, this.cardNames.nameLabel), sections: parsed.sections.map((s) => ({ title: s.title, declared: s.declared })) });
   }
 
   /** Explicit network action: full card data, then parse the pasted official list again. */
@@ -139,7 +146,7 @@ export class DeckImportPanel {
     this.busy.set(true);
     const result = await this.cardData.downloadMissing(preview.check.unresolvedIds);
     const cards = await this.cardData.getMany(deckCardIds(preview.deck));
-    this.preview.set({ ...preview, cards, check: checkDeck(preview.deck, cards) });
+    this.preview.set({ ...preview, cards, check: checkDeck(preview.deck, cards, this.cardNames.nameLabel) });
     this.busy.set(false);
     this.downloadMessage.set(
       result.error ??

@@ -44,3 +44,15 @@ __screenshots__/
 # System files
 .DS_Store
 Thumbs.db
+
+# Desktop build outputs (CR-010)
+/build
+/src-tauri/target
+/src-tauri/binaries
+/src-tauri/gen
+
+# Delivery folder (installer copies; CR-010 DS)
+/release
+
+# Desktop installed-app test output
+/test-results-desktop

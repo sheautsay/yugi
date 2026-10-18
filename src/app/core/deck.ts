@@ -82,7 +82,7 @@ export function deckFingerprint(deck: Pick<ParsedDeck, 'main' | 'extra'>): strin
 }
 
 /** cyrb53 string hash (public domain) — stable, synchronous, 53-bit. */
-function cyrb53(text: string): number {
+export function cyrb53(text: string): number {
   let h1 = 0xdeadbeef;
   let h2 = 0x41c6ce57;
   for (let i = 0; i < text.length; i++) {
@@ -119,6 +119,13 @@ export function displayName(card: CardRecord | undefined): string {
   return card?.nameZhTw ?? card?.nameEn ?? '未識別';
 }
 
+/**
+ * How a card is named inside a message. Screens pass the shared CardNamesService label (CR-009); without one the
+ * message keeps the previous text, so the core rules and their tests do not depend on the display language.
+ */
+export type NameLabel = (cardId: number, card: CardRecord | undefined) => string;
+const legacyLabel: NameLabel = (_id, card) => displayName(card);
+
 export interface DeckCheck {
   totals: Record<DeckZone, number>;
   errors: string[];
@@ -127,7 +134,7 @@ export interface DeckCheck {
   queryable: boolean;
 }
 
-export function checkDeck(deck: ParsedDeck, cards: ReadonlyMap<number, CardRecord>): DeckCheck {
+export function checkDeck(deck: ParsedDeck, cards: ReadonlyMap<number, CardRecord>, label: NameLabel = legacyLabel): DeckCheck {
   const totals = { main: totalCount(deck.main), extra: totalCount(deck.extra), side: totalCount(deck.side) };
   const errors: string[] = [];
 
@@ -148,18 +155,18 @@ export function checkDeck(deck: ParsedDeck, cards: ReadonlyMap<number, CardRecor
     for (const { cardId, count } of deck[zone]) perCard.set(cardId, (perCard.get(cardId) ?? 0) + count);
   }
   for (const [cardId, count] of perCard) {
-    if (count > 3) errors.push(`「${displayName(cards.get(cardId))}」（ID ${cardId}）共 ${count} 張（同名卡最多 3 張）`);
+    if (count > 3) errors.push(`「${label(cardId, cards.get(cardId))}」（ID ${cardId}）共 ${count} 張（同名卡最多 3 張）`);
   }
 
   const unresolvedIds = [...perCard.keys()].filter((id) => !cards.has(id));
   if (unresolvedIds.length) errors.push(`${unresolvedIds.length} 種卡片尚未識別（ID：${unresolvedIds.join('、')}）`);
 
   for (const { cardId } of deck.main) {
-    if (cards.get(cardId)?.isExtraDeckType) errors.push(`主牌含額外牌組怪獸「${displayName(cards.get(cardId))}」`);
+    if (cards.get(cardId)?.isExtraDeckType) errors.push(`主牌含額外牌組怪獸「${label(cardId, cards.get(cardId))}」`);
   }
   for (const { cardId } of deck.extra) {
     const card = cards.get(cardId);
-    if (card && card.isExtraDeckType === false) errors.push(`額外牌組含非額外牌組卡「${displayName(card)}」`);
+    if (card && card.isExtraDeckType === false) errors.push(`額外牌組含非額外牌組卡「${label(cardId, card)}」`);
   }
 
   return { totals, errors, unresolvedIds, queryable: errors.length === 0 };

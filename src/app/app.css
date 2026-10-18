@@ -1,40 +1,230 @@
-.app-header {
+/* App shell (CR-012): a left navigation pane like Windows apps; a top bar on narrow windows. */
+:host {
+  display: block;
+}
+
+.shell {
+  display: grid;
+  grid-template-columns: var(--sidebar-w) minmax(0, 1fr);
+  min-height: 100vh;
+}
+
+.sidebar {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
+  gap: var(--space-3);
+  background: var(--bg-elev);
+  border-right: 1px solid var(--border);
+  padding: var(--space-4) var(--space-3);
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow-y: auto;
+}
+
+.brand-row {
+  display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 8px 16px;
-  background: #16263f;
-  color: #fff;
+  gap: var(--space-2);
+  padding: 0 var(--space-1) var(--space-2);
 }
 
 .brand {
-  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--text-strong);
   font-weight: 700;
+  font-size: var(--fs-base);
   text-decoration: none;
+  flex: 1;
+  min-width: 0;
+}
+
+.brand:hover {
+  text-decoration: none;
+}
+
+.brand-mark {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, var(--primary), #4b7bff);
+  color: #fff;
+  flex: none;
+}
+
+.brand-text {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.icon-button {
+  min-height: 32px;
+  width: 32px;
+  padding: 0;
 }
 
 nav {
   display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
+  flex-direction: column;
+  gap: 2px;
 }
 
 nav a {
-  color: #dfe8f7;
+  position: relative;
+  display: grid;
+  grid-template-columns: 20px 1fr;
+  align-items: center;
+  column-gap: 12px;
+  padding: 9px 12px;
+  border-radius: var(--radius);
+  color: var(--muted);
   text-decoration: none;
-  padding: 6px 10px;
-  border-radius: 6px;
+  font-weight: 550;
+  transition:
+    background-color var(--dur),
+    color var(--dur);
+}
+
+nav a:hover {
+  background: var(--surface);
+  color: var(--text);
+  text-decoration: none;
 }
 
 nav a.active {
-  background: #2f4a75;
-  color: #fff;
+  background: var(--primary-soft);
+  color: var(--text-strong);
+}
+
+/* The selection pill of a Windows navigation pane. */
+nav a.active::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 10px;
+  bottom: 10px;
+  width: 3px;
+  border-radius: 3px;
+  background: var(--primary);
+}
+
+.nav-hint {
+  display: block;
+  margin: -6px 0 4px 44px;
+  font-size: var(--fs-xs);
+  color: var(--faint);
+}
+
+.current-deck {
+  margin-top: var(--space-2);
+  padding: var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.current-label {
+  font-size: var(--fs-xs);
+  color: var(--faint);
+}
+
+.current-name {
+  color: var(--text-strong);
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .app-footer {
-  text-align: center;
-  font-size: 0.85rem;
-  padding: 12px 16px 24px;
+  margin: auto 0 0;
+  padding: var(--space-3) var(--space-1) 0;
+  font-size: var(--fs-xs);
+  color: var(--faint);
+  line-height: 1.5;
+}
+
+.content {
+  min-width: 0;
+}
+
+.content:focus {
+  outline: none;
+}
+
+.skip-link {
+  position: absolute;
+  left: -9999px;
+  top: 8px;
+  z-index: 100;
+  background: var(--primary);
+  color: #fff;
+  padding: 8px 12px;
+  border-radius: var(--radius);
+}
+
+.skip-link:focus {
+  left: 8px;
+}
+
+/* Narrow windows: navigation becomes a top bar that scrolls sideways inside itself (never the page). */
+@media (max-width: 760px) {
+  .shell {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .sidebar {
+    flex-direction: column;
+    gap: var(--space-2);
+    border-right: 0;
+    border-bottom: 1px solid var(--border);
+    padding: var(--space-2) var(--space-3);
+    height: auto;
+    position: static;
+    overflow: visible;
+  }
+
+  .brand-row {
+    padding: 0;
+  }
+
+  nav {
+    flex-direction: row;
+    overflow-x: auto;
+    gap: 4px;
+    padding-bottom: 2px;
+  }
+
+  nav a {
+    grid-template-columns: 18px auto;
+    column-gap: 6px;
+    padding: 6px 10px;
+    white-space: nowrap;
+    flex: none;
+  }
+
+  nav a.active::before {
+    left: 10px;
+    right: 10px;
+    top: auto;
+    bottom: 0;
+    width: auto;
+    height: 3px;
+  }
+
+  .nav-hint,
+  .current-deck,
+  .app-footer {
+    display: none;
+  }
 }

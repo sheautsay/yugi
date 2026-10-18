@@ -1,5 +1,7 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { CardApiError, DbVersion, YgoProDeckClient, toCardRecord } from './card-api';
+import { CardNameEntry, searchNames } from './card-names';
+import { EMPTY_QUERY, searchCards } from './card-search';
 import { AppDb } from './db';
 import { CardPool, CardRecord, MdBan } from './models';
 
@@ -85,15 +87,15 @@ export class CardDataService {
     return this.cache.cards;
   }
 
-  /** Local search by passcode or name (English, zh-TW, aliases). */
-  async search(query: string, limit = 30): Promise<CardRecord[]> {
-    const q = query.trim().toLowerCase();
-    if (!q) return [];
+  /**
+   * Local search by passcode or name: English, Traditional and Simplified names, aliases, and the translation
+   * table when the caller passes it (CR-009, G56). Same matcher as the card-search page.
+   */
+  async search(query: string, limit = 30, entries: ReadonlyMap<number, CardNameEntry> = new Map()): Promise<CardRecord[]> {
+    const text = query.trim();
+    if (!text) return [];
     const all = await this.allCards();
-    const matches = all.filter(
-      (c) => String(c.cardId) === q || c.nameEn.toLowerCase().includes(q) || c.nameZhTw?.toLowerCase().includes(q) || c.aliases?.some((a) => a.toLowerCase().includes(q)),
-    );
-    return matches.sort((a, b) => a.nameEn.localeCompare(b.nameEn)).slice(0, limit);
+    return searchCards(all, { ...EMPTY_QUERY, text, pool: 'all' }, (card) => searchNames(card, entries.get(card.cardId))).slice(0, limit);
   }
 
   async syncInfo(): Promise<SyncInfo | null> {

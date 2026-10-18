@@ -1,12 +1,14 @@
 import { ChangeDetectionStrategy, Component, computed, effect, inject, input, signal } from '@angular/core';
+import { CardNamesService } from '../../core/card-names.service';
 import { Router, RouterLink } from '@angular/router';
 import { CardDataService } from '../../core/card-data.service';
 import { comboCardIds, newCombo, newStep, renumber, routeContentChanged, validateCombo } from '../../core/combo';
 import { ComboRepository } from '../../core/combo-repository';
-import { deckFingerprint, displayName } from '../../core/deck';
+import { deckFingerprint } from '../../core/deck';
 import { DeckRepository } from '../../core/deck-repository';
 import { ACTION_LABEL, VERIFICATION_LABEL } from '../../core/labels';
 import { ACTION_TYPES, CardCount, CardRecord, ComboRoute, DeckRecord, RouteVerification } from '../../core/models';
+import { localDate } from '../../core/time';
 import { CardIdList } from '../../shared/card-id-list';
 import { CardSearch } from '../../shared/card-search';
 
@@ -31,7 +33,8 @@ export class ComboEditPage {
   protected readonly statusLabel = VERIFICATION_LABEL;
   protected readonly statuses: RouteVerification[] = ['draft', 'unverified', 'verified', 'invalidated'];
   protected readonly noRows: CardCount[] = [];
-  protected readonly displayName = displayName;
+  protected readonly cardNames = inject(CardNamesService);
+  protected readonly date = localDate;
 
   protected readonly draft = signal<ComboRoute | null>(null);
   protected readonly saved = signal<ComboRoute | null>(null);

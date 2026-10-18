@@ -5,7 +5,7 @@
     <a routerLink="/combos">返回 Combo 管理</a>
   } @else if (draft(); as d) {
     <h1>{{ saved() ? '編輯 Combo' : '新增 Combo' }}</h1>
-    <div class="row">
+    <div class="row page-links">
       <a routerLink="/combos">← 返回 Combo 管理</a>
       @if (saved()) {
         <a [routerLink]="['/combos', d.id]">查看展開</a>
@@ -14,6 +14,11 @@
 
     @if (message()) {
       <p class="notice ok" role="status">{{ message() }}</p>
+    }
+    @if (d.analysis; as a) {
+      <p class="notice warn">
+        此路線由 AI 產生（{{ a.model }}，{{ date(a.generatedAt) }}，牌組「{{ a.deckName }}」版本 {{ a.deckVersion }}）。編輯後請到「查看展開」重新驗證資料完整性；設為「已驗證」仍需你在 Master Duel 實測並附上證據。每一步的卡片移動紀錄會保留。
+      </p>
     }
     @if (errors().length) {
       <div class="notice bad" role="alert">
@@ -137,7 +142,7 @@
       <ul class="plain stack">
         @for (e of d.endBoard; track $index; let i = $index) {
           <li class="row">
-            <strong>{{ displayName(cards().get(e.cardId)) }}</strong>
+            <strong>{{ cardNames.labelOf(e.cardId, cards().get(e.cardId)) }}</strong>
             <span class="muted">ID {{ e.cardId }}</span>
             <label>位置<input [value]="e.zone" (input)="e.zone = $any($event.target).value; touch()" size="10" /></label>
             <label>張數<input type="number" min="1" [value]="e.count" (input)="e.count = int($any($event.target).value, 1); touch()" style="width: 4em" /></label>

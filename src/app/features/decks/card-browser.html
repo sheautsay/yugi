@@ -2,7 +2,7 @@
   <div class="row sync-line">
     @if (syncInfo(); as info) {
       <span class="muted">
-        卡片資料：{{ poolLabel[info.pool] }}・{{ info.count }} 張・資料版本 {{ info.dbVersion }}・同步於 {{ info.syncedAt.slice(0, 10) }}
+        卡片資料：{{ poolLabel[info.pool] }}・{{ info.count }} 張・資料版本 {{ info.dbVersion }}・同步於 {{ date(info.syncedAt) }}
       </span>
       <button type="button" (click)="sync()" [disabled]="syncing()">檢查並更新</button>
     } @else if (!loading()) {
@@ -100,8 +100,8 @@
       <li class="result-row">
         <app-card-tile [cardId]="card.cardId" [card]="card" size="s" />
         <div class="meta">
-          <strong>{{ card.nameZhTw ?? card.nameEn }}</strong>
-          @if (card.nameZhTw) {
+          <strong>{{ cardNames.labelOf(card.cardId, card) }}</strong>
+          @if (cardNames.zhOf(card)) {
             <span class="muted">{{ card.nameEn }}</span>
           }
           <span class="muted">
@@ -120,10 +120,10 @@
           </span>
         </div>
         <div class="actions">
-          <button type="button" (click)="adjust.emit({ card, delta: -1 })" [disabled]="copies(card.cardId) === 0" [attr.aria-label]="'從牌組移除一張 ' + card.nameEn">−1</button>
+          <button type="button" (click)="adjust.emit({ card, delta: -1 })" [disabled]="copies(card.cardId) === 0" [attr.aria-label]="'從牌組移除一張 ' + cardNames.labelOf(card.cardId, card)">−1</button>
           <span class="count" aria-hidden="true">{{ copies(card.cardId) }}</span>
-          <button type="button" (click)="adjust.emit({ card, delta: 1 })" [disabled]="!canAdd(card)" [attr.aria-label]="'加入一張 ' + card.nameEn">+1</button>
-          <button type="button" (click)="detail.set(card)" [attr.aria-label]="'查看 ' + card.nameEn + ' 詳細資訊'">詳細</button>
+          <button type="button" (click)="adjust.emit({ card, delta: 1 })" [disabled]="!canAdd(card)" [attr.aria-label]="'加入一張 ' + cardNames.labelOf(card.cardId, card)">+1</button>
+          <button type="button" (click)="detail.set(card)" [attr.aria-label]="'查看 ' + cardNames.labelOf(card.cardId, card) + ' 詳細資訊'">詳細</button>
           @if (addBlockedReason(card); as reason) {
             <span class="muted reason">{{ reason }}</span>
           }

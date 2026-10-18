@@ -20,7 +20,10 @@ describe('App shell', () => {
     const fixture = TestBed.createComponent(App);
     await fixture.whenStable();
     const links = [...(fixture.nativeElement as HTMLElement).querySelectorAll('nav a')].map((a) => a.textContent?.trim());
-    expect(links).toEqual(['牌組', 'Combo 管理', '設定']);
+    // CR-012 (user-requested navigation: 首頁／牌組／起手查詢／AI 展開分析／Combo 管理／設定). The original three
+    // destinations keep their exact labels and order; see docs/acceptance-changes.md CR-012 補記 3.
+    expect(links).toEqual(['首頁', '牌組', '起手查詢', 'AI 展開分析', 'Combo 管理', '設定']);
+    expect(links.filter((l) => ['牌組', 'Combo 管理', '設定'].includes(l!))).toEqual(['牌組', 'Combo 管理', '設定']);
   });
 
   const pages: Array<[string, string]> = [

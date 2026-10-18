@@ -1,4 +1,10 @@
-import { ActionType, ComboRoute, RouteVerification } from './models';
+import { ActionType, AiProviderId, AnalysisLevel, ComboRoute, RouteVerification } from './models';
+
+export const PROVIDER_LABEL: Record<AiProviderId, string> = {
+  anthropic: 'Claude API',
+  ollama: '本機 Ollama',
+  chatgpt: 'ChatGPT 帳號（方案用量）',
+};
 
 /** Readable summary of a route's opening conditions (card names supplied by the caller). */
 export function conditionLines(route: ComboRoute, name: (cardId: number) => string): string[] {
@@ -48,4 +54,19 @@ export const VERIFICATION_LABEL: Record<RouteVerification, string> = {
   unverified: '未驗證',
   verified: '已驗證',
   invalidated: '已失效',
+};
+
+/** CR-004: the four trust levels, shown separately. */
+export const ANALYSIS_LEVEL_LABEL: Record<AnalysisLevel, string> = {
+  'ai-candidate': 'AI 候選',
+  'data-checked': '資料完整性通過',
+  'engine-verified': '規則引擎驗證',
+  'md-confirmed': 'Master Duel 實測確認',
+};
+
+export const ANALYSIS_LEVEL_NOTE: Record<AnalysisLevel, string> = {
+  'ai-candidate': '由 AI 產生，尚未通過本機資料驗證，不可當作可用路線。',
+  'data-checked': '卡片、張數與每一步的卡片位置都符合此牌組；這不代表合法，仍需實戰確認。',
+  'engine-verified': '規則引擎驗證尚未整合（BLOCKED）。',
+  'md-confirmed': '已由人工在 Master Duel 以此牌表實測，並附上證據。',
 };

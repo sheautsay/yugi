@@ -1,43 +1,62 @@
-<section class="card" aria-labelledby="import-heading">
+<section class="card import-card" aria-labelledby="import-heading">
   <h2 id="import-heading">匯入牌組</h2>
+  <ol class="steps" aria-label="匯入步驟">
+    <li [class.current]="!preview() && !errors().length" [class.done]="!!preview()">輸入</li>
+    <li [class.current]="errors().length > 0" [class.done]="!!preview()">解析</li>
+    <li [class.current]="!!preview()">檢視牌組</li>
+    <li>確認匯入</li>
+  </ol>
   <p class="muted">貼上 <code>ydke://</code> 代碼、YDK 內容，或從官方牌組頁複製的牌表（自動判斷格式），或選擇 .ydk 檔。</p>
 
-  <div class="stack code-box">
-    <h3>用 Master Duel 牌組代碼匯入</h3>
-    <div class="row">
+  <div class="methods">
+    <div class="method method-paste stack">
+      <h3>貼上牌表</h3>
+      <p class="faint small">ydke:// · YDK 內容 · 官方牌組頁複製的牌表</p>
       <label>
-        Master Duel 牌組代碼
-        <input [value]="deckCode()" (input)="deckCode.set($any($event.target).value)" placeholder="例如 2962ut6" maxlength="40" />
+        牌組代碼或 YDK 內容
+        <textarea rows="5" [value]="text()" (input)="text.set($any($event.target).value)" spellcheck="false" placeholder="ydke://…、YDK 內容，或從官方牌組頁複製的牌表"></textarea>
       </label>
-      <button type="button" (click)="openOfficial()">在官方網站開啟</button>
+      <div class="row">
+        <button type="button" class="primary" (click)="parse()" [disabled]="!text().trim()">解析</button>
+        <label class="button">
+          選擇 .ydk 檔
+          <input type="file" accept=".ydk,text/plain" class="visually-hidden" (change)="onFile($event)" />
+        </label>
+        @if (fileName()) {
+          <span class="muted">檔案：{{ fileName() }}</span>
+        }
+      </div>
     </div>
-    @if (codeError()) {
-      <p class="notice bad" role="alert">{{ codeError() }}</p>
-    } @else if (codeOpened()) {
-      <p class="notice" role="status">已在新分頁開啟官方牌組搜尋，請依下列步驟複製牌表後貼到下方。</p>
-    }
-    <ol class="muted">
-      <li>按「在官方網站開啟」，會在新分頁開啟 KONAMI 官方卡片資料庫的牌組搜尋（本工具不會讀取官方網站）。</li>
-      <li>在官方頁點進牌組（頁面請切換為 English），從「Monster Cards」選取到最後一個表格，按 Ctrl+C。</li>
-      <li>貼到下方輸入框，按「解析」。</li>
-    </ol>
-    <p class="muted">官方頁搜尋不到牌組時，可能是代碼錯誤、牌組未公開或已被刪除（官方網站無法區分），也可以改用 ydke:// 或 YDK 匯入。</p>
-  </div>
 
-  <div class="stack">
-    <label>
-      牌組代碼或 YDK 內容
-      <textarea rows="5" [value]="text()" (input)="text.set($any($event.target).value)" spellcheck="false" placeholder="ydke://…、YDK 內容，或從官方牌組頁複製的牌表"></textarea>
-    </label>
-    <div class="row">
-      <button type="button" class="primary" (click)="parse()" [disabled]="!text().trim()">解析</button>
-      <label class="button">
-        選擇 .ydk 檔
-        <input type="file" accept=".ydk,text/plain" class="visually-hidden" (change)="onFile($event)" />
-      </label>
-      @if (fileName()) {
-        <span class="muted">檔案：{{ fileName() }}</span>
+    <div class="method method-code stack code-box">
+      <h3>用 Master Duel 牌組代碼匯入 <span class="badge">需開啟官方網頁</span></h3>
+      <p class="faint small">遊戲內的短代碼無法直接解碼：本工具會開啟 KONAMI 官方牌組頁，由你複製牌表後貼到左側。</p>
+      <div class="row">
+        <label class="grow">
+          Master Duel 牌組代碼
+          <input [value]="deckCode()" (input)="deckCode.set($any($event.target).value)" placeholder="例如 2962ut6" maxlength="40" />
+        </label>
+        <button type="button" (click)="openOfficial()">在官方網站開啟</button>
+      </div>
+      @if (codeError()) {
+        <p class="notice bad" role="alert">{{ codeError() }}</p>
+      } @else if (codeOpened()) {
+        @if (systemBrowser) {
+          <p class="notice" role="status">已在系統瀏覽器開啟官方牌組搜尋，請依下列步驟複製牌表後貼到下方。</p>
+        } @else {
+          <p class="notice" role="status">已在新分頁開啟官方牌組搜尋，請依下列步驟複製牌表後貼到下方。</p>
+        }
       }
+      <ol class="muted small how">
+        @if (systemBrowser) {
+          <li>按「在官方網站開啟」，會在系統瀏覽器開啟 KONAMI 官方卡片資料庫的牌組搜尋（本工具不會讀取官方網站）。</li>
+        } @else {
+          <li>按「在官方網站開啟」，會在新分頁開啟 KONAMI 官方卡片資料庫的牌組搜尋（本工具不會讀取官方網站）。</li>
+        }
+        <li>在官方頁點進牌組（頁面請切換為 English），從「Monster Cards」選取到最後一個表格，按 Ctrl+C。</li>
+        <li>貼到下方輸入框，按「解析」。</li>
+      </ol>
+      <p class="faint small">官方頁搜尋不到牌組時，可能是代碼錯誤、牌組未公開或已被刪除（官方網站無法區分），也可以改用 ydke:// 或 YDK 匯入。</p>
     </div>
   </div>
 

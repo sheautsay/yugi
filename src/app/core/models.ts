@@ -34,6 +34,10 @@ export interface CardRecord {
   formats?: string[];
   /** Reference ban status from the source (no Master Duel list is published there). */
   banlist?: { tcg?: string; ocg?: string };
+  /** Link arrows of a Link Monster (CR-006), as the source lists them. */
+  linkMarkers?: LinkMarker[];
+  /** Upstream type tags, e.g. ["Cyberse", "Link", "Effect"] (CR-006: "Effect Monster" checks). */
+  typeTags?: string[];
 
   // User annotations — never produced by the program, kept across syncs.
   /** Master Duel ban status marked by the user. */
@@ -41,6 +45,18 @@ export interface CardRecord {
 }
 
 export type MdBan = 'Forbidden' | 'Limited' | 'Semi-Limited';
+
+export const LINK_MARKERS = ['Top-Left', 'Top', 'Top-Right', 'Left', 'Right', 'Bottom-Left', 'Bottom', 'Bottom-Right'] as const;
+
+export type LinkMarker = (typeof LINK_MARKERS)[number];
+
+/**
+ * Zones on your side of the field (CR-006). "EMZ-L" is above M2 and "EMZ-R" above M4; M1–M5 and
+ * S1–S5 run left to right; "FZ" is the Field Zone.
+ */
+export const FIELD_SLOTS = ['EMZ-L', 'EMZ-R', 'M1', 'M2', 'M3', 'M4', 'M5', 'S1', 'S2', 'S3', 'S4', 'S5', 'FZ'] as const;
+
+export type FieldSlot = (typeof FIELD_SLOTS)[number];
 
 /** Card data scope: Master Duel pool (default) or every card. */
 export type CardPool = 'master-duel' | 'all';
@@ -123,6 +139,20 @@ export const ACTION_TYPES = [
 
 export type ActionType = (typeof ACTION_TYPES)[number];
 
+/** Where a card is during a combo (CR-004 data check). "overlay" = attached as Xyz material. */
+export const PLAY_ZONES = ['deck', 'hand', 'extra', 'field', 'gy', 'banished', 'overlay'] as const;
+
+export type PlayZone = (typeof PLAY_ZONES)[number];
+
+/** One card changing place in a step (CR-004, optional). */
+export interface CardMove {
+  cardId: number;
+  from: PlayZone;
+  to: PlayZone;
+  /** The zone at the field end of the move (CR-006, optional): needed for Link arrow checks. */
+  slot?: FieldSlot;
+}
+
 export interface ComboStep {
   id: string;
   order: number;
@@ -139,6 +169,12 @@ export interface ComboStep {
   resultText?: string;
   reason?: string;
   warning?: string;
+  /** Every card that changes place in this step, in order (CR-004). */
+  moves?: CardMove[];
+  /** The card effect used in this step, "<cardId>#<n>" from the rule table (CR-006, optional). */
+  effectRef?: string;
+  /** CR-008: the model could not work this step out (non-empty = unfinished; the route cannot pass the data check). */
+  unresolved?: string;
 }
 
 export interface EndBoardEntry {
@@ -171,9 +207,62 @@ export interface ComboRoute {
   notes?: string;
   source?: { title?: string; url?: string; timeSeconds?: number };
   verification: RouteVerificationInfo;
+  /** Present only on routes produced by the AI deck analysis (CR-004). */
+  analysis?: RouteAnalysisInfo;
   createdAt: string;
   updatedAt: string;
 }
+
+/** Stored snapshot of the last local data check; the displayed level is always recomputed. */
+export interface RouteCheckRecord {
+  passed: boolean;
+  checkedAt: string;
+  deckFingerprint: string;
+  problems: string[];
+}
+
+/** Provenance of an AI-generated route (CR-004). Never makes a route "verified". */
+export interface RouteAnalysisInfo {
+  origin: 'ai';
+  runId: string;
+  deckId: string;
+  deckName: string;
+  deckVersion: number;
+  deckFingerprint: string;
+  cardDataVersion: string;
+  provider: AiProviderId;
+  model: string;
+  servedModel?: string;
+  promptVersion: string;
+  generatedAt: string;
+  starterCardIds: number[];
+  preconditions: string[];
+  pros: string[];
+  cons: string[];
+  /** CR-008: the starter roles of a route written in the 1–3 card format. */
+  combo?: ComboInfo;
+  check: RouteCheckRecord;
+}
+
+/** CR-008: the roles of the cards in the opening hand and the Deck for one route. */
+export interface ComboInfo {
+  /** The REQUIRED starter cards (1–3; repeat an id for copies). Every one must take part in the route. */
+  required: number[];
+  /** Cards that could stand in for a required card (labelled by the model, not verified). */
+  alternatives: Array<{ cardId: number; instead: number[]; note?: string }>;
+  /** Extra or extender cards that make the route better but are not required. */
+  extenders: number[];
+  /** Components the route fetches from the Deck itself; having them in hand would change the route. */
+  avoidInHand: number[];
+}
+
+export type AiProviderId = 'anthropic' | 'ollama' | 'chatgpt';
+
+/**
+ * CR-004 trust levels, lowest to highest. "engine-verified" is defined but nothing can set it
+ * (rules engine BLOCKED); "md-confirmed" is the existing human "verified" with evidence.
+ */
+export type AnalysisLevel = 'ai-candidate' | 'data-checked' | 'engine-verified' | 'md-confirmed';
 
 export type MatchKind = 'available' | 'unavailable' | 'unverified' | 'unknown';
 
@@ -186,7 +275,8 @@ export type MatchReasonCode =
   | 'CONTEXT_MISMATCH'
   | 'UNVERIFIED'
   | 'INVALID_ROUTE'
-  | 'MISSING_CARD_DATA';
+  | 'MISSING_CARD_DATA'
+  | 'DECK_MISMATCH';
 
 export interface RouteMatch {
   routeId: string;

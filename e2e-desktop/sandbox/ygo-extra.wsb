@@ -1,0 +1,20 @@
+<Configuration>
+  <Networking>Enable</Networking>
+  <vGPU>Disable</vGPU>
+  <ClipboardRedirection>Disable</ClipboardRedirection>
+  <MappedFolders>
+    <MappedFolder>
+      <HostFolder>C:\Users\mark.tsai\AppData\Local\Temp\claude\C--Users-mark-tsai-Desktop--------2-\d36f71c9-9d15-46bb-b26f-1b9f37f1ce6f\scratchpad\sbx-in</HostFolder>
+      <SandboxFolder>C:\ygo-in</SandboxFolder>
+      <ReadOnly>true</ReadOnly>
+    </MappedFolder>
+    <MappedFolder>
+      <HostFolder>C:\Users\mark.tsai\AppData\Local\Temp\claude\C--Users-mark-tsai-Desktop--------2-\d36f71c9-9d15-46bb-b26f-1b9f37f1ce6f\scratchpad\sbx-out</HostFolder>
+      <SandboxFolder>C:\ygo-out</SandboxFolder>
+      <ReadOnly>false</ReadOnly>
+    </MappedFolder>
+  </MappedFolders>
+  <LogonCommand>
+    <Command>powershell.exe -NoProfile -ExecutionPolicy Bypass -File C:\ygo-in\win10-extra.ps1</Command>
+  </LogonCommand>
+</Configuration>

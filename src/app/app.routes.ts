@@ -3,6 +3,11 @@ import { Routes } from '@angular/router';
 export const routes: Routes = [
   { path: '', pathMatch: 'full', redirectTo: 'decks' },
   {
+    path: 'home',
+    title: '首頁｜YGO Combo 助手',
+    loadComponent: () => import('./features/home/home-page').then((m) => m.HomePage),
+  },
+  {
     path: 'decks',
     title: '牌組｜YGO Combo 助手',
     loadComponent: () => import('./features/decks/deck-list-page').then((m) => m.DeckListPage),
@@ -16,6 +21,11 @@ export const routes: Routes = [
     path: 'decks/:deckId/hand',
     title: '起手與 Combo 查詢｜YGO Combo 助手',
     loadComponent: () => import('./features/opening-hand/hand-page').then((m) => m.HandPage),
+  },
+  {
+    path: 'decks/:deckId/analysis',
+    title: 'AI 展開分析｜YGO Combo 助手',
+    loadComponent: () => import('./features/ai-analysis/analysis-page').then((m) => m.AnalysisPage),
   },
   {
     path: 'combos',

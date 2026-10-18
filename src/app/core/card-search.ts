@@ -30,12 +30,16 @@ export function isDeckCard(card: CardRecord): boolean {
 
 const norm = (s: string) => s.normalize('NFKC').toLowerCase().trim();
 
+/** Extra searchable names of a card from the translation table (CR-009); already normalised by searchNames(). */
+export type ExtraNames = (card: CardRecord) => { names: string[]; aliases: string[] } | undefined;
+
 /** 0 = best. Exact ID, exact name, prefix, contained; Infinity = no match. */
-function textRank(card: CardRecord, q: string): number {
+function textRank(card: CardRecord, q: string, extra?: ExtraNames): number {
   if (!q) return 3;
   if (/^\d+$/.test(q)) return String(card.cardId) === q ? 0 : Infinity;
-  const names = [card.nameEn, card.nameZhTw].filter((n): n is string => !!n).map(norm);
-  const aliases = (card.aliases ?? []).map(norm);
+  const more = extra?.(card);
+  const names = [card.nameEn, card.nameZhTw, ...(more?.names ?? [])].filter((n): n is string => !!n).map(norm);
+  const aliases = [...(card.aliases ?? []).map(norm), ...(more?.aliases ?? [])];
   if (names.includes(q) || aliases.includes(q)) return 1;
   if (names.some((n) => n.startsWith(q))) return 2;
   if (names.some((n) => n.includes(q))) return 3;
@@ -43,7 +47,7 @@ function textRank(card: CardRecord, q: string): number {
   return Infinity;
 }
 
-export function searchCards(cards: readonly CardRecord[], query: CardQuery): CardRecord[] {
+export function searchCards(cards: readonly CardRecord[], query: CardQuery, extra?: ExtraNames): CardRecord[] {
   const q = norm(query.text.slice(0, MAX_QUERY));
   const archetype = norm(query.archetype);
   const ranked: Array<{ card: CardRecord; rank: number }> = [];
@@ -56,7 +60,7 @@ export function searchCards(cards: readonly CardRecord[], query: CardQuery): Car
     if (query.attribute && card.attribute !== query.attribute) continue;
     if (query.race && card.race !== query.race) continue;
     if (query.level !== null && card.level !== query.level) continue;
-    const rank = textRank(card, q);
+    const rank = textRank(card, q, extra);
     if (rank !== Infinity) ranked.push({ card, rank });
   }
   return ranked.sort((a, b) => a.rank - b.rank || a.card.nameEn.localeCompare(b.card.nameEn)).map((r) => r.card);

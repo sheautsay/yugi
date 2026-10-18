@@ -1,11 +1,13 @@
 import { Injectable, InjectionToken, inject } from '@angular/core';
-import { CardKind, CardPool, CardRecord } from './models';
+import { CardKind, CardPool, CardRecord, LINK_MARKERS, LinkMarker } from './models';
 
 // The single place that talks to the network (spec §9.8). Card metadata comes straight from the
 // YGOPRODeck API (CORS enabled); card images go through the dev-server proxy in proxy.conf.json
 // because images.ygoprodeck.com sends no CORS headers and the app must read image pixels.
 export const CARD_API_BASE = 'https://db.ygoprodeck.com/api/v7';
 export const CARD_IMAGE_BASE = '/ygo-images';
+/** Where card images are fetched from. The browser build uses the dev-server proxy above; the desktop build points straight at the image host (CR-010). */
+export const CARD_IMAGE_BASE_URL = new InjectionToken<string>('CARD_IMAGE_BASE_URL', { providedIn: 'root', factory: () => CARD_IMAGE_BASE });
 export const CARD_SOURCE = 'YGOPRODeck API v7';
 
 /** Requests per batch of IDs; keeps URLs short. */
@@ -31,6 +33,10 @@ export interface ApiCard {
   archetype?: string;
   banlist_info?: { ban_tcg?: string; ban_ocg?: string };
   misc_info?: Array<{ formats?: string[] }>;
+  /** Link arrows, e.g. ["Top", "Bottom-Left"] (Link Monsters only). */
+  linkmarkers?: string[];
+  /** Type tags, e.g. ["Cyberse", "Link", "Effect"]. */
+  typeline?: string[];
 }
 
 export type ImageVariant = 'small' | 'cropped' | 'full';
@@ -68,6 +74,8 @@ export function toCardRecord(card: ApiCard, now: string): CardRecord {
   const str = (v: unknown) => (typeof v === 'string' && v.trim() ? v : undefined);
   const ban = card.banlist_info;
   const formats = card.misc_info?.[0]?.formats?.filter((f) => typeof f === 'string');
+  const markers = Array.isArray(card.linkmarkers) ? card.linkmarkers.filter((m): m is LinkMarker => (LINK_MARKERS as readonly string[]).includes(m)) : [];
+  const tags = Array.isArray(card.typeline) ? card.typeline.filter((t) => typeof t === 'string' && t.trim()) : [];
   const record: CardRecord = {
     cardId: card.id,
     nameEn: card.name,
@@ -87,6 +95,8 @@ export function toCardRecord(card: ApiCard, now: string): CardRecord {
     desc: str(card.desc),
     formats: formats?.length ? formats : undefined,
     banlist: ban && (str(ban.ban_tcg) || str(ban.ban_ocg)) ? { tcg: str(ban.ban_tcg), ocg: str(ban.ban_ocg) } : undefined,
+    linkMarkers: markers.length ? markers : undefined,
+    typeTags: tags.length ? tags : undefined,
   };
   // Drop absent fields so merging into an existing record never erases data.
   return Object.fromEntries(Object.entries(record).filter(([, v]) => v !== undefined)) as unknown as CardRecord;
@@ -96,6 +106,7 @@ export function toCardRecord(card: ApiCard, now: string): CardRecord {
 export class YgoProDeckClient {
   private readonly fetchFn = inject(FETCH_FN);
   private readonly sleep = inject(SLEEP_FN);
+  private readonly imageBase = inject(CARD_IMAGE_BASE_URL);
   private readonly lanes = {
     api: { queue: Promise.resolve() as Promise<unknown>, lastStart: 0, interval: MIN_INTERVAL_MS },
     image: { queue: Promise.resolve() as Promise<unknown>, lastStart: 0, interval: IMAGE_INTERVAL_MS },
@@ -137,11 +148,15 @@ export class YgoProDeckClient {
   }
 
   async fetchImage(cardId: number, variant: ImageVariant): Promise<Blob> {
-    const response = await this.request(`${CARD_IMAGE_BASE}/${IMAGE_FOLDER[variant]}/${cardId}.jpg`, 'image');
+    const response = await this.request(`${this.imageBase}/${IMAGE_FOLDER[variant]}/${cardId}.jpg`, 'image');
     if (!response.ok) throw new CardApiError(`卡圖下載失敗（HTTP ${response.status}）`);
     const blob = await response.blob();
     if (!blob.type.startsWith('image/')) {
-      throw new CardApiError('卡圖下載失敗：伺服器未回傳圖片。卡圖下載需以 npm start 啟動的本機伺服器（含圖片代理）。');
+      throw new CardApiError(
+        this.imageBase === CARD_IMAGE_BASE
+          ? '卡圖下載失敗：伺服器未回傳圖片。卡圖下載需以 npm start 啟動的本機伺服器（含圖片代理）。'
+          : '卡圖下載失敗：伺服器未回傳圖片。',
+      );
     }
     return blob;
   }

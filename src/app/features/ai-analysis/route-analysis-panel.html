@@ -1,0 +1,200 @@
+@let r = route();
+@let a = r.analysis;
+<section class="card stack" aria-labelledby="ai-panel-heading">
+  <h2 id="ai-panel-heading">AI 分析與驗證層級</h2>
+  <ol class="ladder" aria-label="驗證層級">
+    @for (l of levels; track l) {
+      <li [class.reached]="reached(l)" [class.blocked]="l === 'engine-verified'">
+        <strong>{{ levelLabel[l] }}</strong>
+        <span class="muted">
+          @if (l === 'engine-verified') {
+            尚未整合（BLOCKED）
+          } @else if (reached(l)) {
+            已達成
+          } @else {
+            未達成
+          }
+        </span>
+      </li>
+    }
+  </ol>
+  <p class="notice" [class.ok]="level() !== 'ai-candidate'" [class.warn]="level() === 'ai-candidate'" role="status">
+    目前層級：<strong>{{ levelLabel[level()] }}</strong> — {{ levelNote[level()] }}
+  </p>
+
+  @if (!deck()) {
+    <p class="notice bad">分析時使用的牌組已不存在，無法進行資料驗證。</p>
+  } @else if (deckChanged()) {
+    <p class="notice warn">牌組已變更：分析時為版本 {{ a?.deckVersion }}（{{ a?.deckFingerprint }}），目前為版本 {{ deck()!.version }}（{{ currentFingerprint() }}）。以下結果依目前牌組重新檢查。</p>
+  }
+
+  @if (check(); as c) {
+    @if (c.problems.length) {
+      <div class="notice bad">
+        <strong>資料驗證未通過（{{ c.problems.length }} 項）：</strong>
+        <ul>
+          @for (p of c.problems; track $index) {
+            <li>{{ p.step ? '第 ' + p.step + ' 步：' : '' }}{{ p.message }}</li>
+          }
+        </ul>
+      </div>
+    }
+    @if (c.warnings.length) {
+      <div class="notice warn">
+        <strong>注意：</strong>
+        <ul>
+          @for (w of c.warnings; track $index) {
+            <li>{{ w.step ? '第 ' + w.step + ' 步：' : '' }}{{ w.message }}</li>
+          }
+        </ul>
+      </div>
+    }
+
+    <details>
+      <summary>每一步的資源使用</summary>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th scope="col">步驟</th><th scope="col">手牌</th><th scope="col">牌組</th><th scope="col">額外</th><th scope="col">場上</th><th scope="col">墓地</th><th scope="col">除外</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <th scope="row">起手</th>
+              <td>{{ total(c.start.hand) }}</td><td>{{ c.start.deckCount }}</td><td>{{ c.start.extraCount }}</td>
+              <td>{{ total(c.start.field) }}</td><td>{{ total(c.start.gy) }}</td><td>{{ total(c.start.banished) }}</td>
+            </tr>
+            @for (s of c.afterStep; track $index) {
+              <tr>
+                <th scope="row">{{ $index + 1 }}</th>
+                <td>{{ total(s.hand) }}</td><td>{{ s.deckCount }}</td><td>{{ s.extraCount }}</td>
+                <td>{{ total(s.field) }}</td><td>{{ total(s.gy) }}</td><td>{{ total(s.banished) }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </details>
+
+    @if (evaluation(); as e) {
+      <section class="stack" aria-labelledby="eval-heading">
+        <h3 id="eval-heading">終場評估</h3>
+        <dl>
+          <dt>起手類型</dt><dd>{{ startKindLabel[e.startKind] }}（{{ e.handSize }} 張）</dd>
+          <dt>模擬終場</dt><dd>{{ finalMonsters().length ? finalMonsters().join('、') : '沒有怪獸' }}{{ e.finalBacks.length ? '；魔陷：' + list(toRows(e.finalBacks)) : '' }}</dd>
+          <dt>額外牌組怪獸</dt>
+          <dd>
+            @for (u of e.extraUsed; track u.cardId; let last = $last) {
+              {{ name(u.cardId) }}（{{ u.onFinalBoard ? '終場' : '中途使用，不算終場' }}）{{ last ? '' : '、' }}
+            } @empty {
+              無
+            }
+          </dd>
+          <dt>有效干擾</dt><dd>{{ interruptionText(e) }}</dd>
+          <dt>剩餘手牌</dt><dd>{{ handText(e.hand) }}</dd>
+        </dl>
+        @if (e.interruptions.length) {
+          <ul>
+            @for (i of e.interruptions; track $index) {
+              <li>
+                {{ name(i.cardId) }}：{{ i.label }} — <span [class]="'status-' + i.status">{{ statusLabel[i.status] }}</span>（{{ basisLabel[i.basis] }}）{{ i.reason ? '：' + i.reason : '' }}
+              </li>
+            }
+          </ul>
+        }
+        @if (e.protections.length || e.extensions.length) {
+          <p class="muted">保護／對手回合延伸（不算干擾）：{{ e.protections.concat(e.extensions).join('；') }}</p>
+        }
+        <p class="muted">只計算模擬結束時仍在場上的卡；干擾依卡片文字與終場位置推算，是「靜態估算」——不是規則引擎或實際操作的驗證，也沒有考慮對手的場上與動作；在場上不等於有效。不看攻擊力或 Link 值。</p>
+      </section>
+    }
+
+    @if (c.rules; as r) {
+      <section class="stack" aria-labelledby="rules-heading">
+        <h3 id="rules-heading">規則檢查（部分）</h3>
+        <p class="muted">依卡片文字整理的部分規則表：只能找出確定的違規（列在上方問題中，以「規則檢查：」開頭），不能證明合法，也不會提升驗證層級。</p>
+        <strong>已檢查</strong>
+        <ul>
+          @for (x of r.checked; track $index) {
+            <li>{{ x }}</li>
+          }
+        </ul>
+        @if (r.unverified.length) {
+          <strong>未能驗證（{{ r.unverified.length }}）</strong>
+          <ul>
+            @for (u of r.unverified; track $index) {
+              <li>{{ u.step ? '第 ' + u.step + ' 步：' : '' }}{{ u.message }}</li>
+            }
+          </ul>
+        }
+        <p class="muted">未涵蓋：連鎖與時點（錯過時點）、對手場上相關條件、LP 計算、抽到的隨機卡，以及規則表以外的卡片效果。</p>
+      </section>
+    }
+
+    <div>
+      <h3>剩餘資源（模擬結果）</h3>
+      <dl>
+        <dt>手牌（路線列出的卡）</dt><dd>{{ list(c.final.hand) }}</dd>
+        @if (evaluation(); as ev) {
+          <dt>手牌（未追蹤）</dt><dd>{{ handText(ev.hand) }}</dd>
+        }
+        <dt>場上</dt><dd>{{ list(c.final.field) }}</dd>
+        <dt>墓地</dt><dd>{{ list(c.final.gy) }}</dd>
+        <dt>除外</dt><dd>{{ list(c.final.banished) }}</dd>
+        <dt>超量素材</dt><dd>{{ list(c.final.overlay) }}</dd>
+        <dt>牌組／額外</dt><dd>牌組剩 {{ c.final.deckCount }} 張・額外剩 {{ c.final.extraCount }} 張・通常召喚 {{ c.final.normalSummons }} 次</dd>
+      </dl>
+    </div>
+  }
+
+  @if (a) {
+    @if (a.preconditions.length) {
+      <div>
+        <h3>前提與資源需求</h3>
+        <ul>
+          @for (p of a.preconditions; track $index) {
+            <li>{{ p }}</li>
+          }
+        </ul>
+      </div>
+    }
+    <div class="pros-cons">
+      <div>
+        <h3>優點</h3>
+        <ul>
+          @for (p of a.pros; track $index) {
+            <li>{{ p }}</li>
+          } @empty {
+            <li class="muted">未提供</li>
+          }
+        </ul>
+      </div>
+      <div>
+        <h3>缺點</h3>
+        <ul>
+          @for (p of a.cons; track $index) {
+            <li>{{ p }}</li>
+          } @empty {
+            <li class="muted">未提供</li>
+          }
+        </ul>
+      </div>
+    </div>
+    <details>
+      <summary>分析紀錄</summary>
+      <dl>
+        <dt>Provider／模型</dt><dd>{{ providerLabel[a.provider] }}／{{ a.model }}{{ a.servedModel && a.servedModel !== a.model ? '（實際回應：' + a.servedModel + '）' : '' }}</dd>
+        <dt>產生時間</dt><dd>{{ time(a.generatedAt) }}</dd>
+        <dt>牌組</dt><dd>{{ a.deckName }} 版本 {{ a.deckVersion }}（{{ a.deckFingerprint }}）</dd>
+        <dt>卡片資料</dt><dd>{{ a.cardDataVersion }}</dd>
+        <dt>提示版本</dt><dd>{{ a.promptVersion }}</dd>
+        <dt>上次資料驗證</dt><dd>{{ time(a.check.checkedAt) }}：{{ a.check.passed ? '通過' : '未通過' }}（{{ a.check.deckFingerprint }}）</dd>
+      </dl>
+    </details>
+  }
+
+  @if (deck()) {
+    <div class="row">
+      <button type="button" (click)="recheck.emit()" [disabled]="busy()">重新驗證（依目前牌組）</button>
+    </div>
+  }
+</section>

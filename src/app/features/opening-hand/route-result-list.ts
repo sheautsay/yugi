@@ -1,6 +1,6 @@
-import { ChangeDetectionStrategy, Component, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, input, inject } from '@angular/core';
+import { CardNamesService } from '../../core/card-names.service';
 import { RouterLink } from '@angular/router';
-import { displayName } from '../../core/deck';
 import { RouteResult } from '../../core/matcher';
 import { CardRecord, ComboRoute, MatchKind } from '../../core/models';
 import { CardTile } from '../../shared/card-tile';
@@ -60,6 +60,7 @@ export function setupText(route: ComboRoute): string {
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class RouteResultList {
+  private readonly cardNames = inject(CardNamesService);
   readonly items = input.required<RouteResult[]>();
   readonly cards = input.required<Map<number, CardRecord>>();
   readonly deckId = input<string>();
@@ -70,7 +71,7 @@ export class RouteResultList {
   protected allocationText(r: RouteResult): string {
     return (r.match.matchedHandAllocation ?? [])
       .flatMap((a) => a.cardIds)
-      .map((id) => displayName(this.cards().get(id)))
+      .map((id) => this.cardNames.labelOf(id, this.cards().get(id)))
       .join('、');
   }
 }

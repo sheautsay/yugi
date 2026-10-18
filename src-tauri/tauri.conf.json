@@ -1,0 +1,65 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "YGO Combo Assistant",
+  "mainBinaryName": "ygo-combo-assistant",
+  "version": "0.1.0",
+  "identifier": "com.ygocomboassistant.desktop",
+  "build": {
+    "frontendDist": "../dist/ygo-combo-assistant/browser",
+    "beforeBuildCommand": "npm run build"
+  },
+  "app": {
+    "withGlobalTauri": false,
+    "windows": [
+      {
+        "label": "main",
+        "title": "YGO Combo 助手",
+        "width": 1280,
+        "height": 860,
+        "minWidth": 420,
+        "minHeight": 600,
+        "resizable": true,
+        "dragDropEnabled": true
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data:; font-src 'self'; connect-src 'self' ipc: http://ipc.localhost; object-src 'none'; base-uri 'self'; frame-src 'none'; form-action 'self'",
+      "freezePrototype": true,
+      "dangerousDisableAssetCspModification": [
+        "style-src"
+      ]
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": [
+      "nsis"
+    ],
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.ico"
+    ],
+    "externalBin": [
+      "binaries/ygo-bridge"
+    ],
+    "shortDescription": "YGO Combo 助手",
+    "windows": {
+      "webviewInstallMode": {
+        "type": "offlineInstaller",
+        "silent": true
+      },
+      "nsis": {
+        "installMode": "currentUser",
+        "languages": [
+          "TradChinese",
+          "English"
+        ],
+        "displayLanguageSelector": false,
+        "compression": "lzma",
+        "template": "windows/installer.nsi"
+      }
+    }
+  }
+}

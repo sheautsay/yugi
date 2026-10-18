@@ -1,63 +1,42 @@
-import { ChangeDetectionStrategy, Component, ElementRef, computed, effect, inject, input, signal, viewChild } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, input, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import { AiAnalysisService } from '../../core/ai/analysis.service';
 import { CardDataService } from '../../core/card-data.service';
 import { comboCardIds } from '../../core/combo';
 import { ComboRepository } from '../../core/combo-repository';
-import { displayName } from '../../core/deck';
-import { VERIFICATION_LABEL, conditionLines, setupLine } from '../../core/labels';
-import { CardRecord, ComboRoute } from '../../core/models';
-import { sourceUrlProblem } from '../../core/schemas';
-import { StepNavigator } from '../../core/step-navigator';
-import { CardTile } from '../../shared/card-tile';
-import { FlowView } from './flow-view';
-import { StepView } from './step-view';
-
-type Mode = 'flow' | 'steps';
+import { DeckRepository } from '../../core/deck-repository';
+import { VERIFICATION_LABEL } from '../../core/labels';
+import { CardRecord, ComboRoute, DeckRecord } from '../../core/models';
+import { RouteAnalysisPanel } from '../ai-analysis/route-analysis-panel';
+import { ComboViewer, ViewerMode } from './combo-viewer';
 
 @Component({
   selector: 'app-combo-detail-page',
-  imports: [RouterLink, CardTile, FlowView, StepView],
+  imports: [RouterLink, ComboViewer, RouteAnalysisPanel],
   templateUrl: './combo-detail-page.html',
   styleUrl: './combo-detail-page.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  host: { '(document:keydown)': 'onKeydown($event)' },
 })
 export class ComboDetailPage {
   private readonly repo = inject(ComboRepository);
   private readonly cardData = inject(CardDataService);
+  private readonly decks = inject(DeckRepository);
+  private readonly ai = inject(AiAnalysisService);
 
   readonly comboId = input.required<string>();
   /** Set when opened from an opening-hand query, to offer the way back. */
   readonly deck = input<string>();
 
-  private readonly endBoard = viewChild<ElementRef<HTMLElement>>('endBoard');
-
   protected readonly statusLabel = VERIFICATION_LABEL;
-  /** One shared step state for both modes (spec §6.2). */
-  protected readonly navigator = new StepNavigator();
-  protected readonly mode = signal<Mode>('flow');
   protected readonly route = signal<ComboRoute | null>(null);
   protected readonly cards = signal(new Map<number, CardRecord>());
   protected readonly loaded = signal(false);
+  /** CR-004: the deck an AI route was generated for, as it is now (null if deleted). */
+  protected readonly analysisDeck = signal<DeckRecord | null>(null);
+  protected readonly busy = signal(false);
+  protected readonly message = signal('');
+  protected readonly mode = signal<ViewerMode>('flow');
 
-  protected readonly name = (id: number) => displayName(this.cards().get(id));
-  protected readonly conditions = computed(() => {
-    const route = this.route();
-    return route ? conditionLines(route, this.name) : [];
-  });
-  protected readonly setup = computed(() => {
-    const route = this.route();
-    return route ? setupLine(route) : '';
-  });
-  protected readonly sourceHref = computed(() => {
-    const url = this.route()?.source?.url;
-    if (!url || sourceUrlProblem(url)) return null;
-    const t = this.route()?.source?.timeSeconds;
-    if (!t) return url;
-    const u = new URL(url);
-    u.searchParams.set('t', String(t));
-    return u.toString();
-  });
   protected readonly backLink = computed(() => {
     const deck = this.deck();
     return deck ? ['/decks', deck, 'hand'] : ['/combos'];
@@ -75,30 +54,29 @@ export class ComboDetailPage {
     this.loaded.set(false);
     const route = await this.repo.get(id);
     this.route.set(route ?? null);
-    this.navigator.reset(route?.steps.length ?? 0);
-    if (route) this.cards.set(await this.cardData.getMany(comboCardIds(route)));
+    const deck = route?.analysis ? ((await this.decks.get(route.analysis.deckId)) ?? null) : null;
+    this.analysisDeck.set(deck);
+    if (route) {
+      const ids = [...comboCardIds(route), ...(deck ? [...deck.main, ...deck.extra].map((r) => r.cardId) : [])];
+      this.cards.set(await this.cardData.getMany(ids));
+    }
     this.loaded.set(true);
   }
 
-  protected setMode(mode: Mode): void {
-    this.mode.set(mode); // the shared navigator is untouched
-  }
-
-  protected jumpToEnd(): void {
-    this.navigator.last();
-    const el = this.endBoard()?.nativeElement;
-    el?.scrollIntoView?.({ block: 'start' });
-    el?.focus();
-  }
-
-  /** ← / → change steps in mode B, except while typing in a form field (F08). */
-  protected onKeydown(event: KeyboardEvent): void {
-    if (this.mode() !== 'steps' || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
-    const target = event.target as HTMLElement | null;
-    if (target && (['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName) || target.isContentEditable)) return;
-    if (event.key === 'ArrowRight') this.navigator.next();
-    else if (event.key === 'ArrowLeft') this.navigator.prev();
-    else return;
-    event.preventDefault();
+  /** G25-4: re-run the data check against the deck as it is now and record it. */
+  protected async recheck(): Promise<void> {
+    const route = this.route();
+    const deck = this.analysisDeck();
+    if (!route || !deck) return;
+    this.busy.set(true);
+    try {
+      const next = await this.ai.recheckCombo(route, deck);
+      this.route.set(next);
+      this.message.set(`已依目前牌組重新驗證：${next.analysis?.check.passed ? '資料完整性通過' : '未通過'}（版本 ${next.version}）。`);
+    } catch (error) {
+      this.message.set(`重新驗證失敗：${error instanceof Error ? error.message : String(error)}`);
+    } finally {
+      this.busy.set(false);
+    }
   }
 }

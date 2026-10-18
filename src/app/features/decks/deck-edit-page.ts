@@ -1,11 +1,14 @@
 import { ChangeDetectionStrategy, Component, computed, effect, inject, input, signal } from '@angular/core';
+import { CardNamesService } from '../../core/card-names.service';
 import { RouterLink } from '@angular/router';
 import { CardDataService } from '../../core/card-data.service';
 import { CardImageService } from '../../core/card-image.service';
 import { isDeckCard } from '../../core/card-search';
-import { DECK_ZONES, ZONE_LABEL, banHints, checkDeck, countOf, deckCardIds, displayName } from '../../core/deck';
+import { DECK_ZONES, ZONE_LABEL, banHints, checkDeck, countOf, deckCardIds } from '../../core/deck';
+import { ComboRepository } from '../../core/combo-repository';
 import { DeckRepository } from '../../core/deck-repository';
 import { CardRecord, DeckRecord, DeckZone } from '../../core/models';
+import { checkRoute } from '../../core/route-check';
 import { toYdke } from '../../core/ydke';
 import { CardTile } from '../../shared/card-tile';
 import { CardAdjust, CardBrowser } from './card-browser';
@@ -21,12 +24,13 @@ export class DeckEditPage {
   private readonly repo = inject(DeckRepository);
   private readonly cardData = inject(CardDataService);
   private readonly images = inject(CardImageService);
+  private readonly combos = inject(ComboRepository);
 
   readonly deckId = input.required<string>();
 
   protected readonly zones = DECK_ZONES;
   protected readonly zoneLabel = ZONE_LABEL;
-  protected readonly displayName = displayName;
+  protected readonly cardNames = inject(CardNamesService);
 
   protected readonly saved = signal<DeckRecord | null>(null);
   protected readonly draft = signal<DeckRecord | null>(null);
@@ -39,7 +43,7 @@ export class DeckEditPage {
 
   protected readonly check = computed(() => {
     const deck = this.draft();
-    return deck ? checkDeck(deck, this.cards()) : null;
+    return deck ? checkDeck(deck, this.cards(), this.cardNames.nameLabel) : null;
   });
   protected readonly banHintList = computed(() => {
     const deck = this.draft();
@@ -99,15 +103,15 @@ export class DeckEditPage {
     if (delta < 0) {
       if (countOf(this.draft()?.[zone] ?? [], card.cardId) === 0) return;
       this.changeCount(zone, card.cardId, -1);
-      this.message.set(`已從${ZONE_LABEL[zone]}移除一張「${displayName(card)}」（尚未儲存）。`);
+      this.message.set(`已從${ZONE_LABEL[zone]}移除一張「${this.cardNames.labelOf(card.cardId, card)}」（尚未儲存）。`);
       return;
     }
     if (!isDeckCard(card)) {
-      this.message.set(`「${displayName(card)}」是 Skill／Token 卡，不能放入牌組。`);
+      this.message.set(`「${this.cardNames.labelOf(card.cardId, card)}」是 Skill／Token 卡，不能放入牌組。`);
       return;
     }
     if (this.copies(card.cardId) >= 3) {
-      this.message.set(`「${displayName(card)}」已有 3 張（同名卡最多 3 張）。`);
+      this.message.set(`「${this.cardNames.labelOf(card.cardId, card)}」已有 3 張（同名卡最多 3 張）。`);
       return;
     }
     this.update((d) => {
@@ -117,7 +121,7 @@ export class DeckEditPage {
       return { ...d, [zone]: rows };
     });
     this.remember(card);
-    this.message.set(`已將「${displayName(card)}」加入${ZONE_LABEL[zone]}（尚未儲存）。`);
+    this.message.set(`已將「${this.cardNames.labelOf(card.cardId, card)}」加入${ZONE_LABEL[zone]}（尚未儲存）。`);
   }
 
   protected remember(card: CardRecord): void {
@@ -132,7 +136,17 @@ export class DeckEditPage {
     await this.repo.save(next);
     this.saved.set(next);
     this.draft.set(structuredClone(next));
-    this.message.set(`已儲存（版本 ${next.version}）。符合的 Combo 會依新牌表重新計算。`);
+    this.message.set(`已儲存（版本 ${next.version}）。符合的 Combo 會依新牌表重新計算。${await this.affectedAiRoutes(next)}`);
+  }
+
+  /** CR-004 G26-2: after a change, say how many of this deck's AI routes no longer fit. */
+  private async affectedAiRoutes(deck: DeckRecord): Promise<string> {
+    const routes = (await this.combos.list()).filter((c) => c.analysis?.deckId === deck.id);
+    if (!routes.length) return '';
+    const failing = routes.filter((r) => !checkRoute(r, deck, { cards: this.cards() }).passed).length;
+    return failing
+      ? `此牌組有 ${routes.length} 條 AI 路線，其中 ${failing} 條已不再通過資料驗證，請到「AI 展開分析」查看。`
+      : `此牌組的 ${routes.length} 條 AI 路線仍通過資料驗證（牌組已變更，仍需重新確認）。`;
   }
 
   protected discard(): void {

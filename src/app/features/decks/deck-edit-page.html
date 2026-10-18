@@ -5,9 +5,10 @@
     <a routerLink="/decks">返回牌組列表</a>
   } @else if (draft(); as deck) {
     <h1>編輯牌組</h1>
-    <div class="row">
+    <div class="row page-links">
       <a routerLink="/decks">← 返回牌組列表</a>
       <a [routerLink]="['/decks', deck.id, 'hand']">起手查詢</a>
+      <a [routerLink]="['/decks', deck.id, 'analysis']">AI 展開分析</a>
     </div>
 
     @if (message()) {
@@ -95,7 +96,7 @@
               @for (c of deck[zone]; track c.cardId) {
                 <li class="row">
                   <app-card-tile [cardId]="c.cardId" [card]="cards().get(c.cardId)" size="s" />
-                  <span class="grow">{{ displayName(cards().get(c.cardId)) }} <span class="muted">（ID {{ c.cardId }}）</span></span>
+                  <span class="grow">{{ cardNames.labelOf(c.cardId, cards().get(c.cardId)) }} <span class="muted">（ID {{ c.cardId }}）</span></span>
                   <button type="button" (click)="changeCount(zone, c.cardId, -1)" [attr.aria-label]="'減少一張 ' + c.cardId">−1</button>
                   <span aria-live="polite">×{{ c.count }}</span>
                   <button type="button" (click)="changeCount(zone, c.cardId, 1)" [disabled]="copies(c.cardId) >= 3" [attr.aria-label]="'增加一張 ' + c.cardId">+1</button>

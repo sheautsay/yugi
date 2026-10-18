@@ -1,121 +1,265 @@
-<div class="page">
-  <h1>設定</h1>
+<div class="page settings">
+  <header class="page-head">
+    <div>
+      <h1>設定</h1>
+      <p class="page-sub">帳號、卡片資料、顯示語言與本機資料備份。</p>
+    </div>
+  </header>
 
   @if (message()) {
     <p class="notice" role="status">{{ message() }}</p>
   }
 
-  <section class="card" aria-labelledby="backup-heading">
-    <h2 id="backup-heading">備份與還原</h2>
-    <p class="notice warn">
-      所有牌組與 Combo 只存在這個瀏覽器的本機資料庫（IndexedDB）。清除瀏覽器資料、使用無痕模式或更換瀏覽器都可能讓資料消失，請定期匯出備份。
-    </p>
-    <div class="row">
-      <button type="button" class="primary" (click)="exportBackup()">匯出完整備份（JSON）</button>
-      <label class="button">
-        從備份檔還原…
-        <input type="file" accept=".json,application/json" class="visually-hidden" (change)="onBackupFile($event)" />
-      </label>
-    </div>
-    <p class="muted">備份包含牌組、Combo 與截圖框選版型；不含卡圖與卡片資料快取。</p>
-
-    @if (restoreErrors().length) {
-      <div class="notice bad" role="alert">
-        <strong>無法還原（未寫入任何資料）：</strong>
-        <ul>
-          @for (e of restoreErrors(); track $index) {
-            <li>{{ e }}</li>
+  <div class="settings-layout">
+    <nav class="settings-index" aria-label="設定分類">
+      <button type="button" class="ghost" (click)="jump('set-chatgpt')">ChatGPT 帳號</button>
+      <button type="button" class="ghost" (click)="jump('set-ai')">AI 分析設定</button>
+      <button type="button" class="ghost" (click)="jump('set-cards')">卡片資料</button>
+      <button type="button" class="ghost" (click)="jump('set-display')">語言與顯示</button>
+      <button type="button" class="ghost" (click)="jump('set-data')">本機資料與備份</button>
+      <button type="button" class="ghost" (click)="jump('set-about')">關於程式</button>
+    </nav>
+    <div class="settings-main">
+    <div class="settings-group" id="set-chatgpt">
+      <section class="card" aria-labelledby="chatgpt-heading">
+        <h2 id="chatgpt-heading">ChatGPT 帳號</h2>
+        @let g = ai.chatgpt();
+        <p class="status-line">
+          <span class="dot" [class.on]="g.signedIn && g.sharing" [class.warn]="g.signedIn && !g.sharing" aria-hidden="true"></span>
+          @if (!g.reachable) {
+            本機 ChatGPT 服務尚未連線
+          } @else if (!g.signedIn) {
+            尚未登入
+          } @else if (!g.sharing) {
+            已登入，但沒有授權使用 ChatGPT 方案額度
+          } @else {
+            已連線：{{ g.account?.email || g.account?.name || 'ChatGPT 帳號' }}
           }
-        </ul>
-      </div>
-    }
-
-    @if (incoming(); as inc) {
-      <div class="stack" aria-live="polite">
-        <h3>還原預覽（尚未寫入）</h3>
-        <p>
-          檔案「{{ inc.fileName }}」（匯出時間 {{ inc.exportedAt }}）：牌組 {{ inc.data.decks.length }}、Combo {{ inc.data.combos.length }}、版型
-          {{ inc.data.layouts.length }}
         </p>
-        <label>
-          與現有資料 ID 相同但內容不同時：
-          <select [value]="strategy()" (change)="strategy.set($any($event.target).value)">
-            <option value="keep-both">保留兩者（還原的另存新 ID）</option>
-            <option value="overwrite">以備份內容覆蓋</option>
-            <option value="skip">略過</option>
-          </select>
-        </label>
-        @if (plan(); as p) {
-          <p>將會：新增 {{ p.added }}、覆蓋 {{ p.overwritten }}、另存副本 {{ p.copied }}、略過 {{ p.skipped }}、內容相同不變 {{ p.unchanged }}。</p>
-          @if (p.renamed.length) {
-            <p class="muted">重名改名：{{ p.renamed.join('；') }}</p>
-          }
+        <p class="muted">AI 展開分析使用你的 ChatGPT 帳號與符合資格的方案額度；按下後以系統瀏覽器開啟 OpenAI 官方登入頁，完成授權後自動回到本程式。不需要 API Key，也不會改用付費 API。</p>
+        @if (g.lastError) {
+          <p class="notice bad" role="alert">{{ g.lastError.message }}</p>
+        }
+        @if (chatgptMessage()) {
+          <p class="notice" role="status">{{ chatgptMessage() }}</p>
         }
         <div class="row">
-          <button type="button" class="primary" (click)="confirmRestore()" [disabled]="busy()">確認還原</button>
-          <button type="button" (click)="cancelRestore()">取消</button>
+          @if (!g.signedIn || !g.sharing) {
+            <button type="button" class="primary" (click)="signInChatGpt()" [disabled]="signingIn()">Continue with ChatGPT</button>
+          }
+          <button type="button" (click)="refreshChatGpt()">重新整理</button>
+          @if (g.signedIn) {
+            <button type="button" (click)="switchChatGptAccount()" [disabled]="signingIn()">切換帳號</button>
+            <button type="button" (click)="signOutChatGpt()">登出 ChatGPT</button>
+          }
         </div>
-      </div>
-    }
-  </section>
-
-  <section class="card" aria-labelledby="carddb-heading">
-    <h2 id="carddb-heading">完整卡片資料庫</h2>
-    <div class="row" role="radiogroup" aria-label="卡池">
-      <label class="choice"><input type="radio" name="pool" [checked]="appSettings.settings().cardPool === 'master-duel'" (change)="setPool('master-duel')" /> Master Duel 卡池（預設）</label>
-      <label class="choice"><input type="radio" name="pool" [checked]="appSettings.settings().cardPool === 'all'" (change)="setPool('all')" /> 全部遊戲王卡片</label>
+      </section>
     </div>
-    @if (syncInfo(); as info) {
-      <p>
-        本機資料：{{ info.pool === 'all' ? '全部卡片' : 'Master Duel 卡池' }}・{{ info.count }} 張・資料版本 {{ info.dbVersion }}（來源更新於 {{ info.lastUpdate }}）・同步於 {{ info.syncedAt }}
-      </p>
-    } @else {
-      <p class="notice warn">尚未下載完整卡片資料。下載約 24 MB，之後搜尋都在本機進行，不會再呼叫 API。</p>
-    }
-    <div class="row">
-      <button type="button" (click)="checkRemote()" [disabled]="busy()">檢查遠端版本</button>
-      <button type="button" class="primary" (click)="syncCards()" [disabled]="busy()">下載／更新完整卡片資料</button>
-      <button type="button" (click)="syncCards(true)" [disabled]="busy() || !syncInfo()">強制重新下載</button>
+    <div class="settings-group" id="set-ai">
+      <section class="card" aria-labelledby="aiset-heading">
+        <h2 id="aiset-heading">AI 分析設定</h2>
+        <p class="muted">分析範圍（單卡／雙卡／三卡）、分析目標、優先終場怪獸與進階上限，在 AI 展開分析頁設定，並會自動保存；備份會一併保存這些設定（不含任何金鑰）。</p>
+        @if (current.deck(); as deck) {
+          <a class="button" [routerLink]="['/decks', deck.id, 'analysis']">開啟 AI 展開分析（{{ deck.name }}）</a>
+        } @else {
+          <a class="button" routerLink="/decks">先建立或匯入牌組</a>
+        }
+      </section>
     </div>
-    @if (remote()) {
-      <p class="muted" role="status">{{ remote() }}</p>
-    }
-    <p class="muted">版本與本機相同時不會重新下載。下載或寫入失敗時，原有卡片資料、牌組與 Combo 都不會改變。卡片資料同步不會下載任何圖片。</p>
-    <label class="choice">
-      <input type="checkbox" [checked]="appSettings.settings().autoThumbnails" (change)="setAutoThumbnails($any($event.target).checked)" />
-      卡片出現在畫面上時自動下載縮圖（逐張、每秒最多 10 張，下載後存在本機）
-    </label>
-  </section>
-
-  <section class="card" aria-labelledby="notes-heading">
-    <h2 id="notes-heading">繁中名稱、俗稱與 Master Duel 禁限標註</h2>
-    <p class="muted">
-      資料來源沒有繁體中文卡名與 Master Duel 禁限表，本工具不會自行產生。你可以在卡片詳細資訊中輸入，或匯入自己整理的 JSON 陣列（每筆含 cardId，以及選填的 nameZhTw、aliases、mdBan）。這些標註會隨完整備份一起匯出。
-    </p>
-    <div class="row">
-      <button type="button" (click)="exportNotes()">匯出卡片標註（JSON）</button>
-      <label class="button">
-        匯入卡片標註…
-        <input type="file" accept=".json,application/json" class="visually-hidden" (change)="importNotes($event)" />
-      </label>
+    <div class="settings-group" id="set-cards">
+      <p class="group-title">卡片資料</p>
+      <section class="card" aria-labelledby="carddb-heading">
+        <h2 id="carddb-heading">完整卡片資料庫</h2>
+        <div class="row" role="radiogroup" aria-label="卡池">
+          <label class="choice"><input type="radio" name="pool" [checked]="appSettings.settings().cardPool === 'master-duel'" (change)="setPool('master-duel')" /> Master Duel 卡池（預設）</label>
+          <label class="choice"><input type="radio" name="pool" [checked]="appSettings.settings().cardPool === 'all'" (change)="setPool('all')" /> 全部遊戲王卡片</label>
+        </div>
+        @if (syncInfo(); as info) {
+          <p>
+            本機資料：{{ info.pool === 'all' ? '全部卡片' : 'Master Duel 卡池' }}・{{ info.count }} 張・資料版本 {{ info.dbVersion }}（來源更新於 {{ info.lastUpdate }}）・同步於 {{ time(info.syncedAt) }}
+          </p>
+        } @else {
+          <p class="notice warn">尚未下載完整卡片資料。下載約 24 MB，之後搜尋都在本機進行，不會再呼叫 API。</p>
+        }
+        <div class="row">
+          <button type="button" (click)="checkRemote()" [disabled]="busy()">檢查遠端版本</button>
+          <button type="button" class="primary" (click)="syncCards()" [disabled]="busy()">下載／更新完整卡片資料</button>
+          <button type="button" (click)="syncCards(true)" [disabled]="busy() || !syncInfo()">強制重新下載</button>
+        </div>
+        @if (remote()) {
+          <p class="muted" role="status">{{ remote() }}</p>
+        }
+        <p class="muted">版本與本機相同時不會重新下載。下載或寫入失敗時，原有卡片資料、牌組與 Combo 都不會改變。卡片資料同步不會下載任何圖片。</p>
+        <label class="choice">
+          <input type="checkbox" [checked]="appSettings.settings().autoThumbnails" (change)="setAutoThumbnails($any($event.target).checked)" />
+          卡片出現在畫面上時自動下載縮圖（逐張、每秒最多 10 張，下載後存在本機）
+        </label>
+      </section>
+    
+      <section class="card" aria-labelledby="cardinfo-heading">
+        <h2 id="cardinfo-heading">卡片資料</h2>
+        <table>
+          <tbody>
+            <tr><th scope="row">連線狀態</th><td>{{ online() ? '線上' : '離線（只能使用已快取的資料）' }}</td></tr>
+            <tr><th scope="row">已快取卡片資料</th><td>{{ cardCount() ?? '—' }} 張</td></tr>
+            <tr><th scope="row">已快取卡圖</th><td>{{ imageCount() ?? '—' }} 張</td></tr>
+            <tr><th scope="row">資料來源</th><td>YGOPRODeck API v7（卡名為英文；尚無可信的繁體中文卡名來源）</td></tr>
+            <tr><th scope="row">本機資料庫版本</th><td>{{ dbVersion }}</td></tr>
+          </tbody>
+        </table>
+        <div class="row">
+          <button type="button" (click)="refreshCards()" [disabled]="busy() || !cardCount()">更新已快取的卡片資料</button>
+          <button type="button" class="danger" (click)="clearImages()" [disabled]="!imageCount()">清除卡圖快取</button>
+        </div>
+        <p class="muted">只有按下按鈕時才會連線；開啟頁面不會自動下載。@if (!desktop) {卡圖下載需以 <code>npm start</code> 啟動本機伺服器。}</p>
+      </section>
+    
+      <section class="card" aria-labelledby="notes-heading">
+        <h2 id="notes-heading">繁中名稱、俗稱與 Master Duel 禁限標註</h2>
+        <p class="muted">
+          資料來源沒有繁體中文卡名與 Master Duel 禁限表，本工具不會自行產生。你可以在卡片詳細資訊中輸入，或匯入自己整理的 JSON 陣列（每筆含 cardId，以及選填的 nameZhTw、aliases、mdBan）。這些標註會隨完整備份一起匯出。
+        </p>
+        <div class="row">
+          <button type="button" (click)="exportNotes()">匯出卡片標註（JSON）</button>
+          <label class="button">
+            匯入卡片標註…
+            <input type="file" accept=".json,application/json" class="visually-hidden" (change)="importNotes($event)" />
+          </label>
+        </div>
+      </section>
     </div>
-  </section>
-
-  <section class="card">
-    <h2>卡片資料</h2>
-    <table>
-      <tbody>
-        <tr><th scope="row">連線狀態</th><td>{{ online() ? '線上' : '離線（只能使用已快取的資料）' }}</td></tr>
-        <tr><th scope="row">已快取卡片資料</th><td>{{ cardCount() ?? '—' }} 張</td></tr>
-        <tr><th scope="row">已快取卡圖</th><td>{{ imageCount() ?? '—' }} 張</td></tr>
-        <tr><th scope="row">資料來源</th><td>YGOPRODeck API v7（卡名為英文；尚無可信的繁體中文卡名來源）</td></tr>
-        <tr><th scope="row">本機資料庫版本</th><td>{{ dbVersion }}</td></tr>
-      </tbody>
-    </table>
-    <div class="row">
-      <button type="button" (click)="refreshCards()" [disabled]="busy() || !cardCount()">更新已快取的卡片資料</button>
-      <button type="button" class="danger" (click)="clearImages()" [disabled]="!imageCount()">清除卡圖快取</button>
+    <div class="settings-group" id="set-display">
+      <p class="group-title">語言與顯示</p>
+      <section class="card" aria-labelledby="names-heading">
+        <h2 id="names-heading">卡名顯示與中文名稱資料</h2>
+        <div class="row" role="radiogroup" aria-label="卡名顯示語言">
+          @for (lang of languages; track lang) {
+            <label class="choice"><input type="radio" name="card-language" [checked]="appSettings.settings().cardLanguage === lang" (change)="setLanguage(lang)" /> {{ languageLabel[lang] }}</label>
+          }
+        </div>
+        <p class="muted">沒有中文名稱的卡會顯示英文原名；卡片 ID 與英文原名一律保留。本工具不附帶任何中文名稱資料，也不會自行翻譯或猜測譯名。顯示設定只存在本機，切換語言不會改動牌組或 Combo。</p>
+        @if (coverage(); as c) {
+          <p>覆蓋率：{{ c.percent }}%（{{ c.translated }} / {{ c.total }} 張有繁體中文名稱，{{ c.untranslated }} 張顯示英文）</p>
+          <p class="muted">使用者修正 {{ c.byStatus.user }}・正式名稱 {{ c.byStatus.official }}・社群通用名稱 {{ c.byStatus.community }}・暫定（簡體轉換）{{ c.byStatus.provisional }}</p>
+        }
+        <p class="muted">上次匯入：{{ lastNameImport() }}</p>
+        <label class="button">
+          匯入中文名稱檔案（JSON）…
+          <input type="file" accept=".json,application/json" class="visually-hidden" (change)="importNameFile($event)" />
+        </label>
+        <p class="muted">檔案是 JSON 陣列。每筆含整數 cardId、translationSource（來源說明）、translationStatus（official、community 或 provisional），以及 nameZhTw 或 nameZhCn；可選填 aliases。整份檔案先檢查，只要有一筆錯誤就整份不匯入。使用者在卡片詳細資訊中的修正不會被匯入覆蓋。</p>
+        @if (nameMessage()) {
+          <p class="notice" role="status">{{ nameMessage() }}</p>
+        }
+        @if (nameErrors().length) {
+          <ul class="notice bad">
+            @for (e of nameErrors(); track $index) {
+              <li>{{ e }}</li>
+            }
+          </ul>
+        }
+      </section>
     </div>
-    <p class="muted">只有按下按鈕時才會連線；開啟頁面不會自動下載。卡圖下載需以 <code>npm start</code> 啟動本機伺服器。</p>
-  </section>
+    <div class="settings-group" id="set-data">
+      <p class="group-title">本機資料與備份</p>
+      <section class="card" aria-labelledby="backup-heading">
+        <h2 id="backup-heading">備份與還原</h2>
+        <p class="notice warn">
+          所有牌組與 Combo 只存在這個瀏覽器的本機資料庫（IndexedDB）。清除瀏覽器資料、使用無痕模式或更換瀏覽器都可能讓資料消失，請定期匯出備份。
+        </p>
+        <div class="row">
+          <button type="button" class="primary" (click)="exportBackup()">匯出完整備份（JSON）</button>
+          <label class="button">
+            從備份檔還原…
+            <input type="file" accept=".json,application/json" class="visually-hidden" (change)="onBackupFile($event)" />
+          </label>
+        </div>
+        <p class="muted">備份包含牌組、Combo、截圖框選版型與非機密設定；不含卡圖與卡片資料快取，也不含任何 API Key 或登入憑證。</p>
+    
+        @if (autoBackup.enabled) {
+          <div class="stack" aria-labelledby="auto-backup-heading">
+            <h3 id="auto-backup-heading">自動備份</h3>
+            <p>資料有變更時，每天最多自動備份一次，保留最近 10 份。資料夾：<code>{{ autoBackup.directory() }}</code></p>
+            <p class="muted">最近一次：{{ autoBackup.lastAt() || '尚未備份' }}</p>
+            @if (autoBackup.lastError()) {
+              <p class="notice bad" role="alert">自動備份失敗：{{ autoBackup.lastError() }}</p>
+            }
+            <div class="row">
+              <button type="button" (click)="backupNow()" [disabled]="busy()">立即備份</button>
+            </div>
+            @if (autoBackup.entries().length) {
+              <ul class="plain">
+                @for (entry of autoBackup.entries(); track entry.name) {
+                  <li>
+                    {{ entry.at }}
+                    <button type="button" (click)="restoreFromAuto(entry.name)">從此備份還原…</button>
+                  </li>
+                }
+              </ul>
+            }
+          </div>
+        }
+    
+        @if (restoreErrors().length) {
+          <div class="notice bad" role="alert">
+            <strong>無法還原（未寫入任何資料）：</strong>
+            <ul>
+              @for (e of restoreErrors(); track $index) {
+                <li>{{ e }}</li>
+              }
+            </ul>
+          </div>
+        }
+    
+        @if (incoming(); as inc) {
+          <div class="stack" aria-live="polite">
+            <h3>還原預覽（尚未寫入）</h3>
+            <p>
+              檔案「{{ inc.fileName }}」（匯出時間 {{ time(inc.exportedAt) }}）：牌組 {{ inc.data.decks.length }}、Combo {{ inc.data.combos.length }}、版型
+              {{ inc.data.layouts.length }}
+            </p>
+            @if (inc.settings) {
+              <label>
+                <input type="checkbox" [checked]="restoreSettings()" (change)="restoreSettings.set($any($event.target).checked)" />
+                同時還原備份內的設定（顯示語言、卡池、AI 設定；不含金鑰）
+              </label>
+            }
+            <label>
+              與現有資料 ID 相同但內容不同時：
+              <select [value]="strategy()" (change)="strategy.set($any($event.target).value)">
+                <option value="keep-both">保留兩者（還原的另存新 ID）</option>
+                <option value="overwrite">以備份內容覆蓋</option>
+                <option value="skip">略過</option>
+              </select>
+            </label>
+            @if (plan(); as p) {
+              <p>將會：新增 {{ p.added }}、覆蓋 {{ p.overwritten }}、另存副本 {{ p.copied }}、略過 {{ p.skipped }}、內容相同不變 {{ p.unchanged }}。</p>
+              @if (p.renamed.length) {
+                <p class="muted">重名改名：{{ p.renamed.join('；') }}</p>
+              }
+            }
+            <div class="row">
+              <button type="button" class="primary" (click)="confirmRestore()" [disabled]="busy()">確認還原</button>
+              <button type="button" (click)="cancelRestore()">取消</button>
+            </div>
+          </div>
+        }
+      </section>
+    </div>
+    <div class="settings-group" id="set-about">
+      <section class="card" aria-labelledby="about-heading">
+        <h2 id="about-heading">關於程式</h2>
+        <table>
+          <tbody>
+            <tr><th scope="row">名稱</th><td>YGO Combo 助手（YGO Combo Assistant）</td></tr>
+            <tr><th scope="row">版本</th><td>{{ version }}</td></tr>
+            <tr><th scope="row">執行環境</th><td>{{ desktop ? 'Windows 桌面版' : '瀏覽器版' }}</td></tr>
+            <tr><th scope="row">卡片資料來源</th><td>YGOPRODeck API v7（卡片文字與圖片版權屬 KONAMI）</td></tr>
+          </tbody>
+        </table>
+        <p class="muted small">獨立查詢工具：不連接遊戲、不讀取遊戲資料、不自動操作。固定展開皆假設無干擾；AI 路線只是候選，不代表規則合法或 Master Duel 實測通過。</p>
+      </section>
+    </div>
+    </div>
+  </div>
 </div>

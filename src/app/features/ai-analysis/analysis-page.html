@@ -1,0 +1,782 @@
+<div class="page">
+  @if (notFound()) {
+    <h1>找不到牌組</h1>
+    <p>此牌組可能已被刪除。</p>
+    <a routerLink="/decks">返回牌組列表</a>
+  } @else if (deck(); as d) {
+    <h1>AI 展開分析：{{ d.name }}</h1>
+    <nav class="row page-links" aria-label="相關頁面">
+      <a routerLink="/decks">← 牌組列表</a>
+      <a [routerLink]="['/decks', d.id]">編輯牌組</a>
+      <a [routerLink]="['/decks', d.id, 'hand']">起手查詢</a>
+    </nav>
+    <p class="notice">
+      AI 只會提出<strong>候選路線</strong>。每條路線由本機依實際牌表檢查卡片、張數與每一步的卡片位置；<strong>通過也不代表合法</strong>。規則引擎驗證尚未整合（BLOCKED），「已驗證」仍只能由你在 Master Duel 實測後附證據設定。
+    </p>
+    <p class="muted">牌組版本 {{ d.version }}・指紋 {{ fingerprint() }}・主牌 {{ deckCheck()?.totals?.main }}／額外 {{ deckCheck()?.totals?.extra }}</p>
+
+    @if (error()) {
+      <div class="notice bad" role="alert">
+        <ul>
+          @for (line of error().split('\n'); track $index) {
+            <li>{{ line }}</li>
+          }
+        </ul>
+      </div>
+    }
+    @if (message()) {
+      <p class="notice ok" role="status">{{ message() }}</p>
+    }
+
+    <div class="split">
+      <div class="stack">
+        <section class="card stack" aria-labelledby="settings-heading">
+          <h2 id="settings-heading">分析設定</h2>
+          @let s = ai.settings();
+          <fieldset>
+            <legend>模型服務（Provider）</legend>
+            @if (offers('anthropic')) {
+              <label class="choice">
+                <input type="radio" name="provider" [checked]="s.provider === 'anthropic'" (change)="update({ provider: 'anthropic' })" />
+                Claude API（雲端；使用你自己的 API Key，會產生費用）
+              </label>
+            }
+            @if (offers('ollama')) {
+              <label class="choice">
+                <input type="radio" name="provider" [checked]="s.provider === 'ollama'" (change)="update({ provider: 'ollama' })" />
+                本機 Ollama（離線；需自行安裝並下載模型）
+              </label>
+            }
+            <label class="choice">
+              <input type="radio" name="provider" [checked]="s.provider === 'chatgpt'" (change)="chooseChatGpt()" />
+              ChatGPT 帳號登入（使用你的 ChatGPT 方案額度）
+            </label>
+          </fieldset>
+
+          @if (s.provider === 'chatgpt') {
+            @let g = ai.chatgpt();
+            <section class="stack chatgpt" aria-label="ChatGPT 帳號">
+              @if (!g.reachable) {
+                @if (bridgeManaged()) {
+                  <p class="notice warn">本機 ChatGPT 服務目前沒有回應（App 會自動啟動它，可能剛好啟動失敗或已結束）。請按「重新整理」讓 App 重新啟動。登入資訊與 Token 只由這個本機服務保存，不會進入此網頁。</p>
+                } @else {
+                <p class="notice warn">本機 ChatGPT 服務沒有啟動。請另開終端機，在專案資料夾執行 <code>{{ bridgeCommand }}</code>，再按「重新整理」。登入資訊與 Token 只由這個本機服務保存，不會進入此網頁。</p>
+                }
+              } @else if (!g.signedIn) {
+                @if (bridgeManaged()) {
+                  <p>尚未登入 ChatGPT。按下後以系統瀏覽器開啟 OpenAI 官方登入頁；完成授權後自動回到本程式，符合資格的分析請求會使用你的 ChatGPT 方案額度。</p>
+                } @else {
+                  <p>尚未登入 ChatGPT。按下後會在新分頁開啟 OpenAI 官方登入頁；授權後，符合資格的分析請求會使用你的 ChatGPT 方案額度。</p>
+                }
+                <div class="row">
+                  <button type="button" class="primary" (click)="signInChatGpt()">Continue with ChatGPT</button>
+                </div>
+              } @else {
+                <p>已登入：<strong>{{ g.account?.email ?? g.account?.name ?? 'ChatGPT 帳號' }}</strong></p>
+                @if (!g.sharing) {
+                  <p class="notice warn">此登入沒有授權使用 ChatGPT 方案用量，不能用來分析。可重新登入並同意，或改用其他模型服務。</p>
+                  <div class="row">
+                    <button type="button" class="primary" (click)="signInChatGpt()">Continue with ChatGPT</button>
+                  </div>
+                }
+              }
+              @if (g.pending && !g.signedIn) {
+                <p class="muted" role="status">等待你在 OpenAI 登入頁完成登入…</p>
+              }
+              @if (g.lastError) {
+                <p class="notice bad" role="alert">{{ g.lastError.message }}</p>
+              }
+              @if (chatgptMessage()) {
+                <p class="muted" role="status">{{ chatgptMessage() }}</p>
+              }
+              @if (g.sharing) {
+                @if (!ai.chatgptWelcomeSeen()) {
+                  <div class="notice ok" role="dialog" aria-label="你正在使用你的 ChatGPT 方案">
+                    <strong>你正在使用你的 ChatGPT 方案</strong>
+                    <p>符合資格的分析請求會使用你的 ChatGPT 方案額度，不需要 API Key；可隨時在 ChatGPT 設定管理用量。</p>
+                    <button type="button" (click)="ai.dismissChatGptWelcome()">知道了</button>
+                  </div>
+                }
+                <label>
+                  模型（目前帳號可用）
+                  <select (change)="update({ chatgptModel: $any($event.target).value })">
+                    <option value="" [selected]="!s.chatgptModel">請選擇模型</option>
+                    @for (m of ai.chatgptModels() ?? []; track m.slug) {
+                      <option [value]="m.slug" [selected]="m.slug === s.chatgptModel">{{ m.displayName }}</option>
+                    }
+                  </select>
+                </label>
+                <p class="row disclosure">
+                  <span class="badge ok">使用你的 ChatGPT 方案</span>
+                  <a [href]="manageUsageUrl" target="_blank" rel="noopener noreferrer">管理用量</a>
+                </p>
+                @if (ai.chatgptError()) {
+                  <p class="notice bad">{{ ai.chatgptError() }}</p>
+                }
+              }
+              <div class="row">
+                <button type="button" (click)="refreshChatGpt()">重新整理</button>
+                @if (g.signedIn) {
+                  <button type="button" (click)="signOutChatGpt()">登出 ChatGPT</button>
+                  <button type="button" (click)="switchChatGptAccount()">切換帳號</button>
+                }
+              </div>
+            </section>
+          } @else if (s.provider === 'anthropic') {
+            <label>
+              Claude API Key
+              <input type="password" autocomplete="off" spellcheck="false" [value]="ai.apiKey()" (input)="ai.setApiKey($any($event.target).value)" />
+            </label>
+            <p class="muted">金鑰只存在目前分頁（關閉分頁即清除），不會寫入資料庫、備份、匯出檔或原始碼；只會送到 api.anthropic.com。</p>
+            <div class="row">
+              <label>
+                模型
+                <select [value]="s.claudeModel" (change)="update({ claudeModel: $any($event.target).value })">
+                  @for (m of models; track m.id) {
+                    <option [value]="m.id">{{ m.label }}（US${{ m.inputPerMTok }}／US${{ m.outputPerMTok }} 每百萬 tokens）</option>
+                  }
+                </select>
+              </label>
+              <label>
+                思考程度（effort）
+                <select [value]="s.effort" (change)="update({ effort: $any($event.target).value })">
+                  @for (e of efforts; track e) {
+                    <option [value]="e">{{ e }}</option>
+                  }
+                </select>
+              </label>
+            </div>
+          } @else {
+            <div class="row">
+              <label>
+                Ollama 位址（只限本機）
+                <input [value]="s.ollamaBaseUrl" (change)="update({ ollamaBaseUrl: $any($event.target).value })" />
+              </label>
+              <label>
+                模型名稱
+                <input [value]="s.ollamaModel" (change)="update({ ollamaModel: $any($event.target).value })" placeholder="例如 qwen3" list="ollama-models" />
+                <datalist id="ollama-models">
+                  @for (m of ai.ollamaCheck()?.models ?? []; track m) {
+                    <option [value]="m"></option>
+                  }
+                </datalist>
+              </label>
+              <button type="button" (click)="ai.checkOllama()" [disabled]="ai.ollamaChecking()">檢查 Ollama</button>
+            </div>
+            @if (ai.ollamaCheck(); as c) {
+              <p class="notice" [class.warn]="c.state !== 'ready'" [attr.data-ollama-state]="c.state" role="status">
+                {{ c.message }}
+                @if (c.baseUrl !== s.ollamaBaseUrl || c.model !== s.ollamaModel.trim()) {
+                  <em>（設定已變更，這是先前的檢查結果，請重新檢查）</em>
+                }
+              </p>
+            } @else {
+              <p class="muted">尚未檢查。按「檢查 Ollama」確認服務與模型是否就緒（不會送出分析請求）。</p>
+            }
+          }
+
+          <fieldset>
+            <legend>分析方式</legend>
+            <label class="choice"><input type="radio" name="mode" [checked]="s.mode === 'one-shot'" (change)="update({ mode: 'one-shot' })" />單次分析（一次請求，原本的方式）</label>
+            <label class="choice"><input type="radio" name="mode" [checked]="s.mode === 'staged'" (change)="update({ mode: 'staged' })" />分階段分析（1～3 卡，多次請求）</label>
+            @if (s.mode === 'staged') {
+              <p class="muted">階段 A：AI 標示每張卡的角色（AI 候選標籤，不是規則驗證）並提出候選起手組合；階段 B：每個組合各送一次請求，寫出完整路線；之後由本機檢查並比較。每次請求前都會檢查請求次數、Token 預算與時間，用完就停止並保留已完成的結果，不會宣稱已窮舉所有展開。</p>
+            }
+          </fieldset>
+
+          <fieldset>
+            <legend>分析範圍（先攻・雙方空場・無干擾）</legend>
+            <label class="choice"><input type="checkbox" [checked]="s.scope.single" (change)="scope({ single: $any($event.target).checked })" />單卡展開</label>
+            <label class="choice"><input type="checkbox" [checked]="s.scope.multi" (change)="scope({ multi: $any($event.target).checked })" />雙卡展開</label>
+            <label class="choice"><input type="checkbox" [checked]="!!s.scope.triple" (change)="scope({ triple: $any($event.target).checked })" />三卡展開</label>
+            @if (s.mode === 'one-shot') {
+              <label class="choice"><input type="checkbox" [checked]="s.scope.extenders" (change)="scope({ extenders: $any($event.target).checked })" />常見延伸</label>
+            }
+          </fieldset>
+
+          <fieldset>
+            <legend>分析目標（搜尋偏好，不是必要條件）</legend>
+            @for (k of goalKinds; track k) {
+              <label class="choice"><input type="radio" name="goal" [checked]="s.goal.kind === k" (change)="goalKind(k)" />{{ goalLabel[k] }}</label>
+            }
+            <fieldset class="preferred">
+              <legend>優先評估的額外牌組怪獸（偏好，不是必要條件）</legend>
+              @for (o of extraOptions(); track o.cardId) {
+                <label class="choice"><input type="checkbox" [checked]="s.goal.preferredExtraIds.includes(o.cardId)" (change)="prefer(o.cardId, $any($event.target).checked)" />{{ o.name }}</label>
+              } @empty {
+                <span class="muted">此牌組沒有額外牌組怪獸</span>
+              }
+            </fieldset>
+            <p class="muted">偏好只影響 AI 的搜尋方向與本機排序；不要求每條路線都包含指定卡，也不會放寬規則或資源檢查。</p>
+          </fieldset>
+
+          <details class="disclosure advanced" [open]="advancedOpen()" (toggle)="advancedOpen.set($any($event.target).open)">
+            <summary>進階設定</summary>
+            <div class="disclosure-body stack">
+                @if (s.mode === 'one-shot') {
+                  <label>
+                    AI 產生候選數
+                    <input type="number" [min]="limits.candidates[0]" [max]="limits.candidates[1]" [value]="generated(s.scope)" (change)="scope({ candidates: num($any($event.target).value) })" />
+                  </label>
+                } @else {
+                  <label>
+                    最大候選起手組合數
+                    <input type="number" [min]="stagedLimits.maxCombos[0]" [max]="stagedLimits.maxCombos[1]" [value]="s.staged.maxCombos" (change)="stagedSetting({ maxCombos: num($any($event.target).value) })" />
+                  </label>
+                  <label>
+                    每個組合的候選路線數
+                    <input type="number" [min]="stagedLimits.routesPerCombo[0]" [max]="stagedLimits.routesPerCombo[1]" [value]="s.staged.routesPerCombo" (change)="stagedSetting({ routesPerCombo: num($any($event.target).value) })" />
+                  </label>
+                }
+                <label>
+                  最多顯示路線數
+                  <input type="number" [min]="limits.maxRoutes[0]" [max]="limits.maxRoutes[1]" [value]="s.scope.maxRoutes" (change)="scope({ maxRoutes: num($any($event.target).value) })" />
+                </label>
+                @if (s.mode === 'one-shot') {
+                  <p class="muted">AI 會寫出「產生候選數」條完整路線；本機檢查並依分析目標排序後，顯示前「最多顯示路線數」條，其餘列在「其他候選」，不會丟棄。</p>
+                } @else {
+                  <p class="muted">「起手張數」＝路線必要的起手牌張數（1～3）；其餘起手牌不影響路線。三張都勾選時，AI 會分別評估單卡、雙卡、三卡的候選組合；沒有參與展開的牌不會被列為必要起手牌。</p>
+                }
+    
+              <div class="row">
+                <label>
+                  逾時（秒）
+                  <input type="number" [min]="limits.timeoutSeconds[0]" [max]="limits.timeoutSeconds[1]" [value]="s.timeoutSeconds" (change)="update({ timeoutSeconds: num($any($event.target).value) })" />
+                </label>
+                <label>
+                  最大輸出 tokens
+                  <input type="number" [min]="limits.maxOutputTokens[0]" [max]="limits.maxOutputTokens[1]" [value]="s.maxOutputTokens" [disabled]="s.provider === 'chatgpt'" (change)="update({ maxOutputTokens: num($any($event.target).value) })" />
+                  @if (s.provider === 'chatgpt') {
+                    <span class="muted">ChatGPT 方案不支援，不會送出</span>
+                  }
+                </label>
+                <label>
+                  每日請求上限
+                  <input type="number" [min]="limits.dailyRequestLimit[0]" [max]="limits.dailyRequestLimit[1]" [value]="s.dailyRequestLimit" (change)="update({ dailyRequestLimit: num($any($event.target).value) })" />
+                </label>
+                @if (s.mode === 'staged') {
+                  <label>
+                    AI 請求次數上限（含階段 A）
+                    <input type="number" [min]="stagedLimits.maxRequests[0]" [max]="stagedLimits.maxRequests[1]" [value]="s.staged.maxRequests" (change)="stagedSetting({ maxRequests: num($any($event.target).value) })" />
+                  </label>
+                  <label>
+                    Token 預算（估計的輸入＋輸出）
+                    <input type="number" [min]="stagedLimits.tokenBudget[0]" [max]="stagedLimits.tokenBudget[1]" [value]="s.staged.tokenBudget" (change)="stagedSetting({ tokenBudget: num($any($event.target).value) })" />
+                  </label>
+                  <label>
+                    整體逾時（秒）
+                    <input type="number" [min]="stagedLimits.totalTimeoutSeconds[0]" [max]="stagedLimits.totalTimeoutSeconds[1]" [value]="s.staged.totalTimeoutSeconds" (change)="stagedSetting({ totalTimeoutSeconds: num($any($event.target).value) })" />
+                  </label>
+                }
+              </div>
+    
+                  @if (s.mode === 'one-shot' && tokenHint(); as t) {
+                <p class="muted" [class.warn-text]="t.tight">
+                  預計輸出：{{ t.n }} 條完整路線約 {{ t.lo }}～{{ t.hi }} tokens（長的延伸路線較多）。
+                  @if (t.tight) {
+                    目前最大輸出 {{ s.maxOutputTokens }} tokens 可能不夠；輸出被截斷時整次分析會失敗，可提高上限或減少產生候選數。
+                  }
+                </p>
+              }
+    
+                </div>
+          </details>
+
+          <p class="muted">
+            今天已送出 {{ usage()?.requests ?? 0 }} 次（上限 {{ s.dailyRequestLimit }} 次）@if (usage()?.estimatedCostUsd) {
+              ，估計花費 US${{ usage()!.estimatedCostUsd.toFixed(3) }}
+            }。
+            @if (s.mode === 'staged') {
+              @if (stagedHint(); as h) {
+                階段 A 輸入約 {{ h.planInput }} tokens；每個組合約 {{ h.comboInput }} tokens；最多 {{ h.requests }} 次請求，合計最多約 {{ h.tokens }} tokens（Token 預算 {{ s.staged.tokenBudget }}）。
+                @if (s.provider === 'chatgpt') {
+                  使用你的 ChatGPT 方案額度，不另外計算 API 費用。
+                } @else if (s.provider === 'ollama') {
+                  本機執行，不產生 API 費用。
+                }
+              }
+            } @else if (estimate(); as e) {
+              本次輸入約 {{ e.inputTokens }} tokens；
+              @if (e.maxCostUsd !== undefined) {
+                最高約 US${{ e.maxCostUsd.toFixed(2) }}（依 2026-10 公告價格估算，實際以 Anthropic 帳單為準）。
+              } @else if (s.provider === 'chatgpt') {
+                使用你的 ChatGPT 方案額度，不另外計算 API 費用。
+              } @else {
+                本機執行，不產生 API 費用。
+              }
+            }
+          </p>
+          @if (reasons().length && !running()) {
+            <div class="notice warn">
+              <strong>目前無法開始分析：</strong>
+              <ul>
+                @for (r of reasons(); track $index) {
+                  <li>{{ r }}</li>
+                }
+              </ul>
+            </div>
+          }
+          <div class="row">
+            <button type="button" class="primary" (click)="start()" [disabled]="running() || reasons().length > 0">開始分析</button>
+            <button type="button" (click)="start(true)" [disabled]="running() || reasons().length > 0">強制重新分析</button>
+            <button type="button" class="danger" (click)="cancel()" [disabled]="!running()">取消</button>
+          </div>
+          @if (ai.state().phase !== 'idle') {
+            <p role="status" aria-live="polite">
+              狀態：<strong>{{ phaseLabel[ai.state().phase] }}</strong>
+              @if (running()) {
+                ・已經過 {{ elapsed() }} 秒・已收到 {{ ai.state().receivedChars }} 字元
+                @if (ai.state().progress) {
+                  ・{{ ai.state().progress }}
+                }
+              }
+              @if (ai.state().message) {
+                ・{{ ai.state().message }}
+              }
+            </p>
+          }
+        </section>
+
+        @if (affected().length) {
+          <section class="card stack" aria-labelledby="affected-heading">
+            <h2 id="affected-heading">此牌組已存成 Combo 的 AI 路線</h2>
+            <ul class="plain stack">
+              @for (a of affected(); track a.route.id) {
+                <li class="item">
+                  <div class="row">
+                    <a [routerLink]="['/combos', a.route.id]">{{ a.route.name }}</a>
+                    @if (a.passed) {
+                      <span class="badge ok">{{ a.changed ? '仍通過資料驗證（牌組已變更，需重新確認）' : '資料完整性通過' }}</span>
+                    } @else {
+                      <span class="badge bad">已不適用</span>
+                    }
+                  </div>
+                  @for (p of a.problems; track $index) {
+                    <p class="muted">{{ p }}</p>
+                  }
+                  @if (a.changed) {
+                    <button type="button" (click)="recheckSaved(a.route)" [disabled]="busy()">重新驗證並記錄</button>
+                  }
+                </li>
+              }
+            </ul>
+          </section>
+        }
+
+        <section class="card stack" aria-labelledby="history-heading">
+          <h2 id="history-heading">分析紀錄</h2>
+          @if (runs().length === 0) {
+            <p class="muted">尚未分析過此牌組。</p>
+          }
+          <ul class="plain stack">
+            @for (run of runs(); track run.id) {
+              <li class="item" [class.selected]="run.id === selectedRunId()">
+                <div class="row">
+                  <button type="button" (click)="selectRun(run.id)">{{ time(run.startedAt) }}</button>
+                  <span class="badge" [class.ok]="run.status === 'succeeded'" [class.bad]="run.status !== 'succeeded'">
+                    {{ run.status === 'succeeded' ? '成功' : run.status === 'cancelled' ? '已取消' : '失敗' }}
+                  </span>
+                  @if (run.deckFingerprint !== fingerprint()) {
+                    <span class="badge warn">牌組已變更</span>
+                  }
+                  <button type="button" class="danger" (click)="deleteRun(run)">刪除</button>
+                </div>
+                <p class="muted">{{ providerLabel[run.provider] }}・{{ run.model }}・牌組版本 {{ run.deckVersion }}</p>
+              </li>
+            }
+          </ul>
+        </section>
+      </div>
+
+      <div class="stack">
+        @if (selectedRun(); as run) {
+          <section class="card stack" aria-labelledby="run-heading">
+            <h2 id="run-heading">分析結果</h2>
+            @if (run.error) {
+              <div class="notice bad" role="alert">
+                <p>{{ run.status === 'cancelled' ? '已取消' : '分析失敗' }}：{{ run.error.message }}（既有牌組與 Combo 未受影響）</p>
+                @if (run.error.code === 'usage-limit') {
+                  <p>請到 ChatGPT 設定檢視你的方案或此 App 的用量上限。</p>
+                  <a class="button primary" [href]="manageUsageUrl" target="_blank" rel="noopener noreferrer">管理用量</a>
+                }
+              </div>
+            }
+            <details>
+              <summary>分析紀錄（牌組、資料版本、規則假設、模型與參數）</summary>
+              <dl>
+                <dt>牌組</dt><dd>{{ run.deckName }} 版本 {{ run.deckVersion }}（{{ run.deckFingerprint }}）</dd>
+                <dt>卡片資料</dt><dd>{{ run.cardDataVersion }}</dd>
+                <dt>Provider／模型</dt><dd>{{ providerLabel[run.provider] }}／{{ run.model }}{{ run.servedModel && run.servedModel !== run.model ? '（實際回應：' + run.servedModel + '）' : '' }}</dd>
+                <dt>參數</dt>
+                <dd>
+                  @if (run.params.effort) { effort {{ run.params.effort }}・ }
+                  @if (run.params.temperature !== undefined) { temperature {{ run.params.temperature }}・ }
+                  @if (run.params.store !== undefined) { store {{ run.params.store }}・stream {{ run.params.stream }}・結構化輸出 {{ run.params.structuredOutput ? '是' : '否（已改為一般文字）' }}・ }
+                  @if (run.params.maxOutputTokens) { 最大輸出 {{ run.params.maxOutputTokens }}・ }
+                  逾時 {{ run.params.timeoutSeconds }} 秒
+                </dd>
+                <dt>範圍</dt><dd>{{ run.scope.single ? '單卡起手 ' : '' }}{{ run.scope.multi ? '雙卡起手 ' : '' }}{{ run.scope.triple ? '三卡起手 ' : '' }}{{ run.scope.extenders ? '常見延伸 ' : '' }}・{{ run.staged ? '分階段分析' : '產生 ' + generated(run.scope) + ' 條' }}・最多顯示 {{ run.scope.maxRoutes }} 條</dd>
+                <dt>分析目標</dt>
+                <dd>
+                  @if (run.goal; as g) {
+                    {{ goalLabel[g.kind] }}・偏好：{{ g.preferredExtraIds.length ? names(g.preferredExtraIds) : '無' }}
+                  } @else {
+                    未設定（舊紀錄）
+                  }
+                </dd>
+                <dt>提示版本</dt><dd>{{ run.promptVersion }}</dd>
+                <dt>時間</dt><dd>{{ time(run.startedAt) }} → {{ time(run.finishedAt) }}（{{ (run.durationMs / 1000).toFixed(1) }} 秒）</dd>
+                <dt>用量</dt>
+                <dd>
+                  @if (run.usage; as u) {
+                    輸入 {{ u.inputTokens }}・輸出 {{ u.outputTokens }} tokens
+                    @if (u.estimatedCostUsd !== undefined) { ・估計 US${{ u.estimatedCostUsd.toFixed(3) }} }
+                    @if (run.provider === 'chatgpt') { ・使用 ChatGPT 方案用量 }
+                  } @else {
+                    無
+                  }
+                </dd>
+                <dt>規則假設</dt>
+                <dd>
+                  <ul>
+                    @for (a of run.assumptions; track $index) {
+                      <li>{{ a }}</li>
+                    }
+                  </ul>
+                </dd>
+              </dl>
+            </details>
+
+            @if (run.summary) {
+              <p class="summary">{{ run.summary }}</p>
+            }
+
+            @if (run.staged; as st) {
+              <section class="stack" aria-label="分階段分析結果">
+                <h3>分階段分析結果</h3>
+                <p>
+                  AI 請求 {{ st.budget.requests }}／{{ st.budget.maxRequests }} 次・Token 約 {{ st.budget.tokens }}／{{ st.budget.tokenBudget }}（實際用量，沒有回報時用估計）
+                  @if (st.budget.stoppedBy; as why) {
+                    ・停止原因：{{ stopLabel[why] }}
+                  }
+                </p>
+                <p class="notice" [class.warn]="st.notAnalyzed > 0 || st.failed > 0" role="note">
+                  @if (st.notAnalyzed) {
+                    未分析 {{ st.notAnalyzed }} 個組合；
+                  }
+                  @if (st.failed) {
+                    失敗 {{ st.failed }} 個組合（沒有收錄不完整的路線）；
+                  }
+                  這個分析只涵蓋 AI 提出的起手組合，不代表已窮舉所有展開。
+                </p>
+                <div class="table-wrap">
+                  <table aria-label="起手組合狀態">
+                    <thead>
+                      <tr><th scope="col">起手組合</th><th scope="col">張數</th><th scope="col">優先</th><th scope="col">狀態</th><th scope="col">路線數</th><th scope="col">說明</th></tr>
+                    </thead>
+                    <tbody>
+                      @for (c of st.combos; track $index) {
+                        <tr>
+                          <th scope="row">{{ names(c.cardIds) }}</th>
+                          <td class="num">{{ c.size }}</td>
+                          <td class="num">{{ c.priority }}</td>
+                          <td>{{ comboStatusLabel[c.status] }}{{ c.skippedBy ? '（' + stopLabel[c.skippedBy] + '）' : '' }}</td>
+                          <td class="num">{{ c.routes }}</td>
+                          <td>{{ c.error || c.reason }}</td>
+                        </tr>
+                      } @empty {
+                        <tr><td colspan="6">沒有可分析的起手組合</td></tr>
+                      }
+                    </tbody>
+                  </table>
+                </div>
+                @if (st.rejected.length) {
+                  <details>
+                    <summary>被捨棄的組合（{{ st.rejected.length }}）</summary>
+                    <ul>
+                      @for (x of st.rejected; track $index) {
+                        <li>{{ names(x.cardIds) }}：{{ x.reason }}</li>
+                      }
+                    </ul>
+                  </details>
+                }
+                @if (st.plan; as plan) {
+                  <details>
+                    <summary>卡片角色（AI 候選標籤，不是規則驗證）</summary>
+                    <div class="table-wrap">
+                      <table aria-label="卡片角色">
+                        <thead>
+                          <tr><th scope="col">卡片</th><th scope="col">角色</th><th scope="col">說明</th></tr>
+                        </thead>
+                        <tbody>
+                          @for (r of plan.roles; track r.cardId) {
+                            <tr>
+                              <th scope="row">{{ name(r.cardId) }}</th>
+                              <td>{{ roleNames(r.roles) }}</td>
+                              <td>{{ r.note }}</td>
+                            </tr>
+                          }
+                        </tbody>
+                      </table>
+                    </div>
+                  </details>
+                }
+              </section>
+            }
+
+            @if (run.starters && !run.staged) {
+              <div class="columns">
+                <div>
+                  <h3>單卡起手（Starter）</h3>
+                  <ul>
+                    @for (st of singleStarters(); track $index) {
+                      <li>
+                        <strong>{{ names(st.cardIds) }}</strong>：{{ st.description }}
+                        @if (st.problem) {
+                          <span class="badge bad">{{ st.problem }}</span>
+                        }
+                      </li>
+                    } @empty {
+                      <li class="muted">無</li>
+                    }
+                  </ul>
+                </div>
+                <div>
+                  <h3>多卡起手</h3>
+                  <ul>
+                    @for (st of multiStarters(); track $index) {
+                      <li>
+                        <strong>{{ names(st.cardIds) }}</strong>：{{ st.description }}
+                        @if (st.problem) {
+                          <span class="badge bad">{{ st.problem }}</span>
+                        }
+                      </li>
+                    } @empty {
+                      <li class="muted">無</li>
+                    }
+                  </ul>
+                </div>
+                <div>
+                  <h3>延伸（Extender）</h3>
+                  <ul>
+                    @for (ex of run.extenders ?? []; track $index) {
+                      <li>
+                        <strong>{{ name(ex.cardId) }}</strong>：{{ ex.description }}（需要：{{ ex.requires || '未說明' }}）
+                        @if (ex.problem) {
+                          <span class="badge bad">{{ ex.problem }}</span>
+                        }
+                      </li>
+                    } @empty {
+                      <li class="muted">無</li>
+                    }
+                  </ul>
+                </div>
+              </div>
+            }
+
+            @if (run.candidates && analysis(); as a) {
+              <div class="row">
+                <h3>候選路線（{{ run.candidates.length }}）</h3>
+                <label>
+                  排序依據
+                  <select (change)="sortGoal.set($any($event.target).value)">
+                    @for (k of goalKinds; track k) {
+                      <option [value]="k" [selected]="a.goal.kind === k">{{ goalLabel[k] }}</option>
+                    }
+                  </select>
+                </label>
+              </div>
+              <p class="muted">排序只看本機重新計算的結果：先資料驗證（含部分規則檢查）通過者，再依目標比較有效干擾（靜態估算，不是已驗證）、指定怪獸、剩餘資源（已確認與未追蹤的手牌分開計）；不看攻擊力或 Link 值。改變排序不會送出新請求。</p>
+
+              <ng-template #candidateItem let-c>
+                <li class="item candidate">
+                  <div class="row">
+                    <strong>{{ c.rank }}. {{ c.candidate.route.name }}</strong>
+                    <span class="badge" [class.ok]="c.level !== 'ai-candidate'" [class.warn]="c.level === 'ai-candidate'">{{ levelText(c.level) }}</span>
+                    @if (c.problems) {
+                      <span class="badge bad">資料驗證 {{ c.problems }} 項未通過</span>
+                    }
+                    @if (c.sameEndBoardAs !== undefined) {
+                      <span class="badge">終場與「{{ routeName(c.sameEndBoardAs) }}」相同</span>
+                    }
+                  </div>
+                  <p class="muted">起手：{{ handNames(c.candidate.route) }}・{{ c.candidate.route.steps.length }} 步・終場 {{ c.candidate.route.endBoard.length }} 項</p>
+                  <p class="muted">
+                    {{ startText(c.evaluation.startKind) }}起手・模擬終場：{{ finalText(c.evaluation) }}・有效干擾（靜態估算）{{ c.evaluation.effective }}・已驗證 {{ c.evaluation.verified }}{{ c.evaluation.conditional ? '（另有 ' + c.evaluation.conditional + ' 項條件未能驗證）' : '' }}・剩餘手牌：{{ handText(c.evaluation.hand) }}
+                  </p>
+                  @if (c.candidate.route.analysis?.combo; as k) {
+                    <p class="muted">{{ comboText(k) }}</p>
+                  }
+                  @if (c.snapshot; as snap) {
+                    <app-board-preview [snapshot]="snap" [cards]="cards()" [compact]="true" [label]="'終場縮圖：' + c.candidate.route.name" />
+                  } @else {
+                    <p class="muted">沒有卡片移動資料，無法產生終場縮圖（只有文字終場）。</p>
+                  }
+                  @if (c.added; as v) {
+                    <p class="muted">相較較少張數的「{{ routeName(v.baseIndex) }}」：{{ v.summary }}</p>
+                  } @else if (staged() && c.evaluation.starters.length > 1) {
+                    <p class="muted">沒有可比較的較少張數路線。</p>
+                  }
+                  @if (c.sibling; as sib) {
+                    <p class="muted">前 {{ sib.shared }} 步（共 {{ sib.steps }} 步）與路線 {{ sib.rank }} 完全相同：這兩條是同一條主線的不同結尾，不是兩種不同的展開想法。</p>
+                  }
+                  <label class="choice"><input type="checkbox" [checked]="compareSet().includes(c.index)" (change)="toggleCompare(c.index, $any($event.target).checked)" />加入並排比較：{{ c.candidate.route.name }}</label>
+                  @if (c.candidate.schemaErrors.length) {
+                    <p class="notice bad">無法存成 Combo：{{ c.candidate.schemaErrors.join('；') }}</p>
+                  }
+                  <div class="row">
+                    <button type="button" (click)="view(c.index)" [attr.aria-expanded]="viewing() === c.index">{{ viewing() === c.index ? '收合' : '查看完整展開' }}</button>
+                    @if (c.candidate.savedComboId) {
+                      <button type="button" (click)="openCombo(c.candidate.savedComboId)">開啟已存的 Combo</button>
+                    } @else {
+                      <button type="button" class="primary" (click)="save(c.index)" [disabled]="busy() || c.candidate.schemaErrors.length > 0">存成固定 Combo</button>
+                    }
+                    <button type="button" (click)="recheck(c.index)" [disabled]="busy()">重新驗證</button>
+                    <button type="button" class="danger" (click)="remove(c.index)" [disabled]="busy()">刪除候選</button>
+                  </div>
+                </li>
+              </ng-template>
+
+              @if (run.staged) {
+                @for (g of a.groups; track g.key) {
+                  <h3>{{ g.label }}（{{ g.rows.length }}）</h3>
+                  <ol class="plain stack" [attr.aria-label]="g.label + '路線'">
+                    @for (c of g.rows; track c.candidate.route.id) {
+                      <ng-container *ngTemplateOutlet="candidateItem; context: { $implicit: c }" />
+                    }
+                  </ol>
+                }
+                @if (a.folded.length) {
+                  <p class="muted">已折疊 {{ a.folded.length }} 條起手與終場都相同的重複路線（只是步驟順序或寫法不同）；它們仍保留在分析紀錄中。</p>
+                }
+              } @else {
+                <ol class="plain stack" aria-label="候選路線">
+                  @for (c of a.shown; track c.candidate.route.id) {
+                    <ng-container *ngTemplateOutlet="candidateItem; context: { $implicit: c }" />
+                  }
+                </ol>
+              }
+              @if (a.more.length) {
+                <details>
+                  <summary>其他候選（超過顯示上限 {{ a.more.length }} 條）</summary>
+                  <ol class="plain stack" aria-label="其他候選">
+                    @for (c of a.more; track c.candidate.route.id) {
+                      <ng-container *ngTemplateOutlet="candidateItem; context: { $implicit: c }" />
+                    }
+                  </ol>
+                </details>
+              }
+
+              @if (a.coverage.length) {
+                <section class="stack" aria-labelledby="coverage-heading">
+                  <h3 id="coverage-heading">偏好怪獸的結果</h3>
+                  <ul>
+                    @for (t of a.coverage; track t.cardId) {
+                      <li [class.found]="t.found">{{ name(t.cardId) }}：{{ t.message }}</li>
+                    }
+                  </ul>
+                  <p class="muted">「已驗證路線」在這裡指：資料驗證通過、部分規則檢查沒有發現違規，且模擬結束時此怪獸在場上。它仍不是規則引擎驗證或 Master Duel 實測確認。</p>
+                </section>
+              }
+
+              <div class="table-wrap">
+                <table aria-label="候選比較">
+                  <thead>
+                    <tr>
+                      <th scope="col">#</th><th scope="col">路線</th><th scope="col">起手</th><th scope="col">模擬終場</th><th scope="col">有效干擾（靜態估算）</th><th scope="col">已驗證干擾</th>
+                      <th scope="col">條件未能驗證</th><th scope="col">額外牌組怪獸</th><th scope="col">剩餘手牌（已確認＋未追蹤）</th><th scope="col">層級</th>
+                      @if (run.staged) {
+                        <th scope="col">張數</th><th scope="col">起手組合</th><th scope="col">需要的牌組資源</th><th scope="col">步驟數</th><th scope="col">依據</th><th scope="col">後續資源</th><th scope="col">風險與限制</th><th scope="col">相較較少張數路線</th>
+                      }
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (c of a.all; track c.candidate.route.id) {
+                      <tr>
+                        <td>{{ c.rank }}</td>
+                        <th scope="row">{{ c.candidate.route.name }}</th>
+                        <td>{{ startKindLabel[c.evaluation.startKind] }}</td>
+                        <td>{{ finalText(c.evaluation) }}</td>
+                        <td class="num">{{ c.evaluation.effective }}</td>
+                        <td class="num">{{ c.evaluation.verified }}</td>
+                        <td class="num">{{ c.evaluation.conditional }}</td>
+                        <td>{{ extraText(c.evaluation) }}</td>
+                        <td>{{ handText(c.evaluation.hand) }}</td>
+                        <td>{{ levelLabel[c.level] }}{{ c.problems ? '（' + c.problems + ' 項問題）' : '' }}</td>
+                        @if (run.staged) {
+                          <td class="num">{{ c.evaluation.starters.length }}</td>
+                          <td>{{ handNames(c.candidate.route) }}</td>
+                          <td>{{ needsText(c.candidate.route) }}</td>
+                          <td class="num">{{ c.candidate.route.steps.length }}</td>
+                          <td>{{ basisLines(c.evaluation).join('；') || '沒有干擾' }}</td>
+                          <td>{{ c.evaluation.followUp.total }}（{{ c.evaluation.followUp.basis.join('；') }}）</td>
+                          <td>{{ riskText(c) }}</td>
+                          <td>{{ c.added ? c.added.summary : c.evaluation.starters.length > 1 ? '沒有可比較的較少張數路線' : '—' }}</td>
+                        }
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+
+              @if (compared().length) {
+                <section class="stack" aria-label="並排比較">
+                  <h3>並排比較（已選 {{ compared().length }} 條，最多 3 條）</h3>
+                  <div class="side-by-side">
+                    @for (c of compared(); track c.candidate.route.id) {
+                      <article class="item" [attr.aria-label]="'比較：' + c.candidate.route.name">
+                        <h4>{{ c.candidate.route.name }}</h4>
+                        <dl>
+                          <dt>張數</dt><dd>{{ startText(c.evaluation.startKind) }}（{{ handNames(c.candidate.route) }}）</dd>
+                          <dt>步驟數</dt><dd>{{ c.candidate.route.steps.length }}</dd>
+                          <dt>驗證層級</dt><dd>{{ levelLabel[c.level] }}</dd>
+                        </dl>
+                        @if (c.snapshot; as snap) {
+                          <app-board-preview [snapshot]="snap" [cards]="cards()" />
+                        } @else {
+                          <p class="muted">沒有卡片移動資料，無法產生終場縮圖。</p>
+                        }
+                        @if (c.added; as v) {
+                          <p class="muted">相較較少張數的「{{ routeName(v.baseIndex) }}」：{{ v.summary }}</p>
+                        }
+                      </article>
+                    }
+                  </div>
+                </section>
+              }
+
+              @if (run.explored?.length) {
+                <details>
+                  <summary>AI 提到的展開構想（{{ run.explored!.length }}，未逐步驗證）</summary>
+                  <ul>
+                    @for (x of run.explored!; track $index) {
+                      <li>
+                        <strong>{{ x.name }}</strong>：額外牌組 {{ x.extraDeckCardIds.length ? names(x.extraDeckCardIds) : '無' }}；終場 {{ x.finalBoardCardIds.length ? names(x.finalBoardCardIds) : '未說明' }}
+                        {{ x.routeName ? '（已展開為「' + x.routeName + '」）' : '（沒有展開）' }}{{ x.note ? '・' + x.note : '' }}
+                      </li>
+                    }
+                  </ul>
+                </details>
+              }
+            }
+          </section>
+
+          @if (viewed(); as v) {
+            <section class="stack" aria-label="候選路線內容">
+              <h2>{{ v.route.name }}</h2>
+              <app-route-analysis-panel [route]="v.route" [deck]="deck()" [cards]="cards()" [busy]="busy()" (recheck)="recheck(viewing()!)" />
+              <app-combo-viewer [route]="v.route" [cards]="cards()" [deck]="d" [backLink]="['/decks', d.id, 'analysis']" [(mode)]="viewerMode" />
+            </section>
+          }
+        } @else {
+          <section class="card">
+            <h2>分析結果</h2>
+            <p class="muted">尚無結果。設定好模型服務後按「開始分析」。</p>
+          </section>
+        }
+      </div>
+    </div>
+  } @else {
+    <p class="muted">載入中…</p>
+  }
+</div>

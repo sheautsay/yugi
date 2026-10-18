@@ -5,6 +5,7 @@ import { ImportItem, comboCardIds, copyCombo, exportCombos, prepareComboImport, 
 import { ComboRepository } from '../../core/combo-repository';
 import { VERIFICATION_LABEL } from '../../core/labels';
 import { ComboRoute } from '../../core/models';
+import { localDate } from '../../core/time';
 import { safeFileName, saveTextFile } from '../../shared/save-file';
 
 type ConflictChoice = 'keep-both' | 'overwrite' | 'skip';
@@ -114,7 +115,7 @@ export class ComboListPage {
   }
 
   protected exportAll(): void {
-    saveTextFile(`ygo-combos-${new Date().toISOString().slice(0, 10)}.json`, exportCombos(this.combos()));
+    saveTextFile(`ygo-combos-${localDate()}.json`, exportCombos(this.combos()));
   }
 
   /** Card IDs used by the routes in the file that are at least structurally valid. */

@@ -1,5 +1,5 @@
-import { ChangeDetectionStrategy, Component, ElementRef, OnDestroy, computed, effect, inject, input, output, signal, viewChild } from '@angular/core';
-import { displayName } from '../../core/deck';
+import { ChangeDetectionStrategy, Component, ElementRef, Injector, OnDestroy, afterNextRender, computed, effect, inject, input, output, signal, viewChild } from '@angular/core';
+import { CardNamesService } from '../../core/card-names.service';
 import { checkHand } from '../../core/hand';
 import { LayoutRepository } from '../../core/layout-repository';
 import { CardCount, CardRecord, HandLayoutPreset, HandRecognitionSlot, HandRegion, HandSize } from '../../core/models';
@@ -35,9 +35,10 @@ export class ScreenshotRecognizer implements OnDestroy {
   readonly confirmed = output<number[]>();
 
   private readonly overlay = viewChild<ElementRef<HTMLElement>>('overlay');
+  private readonly injector = inject(Injector);
 
   protected readonly statusText = STATUS_TEXT;
-  protected readonly displayName = displayName;
+  protected readonly cardNames = inject(CardNamesService);
 
   protected readonly previewUrl = signal<string | null>(null);
   protected readonly imageSize = signal<{ width: number; height: number } | null>(null);
@@ -57,7 +58,7 @@ export class ScreenshotRecognizer implements OnDestroy {
   private dragStart: { x: number; y: number } | null = null;
 
   protected readonly mainOptions = computed(() =>
-    this.main().map((c) => ({ cardId: c.cardId, label: `${displayName(this.cards().get(c.cardId))}（ID ${c.cardId}）` })),
+    this.main().map((c) => ({ cardId: c.cardId, label: `${this.cardNames.labelOf(c.cardId, this.cards().get(c.cardId))}（ID ${c.cardId}）` })),
   );
   protected readonly usablePresets = computed(() => this.presets().filter((p) => p.handSize === this.handSize()));
   protected readonly boxesReady = computed(() => this.regions().length === this.handSize());
@@ -67,7 +68,7 @@ export class ScreenshotRecognizer implements OnDestroy {
   });
   protected readonly handErrors = computed(() => {
     const hand = this.hand();
-    return hand ? checkHand(this.main(), hand, this.handSize(), (id) => displayName(this.cards().get(id))).errors : [];
+    return hand ? checkHand(this.main(), hand, this.handSize(), (id) => this.cardNames.labelOf(id, this.cards().get(id))).errors : [];
   });
   protected readonly canConfirm = computed(() => !!this.hand() && this.boxesReady() && this.handErrors().length === 0 && this.slots()?.length === this.handSize());
 
@@ -143,6 +144,8 @@ export class ScreenshotRecognizer implements OnDestroy {
     this.previewUrl.set(URL.createObjectURL(file));
     this.imageSize.set({ width: bitmap.width, height: bitmap.height });
     this.message.set(`已載入截圖（${bitmap.width}×${bitmap.height}）。截圖只在此頁記憶體中處理，不會儲存或上傳。`);
+    // Bring the whole screenshot into view so the boxes can be drawn right away (CR-012).
+    afterNextRender(() => this.overlay()?.nativeElement.scrollIntoView({ block: 'nearest' }), { injector: this.injector });
   }
 
   /** Frees the screenshot (object URL + decoded bitmap). */

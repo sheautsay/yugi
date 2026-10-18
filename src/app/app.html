@@ -1,14 +1,39 @@
-<header class="app-header">
-  <a class="brand" routerLink="/decks">YGO Combo 助手</a>
-  <nav aria-label="主要導覽">
-    <a routerLink="/decks" routerLinkActive="active">牌組</a>
-    <a routerLink="/combos" routerLinkActive="active">Combo 管理</a>
-    <a routerLink="/settings" routerLinkActive="active">設定</a>
-  </nav>
-</header>
-<main id="main">
-  <router-outlet />
-</main>
-<footer class="app-footer muted">
-  獨立查詢工具：不連接遊戲、不讀取遊戲資料、不自動操作。固定展開皆假設無干擾。
-</footer>
+<a class="skip-link" href="#main" (click)="$event.preventDefault(); focusMain()">跳到主要內容</a>
+<div class="shell">
+  <aside class="sidebar">
+    <div class="brand-row">
+      <a class="brand" routerLink="/home" aria-label="YGO Combo 助手 首頁">
+        <span class="brand-mark" aria-hidden="true"><app-icon name="cards" [size]="18" /></span>
+        <span class="brand-text">YGO Combo 助手</span>
+      </a>
+      <button type="button" class="ghost icon-button back" (click)="back()" [disabled]="!canGoBack()" aria-label="返回上一個畫面" data-tip="返回上一個畫面">
+        <app-icon name="back" [size]="18" />
+      </button>
+    </div>
+
+    <nav aria-label="主要導覽">
+      @for (item of nav; track item.label) {
+        <a [routerLink]="item.link()" [class.active]="item.active(url())" [attr.aria-current]="item.active(url()) ? 'page' : null">
+          <app-icon [name]="item.icon" />
+          <span class="nav-label">{{ item.label }}</span>
+        </a>
+        @if (item.hint?.(); as hint) {
+          <span class="nav-hint">{{ hint }}</span>
+        }
+      }
+    </nav>
+
+    @if (current.deck(); as deck) {
+      <div class="current-deck" aria-label="目前使用的牌組">
+        <span class="current-label">目前牌組</span>
+        <a class="current-name" [routerLink]="['/decks', deck.id]"><span class="visually-hidden">目前牌組：</span>{{ deck.name }}</a>
+      </div>
+    }
+
+    <p class="app-footer">獨立查詢工具：不連接遊戲、不讀取遊戲資料、不自動操作。固定展開皆假設無干擾。</p>
+  </aside>
+
+  <main id="main" class="content" tabindex="-1">
+    <router-outlet />
+  </main>
+</div>

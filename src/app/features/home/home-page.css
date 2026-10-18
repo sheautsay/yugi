@@ -1,0 +1,161 @@
+.home-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
+  gap: var(--gap);
+  align-items: start;
+}
+
+@media (max-width: 1000px) {
+  .home-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.deck-summary {
+  display: flex;
+  gap: var(--space-5);
+  align-items: flex-start;
+}
+
+.cover {
+  width: 116px;
+  flex: none;
+}
+
+.deck-info {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.deck-name {
+  font-size: var(--fs-xl);
+  font-weight: 650;
+  color: var(--text-strong);
+  margin: 0;
+}
+
+.deck-info p {
+  margin: 0;
+}
+
+.deck-info .badge {
+  align-self: flex-start;
+  /* A draft reason can list dozens of card IDs: wrap it inside the card instead of widening the page. */
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  /* A pill radius turns a multi-line badge into an oval. */
+  border-radius: var(--radius-sm);
+  padding: 4px 10px;
+}
+
+.actions {
+  margin-top: var(--space-2);
+}
+
+.center {
+  justify-content: center;
+  margin-top: var(--space-3);
+}
+
+.status-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  color: var(--text-strong);
+  margin-bottom: 4px;
+}
+
+.dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--faint);
+}
+
+.dot.on {
+  background: var(--ok);
+}
+
+.dot.warn {
+  background: var(--warn);
+}
+
+.section-title {
+  font-size: var(--fs-lg);
+  margin: var(--space-2) 0 var(--space-3);
+}
+
+.actions-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: var(--gap);
+  margin-bottom: var(--gap);
+}
+
+.action {
+  display: grid;
+  grid-template-columns: 40px 1fr;
+  grid-template-rows: auto auto;
+  column-gap: 12px;
+  row-gap: 2px;
+  padding: var(--space-4);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  text-decoration: none;
+  transition:
+    border-color var(--dur),
+    background-color var(--dur);
+}
+
+.action:hover {
+  border-color: var(--primary);
+  background: var(--surface-2);
+  text-decoration: none;
+}
+
+.action-icon {
+  grid-row: span 2;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--primary-soft);
+  color: var(--ice);
+}
+
+.action-title {
+  font-weight: 650;
+  color: var(--text-strong);
+}
+
+.action-text {
+  font-size: var(--fs-sm);
+  color: var(--muted);
+}
+
+.recent li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.recent li:last-child {
+  border-bottom: 0;
+}
+
+.recent a {
+  font-weight: 600;
+  flex: 1 1 200px;
+  min-width: 0;
+}
