@@ -100,8 +100,8 @@ AI 分析太慢，無法在對局中即時進行，所以分成兩段：
 
 | 項目 | 決定 |
 |---|---|
-| 目標牌組 | 「DD 炸彈」與「藥物的副作用」兩種 FTK（實作時由擁有者提供 ydke 牌表作為測試案例） |
-| 範圍 | 只做**先攻 FTK**：起手 5 張、不抽牌、不能攻擊，以效果傷害（含「藥物的副作用」把對手回復 LP 轉成傷害）達成 8000 |
+| 目標牌組 | **Banquet FTK**（擁有者稱「DD 炸彈」），以下方參考牌表為測試案例；「藥物的副作用」FTK 不在範圍內 |
+| 範圍 | 只做**先攻 FTK**：起手 5 張、不抽牌、不能攻擊，以效果傷害達成 8000 |
 | 時程 | 實戰模式 B1～B5 完成後 |
 
 **設計**
@@ -110,7 +110,9 @@ AI 分析太慢，無法在對局中即時進行，所以分成兩段：
 2. **路線格式擴充**：
    - 新步驟類型「抽牌」（`draw`）、「翻開／挖掘」（`excavate`）等**結果未知**的動作：只記錄張數與來源，**不得指定抽到哪張卡**。
    - **分支**：抽牌類步驟之後可接條件分支，例如「抽到 {A, B} 任一張 → 分支 1；否則 → 分支 2」；分支可巢狀，必須有「都沒抽到」的分支（可以是「失敗」）。
-   - 每一步可記錄「對對手造成的傷害」與「對手回復的 LP」；本機依場上是否有「藥物的副作用」等轉換效果，把回復換算為傷害（轉換規則放在卡片規則表 `src/app/core/card-rules.ts`，不要寫死在檢查邏輯中）。
+   - 每一步可記錄「對對手造成的傷害」。傷害若取決於狀態（例如 D.D. Dynamite 依**對手除外的卡數**造成傷害），由本機依當時狀態計算，不採信 AI 寫的數字；計算規則放在卡片規則表 `src/app/core/card-rules.ts`，不要寫死在檢查邏輯中。
+   - 路線狀態需追蹤**對手側的計數**（至少：對手除外的卡數），因為 FTK 的傷害來源依賴它。
+   - 陷阱卡的發動時機：這類牌組大量在蓋放當回合發動陷阱（靠 Trap Trick、Traptantalizing Tune、Trap Holic 等），本機檢查要能表達「本回合蓋放的陷阱需要允許效果才能發動」。
    - 資料格式變動需提升 `schemaVersion`，並保持舊備份、舊 Combo JSON 可以匯入（舊資料視為沒有分支的路線）。
 3. **成功率由本機計算，不靠 AI**：牌組與目前手牌已知，每個抽牌節點「從剩餘牌組抽 k 張、至少中 1 張（或指定組合）」以超幾何分布精確計算；沿分支樹加總得到整手牌的成功率。牌組小、分支少時精確計算；若分支樹過大，再考慮蒙地卡羅模擬作為備案。
 4. **本機檢查擴充**：
@@ -126,8 +128,28 @@ AI 分析太慢，無法在對局中即時進行，所以分成兩段：
 **驗收**
 
 - 單元測試：超幾何機率計算（含多張需求、重複卡）、分支樹成功率加總、傷害與回復轉換、禁止指定抽牌、傷害不足的分支不得標為成功、舊格式資料可匯入。
-- 以擁有者提供的兩副 FTK 牌表各跑一次 AI 分析，產出的計畫在本機檢查下沒有「指定抽牌」，且成功率可被計算與顯示。
+- 以下方 Banquet FTK 參考牌表跑一次 AI 分析，產出的計畫在本機檢查下沒有「指定抽牌」，傷害由本機計算，且成功率可被計算與顯示。
 - 實戰模式中輸入抽牌結果後，成功率與建議分支會即時更新。
+
+**參考牌表：Banquet FTK**（來源：[Master Duel Meta，brandon，2026-10-12，Master V](https://www.masterduelmeta.com/top-decks/master-v/october-2026/banquet-ftk/brandon/9xS6N)）
+
+| 主牌組（40） | 張數 | 主牌組（續） | 張數 |
+|---|---|---|---|
+| Lilith, Lady of Lament | 2 | Transaction Rollback | 3 |
+| Reasoning | 3 | D.D. Dynamite | 2 |
+| Magical Mallet | 1 | Jar of Avarice | 1 |
+| Dark World Dealings | 2 | Paleozoic Marrella | 3 |
+| Into the Void | 3 | Evenly Matched | 3 |
+| Card of Fate | 1 | Trap Trick | 3 |
+| Performapal Popperup | 1 | Banquet of Millions | 3 |
+| Traptantalizing Tune | 1 | Trap Holic | 3 |
+| Triple Tactics Thrust | 1 | | |
+| Chicken Game | 3 | | |
+| Contract with Don Thousand | 1 | | |
+
+額外牌組（15）：Garura, Wings of Resonant Life ×1、Number 1: Numeron Gate Ekam ×3、Number 2: Numeron Gate Dve ×3、Number 3: Numeron Gate Trini ×3、Number 4: Numeron Gate Catvari ×3、Mereologic Aggregator ×1、Super Starslayer TY-PHON - Sky Crisis ×1。
+
+這副牌同時包含抽牌（Into the Void、Chicken Game、Dark World Dealings、Card of Fate、Jar of Avarice）、翻開牌組頂（Reasoning）、蓋放當回合發動陷阱，以及依對手狀態計算的傷害（D.D. Dynamite），正好涵蓋 B7 需要支援的各種情況。實作時以卡片資料庫中的效果文字為準，上表僅為卡名與張數。
 
 **已知限制**
 
