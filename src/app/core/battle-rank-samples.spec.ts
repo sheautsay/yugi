@@ -46,4 +46,12 @@ describe('battle ranking with the Maliss sample routes (B1)', () => {
     const noDormouse = matchRoutes(routes, deck, [23434538, 14558127, 10045474, 24842059, 3723262], context, { cards });
     expect(rankForBattle(noDormouse, deck, cards, goal)).toEqual([]);
   });
+
+  it('matching and ranking 60 collected routes stays far below the 300 ms the battle page aims for', () => {
+    const many = Array.from({ length: 60 }, (_, i) => convert([routeMalissOnly, routeAllied, routeFirewall][i % 3](), `r${i}`));
+    const t0 = performance.now();
+    const ranked = rankForBattle(matchRoutes(many, deck, hand, context, { cards }), deck, cards, goal);
+    expect(performance.now() - t0).toBeLessThan(300);
+    expect(ranked.length).toBe(3); // three distinct end boards; the rest are folded
+  });
 });

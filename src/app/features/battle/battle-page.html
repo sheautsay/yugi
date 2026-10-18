@@ -1,0 +1,178 @@
+<div class="page battle">
+  @if (!settings.enabled()) {
+    <h1>{{ t.disabledTitle }}</h1>
+    <p class="notice">{{ t.disabledBody }}</p>
+    <a class="button primary" routerLink="/settings">{{ t.openSettings }}</a>
+  } @else if (!loaded()) {
+    <h1>{{ t.title }}</h1>
+    <p class="muted">載入中…</p>
+  } @else if (!deck()) {
+    <h1>{{ t.title }}</h1>
+    <p class="notice warn">{{ t.noDeck }}</p>
+    <a class="button primary" routerLink="/decks">前往牌組頁</a>
+  } @else {
+    <header class="bar">
+      <h1>{{ t.title }}</h1>
+      <a class="deck-name" [routerLink]="['/decks', deck()!.id]">{{ deck()!.name }}</a>
+    </header>
+
+    @if (!deckCheck()?.queryable) {
+      <p class="notice warn" role="alert">{{ t.draftDeck }}</p>
+    } @else {
+      @if (!selected()) {
+      <section class="controls" aria-label="情境與手牌">
+        <div class="row" role="radiogroup" aria-label="先後攻">
+          <label class="choice"><input type="radio" name="battle-turn" [checked]="turnOrder() === 'first'" (change)="setTurn('first')" /> {{ t.turn.first }}</label>
+          <label class="choice"><input type="radio" name="battle-turn" [checked]="turnOrder() === 'second'" (change)="setTurn('second')" /> {{ t.turn.second }}</label>
+        </div>
+        <div class="row">
+          <label>
+            {{ t.goal }}
+            <select (change)="goal.set($any($event.target).value)">
+              @for (k of goalKinds; track k) {
+                <option [value]="k" [selected]="goal() === k">{{ goalLabel[k] }}</option>
+              }
+            </select>
+          </label>
+          <label>
+            {{ t.topN }}
+            <select (change)="settings.setTopN(+$any($event.target).value)">
+              @for (n of topNs; track n) {
+                <option [value]="n" [selected]="settings.topN() === n">前 {{ n }} 名</option>
+              }
+            </select>
+          </label>
+        </div>
+
+        <h2 class="small-head">{{ t.hand(hand().length, handSize()) }}</h2>
+        <ol class="plain hand-slots" aria-label="目前手牌">
+          @for (id of hand(); track $index) {
+            <li>
+              <button type="button" class="hand-card" (click)="removeAt($index)" [attr.aria-label]="'移除第 ' + ($index + 1) + ' 張：' + name(id)">
+                <app-card-tile [cardId]="id" [card]="cards().get(id)" size="s" [caption]="true" />
+              </button>
+            </li>
+          }
+        </ol>
+        @for (e of handCheck().errors; track $index) {
+          <p class="notice bad" role="alert">{{ e }}</p>
+        }
+        <div class="row">
+          <button type="button" (click)="hand.set([])" [disabled]="hand().length === 0">{{ t.clear }}</button>
+          <button type="button" (click)="draw()">{{ t.draw }}</button>
+          <button type="button" (click)="showShot.set(!showShot())">{{ showShot() ? t.closePaste : t.paste }}</button>
+        </div>
+        @if (showShot()) {
+          <app-screenshot-recognizer [main]="deck()!.main" [cards]="cards()" [handSize]="handSize()" (confirmed)="applyRecognized($event)" />
+        }
+
+        <details class="pool-box" [open]="hand().length < handSize()">
+          <summary>{{ t.pickHint }}</summary>
+          <label>
+            篩選
+            <input [value]="filter()" (input)="filter.set($any($event.target).value)" placeholder="卡名或 ID" />
+          </label>
+          <ul class="plain pool">
+            @for (c of pool(); track c.cardId) {
+              <li>
+                <button type="button" class="pool-card" (click)="add(c.cardId)" [disabled]="c.left <= 0 || hand().length >= handSize()" [attr.aria-label]="'加入 ' + name(c.cardId) + '（剩 ' + c.left + ' 張）'">
+                  <app-card-tile [cardId]="c.cardId" [card]="c.card" size="s" />
+                  <span class="left">×{{ c.left }}</span>
+                </button>
+              </li>
+            }
+          </ul>
+        </details>
+      </section>
+      }
+
+      <section class="results" aria-live="polite" aria-label="建議展開">
+        @if (routes().length === 0) {
+          <p class="notice">{{ t.noRoutes }}</p>
+        } @else if (ranking() === null) {
+          <p class="muted">{{ t.needMore(handSize()) }}</p>
+        } @else if (selected(); as sel) {
+          <!-- one route, step by step -->
+          <div class="detail">
+            <div class="row between">
+              <button type="button" class="ghost" (click)="select(null)"><app-icon name="back" [size]="16" />{{ t.back }}</button>
+              <span class="badge" [class.ok]="badge(sel.entry).cls === 'ok'" [class.warn]="badge(sel.entry).cls === 'warn'">{{ badge(sel.entry).label }}</span>
+            </div>
+            <h2 class="route-name">{{ sel.rank }}. {{ sel.entry.route.name }}</h2>
+            <p class="muted small">{{ t.handLine }}：{{ handNames() }}</p>
+            <section class="final" [attr.aria-label]="t.finalBoard">
+              <h3 class="small-head">{{ t.finalBoard }}</h3>
+              @if (sel.snapshot; as snap) {
+                <app-board-preview [snapshot]="snap" [cards]="cards()" [compact]="true" />
+              } @else {
+                <p class="muted">{{ t.noSnapshot }}</p>
+                <ul class="plain">
+                  @for (e of sel.entry.route.endBoard; track $index) {
+                    <li>{{ name(e.cardId) }} × {{ e.count }}（{{ e.zone }}）</li>
+                  }
+                </ul>
+              }
+            </section>
+            <p class="progress">
+              <strong>{{ t.stepOf(navigator.current(), navigator.total()) }}</strong>
+              <span class="muted small">{{ t.keys }}</span>
+            </p>
+            <ol class="steps-list" aria-label="步驟">
+              @for (s of sel.entry.route.steps; track s.id) {
+                <li [class.current]="s.order === navigator.current()" [class.done]="s.order < navigator.current()" [attr.aria-current]="s.order === navigator.current() ? 'step' : null">
+                  <button type="button" (click)="navigator.goTo(s.order)">
+                    <span class="num">{{ s.order }}</span>
+                    <span class="step-title"><span class="badge">{{ actionLabel[s.actionType] }}</span> {{ s.title }}</span>
+                  </button>
+                  @if (s.order === navigator.current()) {
+                    <p class="step-desc">{{ s.description }}</p>
+                    @if (s.costText) {
+                      <p class="muted small">代價：{{ s.costText }}</p>
+                    }
+                    @if (s.warning) {
+                      <p class="notice warn small">{{ s.warning }}</p>
+                    }
+                  }
+                </li>
+              }
+            </ol>
+            <div class="row">
+              <button type="button" (click)="navigator.prev()" [disabled]="navigator.atFirst()">{{ t.prev }}</button>
+              <button type="button" class="primary" (click)="navigator.next()" [disabled]="navigator.atLast()">{{ t.next }}</button>
+            </div>
+            <p class="muted small">{{ t.estimateNote }}</p>
+          </div>
+        } @else if (shown().length === 0) {
+          <p class="notice warn">{{ t.noMatch }}</p>
+          <p class="muted">{{ t.noMatchHint }}</p>
+          <a class="button" [routerLink]="['/decks', deck()!.id, 'analysis']">{{ t.toAnalysis }}</a>
+        } @else {
+          <h2 class="small-head">{{ t.resultsHeading(shown().length) }}</h2>
+          <ol class="plain ranks">
+            @for (s of shown(); track s.entry.route.id) {
+              <li class="rank-item">
+                <button type="button" class="rank-btn" (click)="select(s.entry.route.id)">
+                  <div class="row between">
+                    <strong>{{ s.rank }}. {{ s.entry.route.name }}</strong>
+                    <span class="badge" [class.ok]="badge(s.entry).cls === 'ok'" [class.warn]="badge(s.entry).cls === 'warn'">{{ badge(s.entry).label }}</span>
+                  </div>
+                  <p class="muted small">{{ t.needs }}：{{ starters(s.entry) }}</p>
+                  @if (s.snapshot; as snap) {
+                    <app-board-preview [snapshot]="snap" [cards]="cards()" [compact]="true" />
+                  }
+                  <p class="small">
+                    {{ t.interruptions(s.entry.evaluation.effective) }}・{{ t.handLeft(s.entry.evaluation.followUp.hand) }}
+                    @if (s.entry.sameEndBoard) {
+                      <span class="muted">・{{ t.sameEnd(s.entry.sameEndBoard) }}</span>
+                    }
+                  </p>
+                </button>
+              </li>
+            }
+          </ol>
+          <p class="muted small">{{ t.estimateNote }}</p>
+        }
+      </section>
+    }
+  }
+</div>

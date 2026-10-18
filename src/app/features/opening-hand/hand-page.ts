@@ -13,7 +13,7 @@ import { CardTile } from '../../shared/card-tile';
 import { MissingCards } from '../../shared/missing-cards';
 import { HandStateService } from './hand-state.service';
 import { KIND_LABEL, RouteResultList } from './route-result-list';
-import { ScreenshotRecognizer } from './screenshot-recognizer';
+import { ScreenshotRecognizer } from '../../shared/recognition/screenshot-recognizer';
 
 @Component({
   selector: 'app-hand-page',

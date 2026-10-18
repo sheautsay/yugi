@@ -17,6 +17,7 @@ import { localDate, localDateTime } from '../../core/time';
 import { UserDataService } from '../../core/user-data.service';
 import { RouterLink } from '@angular/router';
 import { CurrentDeckService } from '../../core/current-deck.service';
+import { BattleSettingsService } from '../../core/battle-settings.service';
 import { TEXT } from '../../core/texts';
 import { APP_VERSION } from '../../core/version';
 import { openExternal } from '../../shared/open-external';
@@ -41,6 +42,8 @@ export class SettingsPage {
   /** Inside the Windows app (the host opens links in the system browser). */
   protected readonly desktop = hasExternalOpener();
   protected readonly t = TEXT;
+  protected readonly battleText = TEXT.battle;
+  protected readonly battle = inject(BattleSettingsService);
   protected readonly chatgptMessage = signal('');
   protected readonly signingIn = signal(false);
   protected readonly autoBackup = inject(AutoBackupService);
