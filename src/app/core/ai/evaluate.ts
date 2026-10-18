@@ -242,7 +242,11 @@ export interface RankedCandidate {
   targetsIntermediate: number;
 }
 
-function score(e: RouteEvaluation, goal: AnalysisGoal, onBoard: number, intermediate: number): number[] {
+/**
+ * How well a route does for a goal, as a list compared left to right (bigger is better). Shared by the analysis
+ * page ({@link rankCandidates}) and the battle ranking; the preferred-monster counts come from {@link targetCounts}.
+ */
+export function goalScore(e: RouteEvaluation, goal: AnalysisGoal, onBoard: number, intermediate: number): number[] {
   switch (goal.kind) {
     case 'targets':
       return [onBoard, e.effective, intermediate, e.conditional, e.handLeft];
@@ -257,18 +261,26 @@ function score(e: RouteEvaluation, goal: AnalysisGoal, onBoard: number, intermed
   }
 }
 
-const compare = (a: number[], b: number[]) => {
+/** Orders two score lists best-first (negative when `a` ranks before `b`). */
+export const compare = (a: number[], b: number[]) => {
   for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return b[i] - a[i];
   return 0;
 };
 
+/** Preferred Extra Deck monsters a route ends with / only uses on the way (goal B). */
+export function targetCounts(e: RouteEvaluation, preferredExtraIds: readonly number[]): { onBoard: number; intermediate: number } {
+  const preferred = new Set(preferredExtraIds);
+  return {
+    onBoard: new Set(e.finalMonsters.filter((id) => preferred.has(id))).size,
+    intermediate: e.extraUsed.filter((u) => preferred.has(u.cardId) && !u.onFinalBoard).length,
+  };
+}
+
 /** Valid routes first, then by the goal; ties keep the model's order. Never uses ATK or Link Rating. */
 export function rankCandidates(items: ReadonlyArray<{ index: number; evaluation: RouteEvaluation }>, goal: AnalysisGoal): RankedCandidate[] {
-  const preferred = new Set(goal.preferredExtraIds);
   const rows = items.map(({ index, evaluation: e }) => {
-    const onBoard = new Set(e.finalMonsters.filter((id) => preferred.has(id))).size;
-    const intermediate = e.extraUsed.filter((u) => preferred.has(u.cardId) && !u.onFinalBoard).length;
-    return { index, evaluation: e, targetsOnBoard: onBoard, targetsIntermediate: intermediate, key: [e.valid ? 1 : 0, ...score(e, goal, onBoard, intermediate), -e.problemCount] };
+    const { onBoard, intermediate } = targetCounts(e, goal.preferredExtraIds);
+    return { index, evaluation: e, targetsOnBoard: onBoard, targetsIntermediate: intermediate, key: [e.valid ? 1 : 0, ...goalScore(e, goal, onBoard, intermediate), -e.problemCount] };
   });
   rows.sort((a, b) => compare(a.key, b.key) || a.index - b.index);
 
