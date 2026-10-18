@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { openAddDeck } from './fixtures';
 
 test('root redirects to the zh-TW home dashboard', async ({ page }) => {
   await page.goto('/');

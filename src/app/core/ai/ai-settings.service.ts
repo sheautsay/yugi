@@ -37,7 +37,8 @@ export class AiSettingsService {
 
   /** The model services this build offers (the Windows app: ChatGPT only). */
   readonly providers = inject(AI_PROVIDERS);
-  readonly settings = signal<AiSettings>(this.restrict(DEFAULT_AI_SETTINGS));
+  /** The first provider this build offers is the default (browser: Claude API; Windows app: ChatGPT). */
+  readonly settings = signal<AiSettings>(this.restrict({ ...DEFAULT_AI_SETTINGS, provider: this.providers[0] }));
   readonly apiKey = signal(readKey());
   /** CR-010: the last explicit "check Ollama" result (null until the user asks). The pre-flight never uses it. */
   readonly ollamaCheck = signal<OllamaCheck | null>(null);
