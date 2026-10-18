@@ -35,6 +35,8 @@ export class BattleSettingsService {
   readonly topN = signal<BattleTopN>(5);
   readonly shortcut = signal(DEFAULT_CAPTURE_SHORTCUT);
   readonly gameLayouts = signal<GameLayouts>({});
+  /** B5: the compact battle window stays above the game. */
+  readonly onTop = signal(true);
   readonly ready: Promise<void> = this.load();
 
   async setEnabled(enabled: boolean): Promise<void> {
@@ -66,10 +68,15 @@ export class BattleSettingsService {
     await this.save();
   }
 
+  async setOnTop(onTop: boolean): Promise<void> {
+    this.onTop.set(onTop);
+    await this.save();
+  }
+
   private async save(): Promise<void> {
     await (await this.appDb.db()).put('meta', {
       key: KEY,
-      value: { enabled: this.enabled(), topN: this.topN(), shortcut: this.shortcut(), gameLayouts: this.gameLayouts() },
+      value: { enabled: this.enabled(), topN: this.topN(), shortcut: this.shortcut(), gameLayouts: this.gameLayouts(), onTop: this.onTop() },
     });
   }
 
@@ -81,7 +88,7 @@ export class BattleSettingsService {
   private async load(): Promise<void> {
     try {
       const entry = await (await this.appDb.db()).get('meta', KEY);
-      const value = entry?.value as { enabled?: unknown; topN?: unknown; shortcut?: unknown; gameLayouts?: unknown } | undefined;
+      const value = entry?.value as { enabled?: unknown; topN?: unknown; shortcut?: unknown; gameLayouts?: unknown; onTop?: unknown } | undefined;
       this.enabled.set(value?.enabled === true);
       if (BATTLE_TOP_N.includes(value?.topN as BattleTopN)) this.topN.set(value!.topN as BattleTopN);
       if (typeof value?.shortcut === 'string' && isValidShortcut(value.shortcut)) this.shortcut.set(value.shortcut);
@@ -89,6 +96,7 @@ export class BattleSettingsService {
       const next: GameLayouts = {};
       for (const size of [5, 6] as const) if (typeof layouts?.[size] === 'string') next[size] = layouts[size] as string;
       this.gameLayouts.set(next);
+      this.onTop.set(value?.onTop !== false);
     } catch {
       // keep the defaults (off, 5, default shortcut, no layouts)
     }

@@ -8,6 +8,9 @@ import { CAPTURE_SHORTCUT_EVENT, parseFrame, type DesktopApis } from './desktop-
 import { createDesktopBackupSink } from './desktop-backup-sink';
 import { createDesktopFetch } from './desktop-fetch';
 
+/** Label of the compact battle window (B5; see src-tauri/src/capture.rs). */
+export const BATTLE_WINDOW = 'battle';
+
 /** Card images come straight from the image host: the dev-server proxy does not exist in the installed app. */
 export const DESKTOP_CARD_IMAGE_BASE = 'https://images.ygoprodeck.com/images';
 
@@ -80,6 +83,9 @@ export function installDesktop(apis: DesktopApis): Provider[] {
     focusApp: () => apis.invoke<void>('focus_main_window'),
     captureGame: async () => parseFrame(await apis.invoke<ArrayBuffer>('capture_game_window')),
     setCaptureShortcut: (accelerator) => apis.invoke<void>('set_capture_shortcut', { accelerator }),
+    compactWindow: apis.windowLabel?.() === BATTLE_WINDOW,
+    openBattleWindow: (onTop) => apis.invoke<void>('open_battle_window', { onTop }),
+    setBattleOnTop: (onTop) => apis.invoke<void>('set_battle_on_top', { onTop }),
     onCaptureShortcut: (handler) => {
       let stop: (() => void) | undefined;
       let stopped = false;

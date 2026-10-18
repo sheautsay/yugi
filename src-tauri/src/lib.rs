@@ -1,7 +1,8 @@
 mod bridge;
 mod capture;
+mod overlay;
 
-use tauri::{Manager, RunEvent};
+use tauri::{Manager, RunEvent, WindowEvent};
 
 /// Brings the main window back to the front, e.g. after the ChatGPT sign-in finished in the system browser.
 #[tauri::command]
@@ -56,6 +57,13 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_global_shortcut::Builder::new().with_handler(capture::on_shortcut).build())
+        // B5: remembers where the battle window was (the main window keeps its own behaviour).
+        .plugin(
+            tauri_plugin_window_state::Builder::new()
+                .with_denylist(&["main"])
+                .with_state_flags(tauri_plugin_window_state::StateFlags::POSITION | tauri_plugin_window_state::StateFlags::SIZE)
+                .build(),
+        )
         .manage(bridge::BridgeState::default())
         .manage(capture::CaptureState::default())
         .invoke_handler(tauri::generate_handler![
@@ -64,12 +72,20 @@ pub fn run() {
             focus_main_window,
             save_text_file,
             capture::capture_game_window,
-            capture::set_capture_shortcut
+            capture::set_capture_shortcut,
+            overlay::open_battle_window,
+            overlay::set_battle_on_top
         ])
         .build(tauri::generate_context!())
         .expect("error while building the application");
 
     app.run(|handle, event| {
+        // B5: the battle window closes with the main window (the app then exits as before).
+        if let RunEvent::WindowEvent { label, event: WindowEvent::Destroyed, .. } = &event {
+            if label == "main" {
+                overlay::close_battle_window(handle);
+            }
+        }
         // The sidecar ends with the app on every normal exit path; if the app is killed instead, the
         // Windows job object (see bridge.rs) and the sidecar's own stdin watchdog end it.
         if let RunEvent::Exit | RunEvent::ExitRequested { .. } = event {

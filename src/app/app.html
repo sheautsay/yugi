@@ -1,5 +1,6 @@
 <a class="skip-link" href="#main" (click)="$event.preventDefault(); focusMain()">跳到主要內容</a>
-<div class="shell">
+<div class="shell" [class.compact]="compact">
+  @if (!compact) {
   <aside class="sidebar">
     <div class="brand-row">
       <a class="brand" routerLink="/home" aria-label="YGO Combo 助手 首頁">
@@ -43,6 +44,7 @@
       </div>
     }
   </aside>
+  }
 
   <main id="main" class="content" tabindex="-1">
     <router-outlet />

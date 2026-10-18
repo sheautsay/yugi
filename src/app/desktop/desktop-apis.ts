@@ -25,6 +25,8 @@ export interface DesktopApis {
   remove(path: string): Promise<void>;
   /** Subscribes to an event the host sends to this window; resolves to a function that stops listening. */
   listen(event: string, handler: () => void): Promise<() => void>;
+  /** The label of the window this page runs in (`main`, or `battle` for the compact battle window). */
+  windowLabel(): string;
 }
 
 /** Host event sent to the window that should capture when the capture shortcut is pressed (B4). */
@@ -73,5 +75,6 @@ export async function loadTauriApis(): Promise<DesktopApis> {
     remove: (p) => fs.remove(p),
     // Only events addressed to this window: the host picks the window that should react to the shortcut.
     listen: (event, handler) => webview.getCurrentWebviewWindow().listen(event, () => handler()),
+    windowLabel: () => webview.getCurrentWebviewWindow().label,
   };
 }
