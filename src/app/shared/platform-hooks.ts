@@ -9,6 +9,19 @@ export interface PlatformHooks {
   saveText?: (fileName: string, text: string, mime: string) => Promise<boolean>;
   /** Brings the app window to the front (after the sign-in finished in the system browser). */
   focusApp?: () => Promise<void>;
+  /** B4: one picture of the Master Duel window, kept in memory only (desktop only). */
+  captureGame?: () => Promise<CapturedFrame>;
+  /** B4: sets (or with null, removes) the system-wide shortcut that asks for a capture (desktop only). */
+  setCaptureShortcut?: (accelerator: string | null) => Promise<void>;
+  /** B4: calls `handler` each time the capture shortcut is pressed; returns a function that stops listening. */
+  onCaptureShortcut?: (handler: () => void) => () => void;
+}
+
+/** A captured window as raw RGBA pixels (4 bytes per pixel, row by row). */
+export interface CapturedFrame {
+  width: number;
+  height: number;
+  rgba: Uint8ClampedArray;
 }
 
 let installed: PlatformHooks = {};
@@ -29,4 +42,9 @@ export function focusApp(): void {
 
 export function hasExternalOpener(): boolean {
   return !!installed.openExternal;
+}
+
+/** B4: true when the host can capture the game window (the Windows app). */
+export function canCaptureGame(): boolean {
+  return !!installed.captureGame;
 }

@@ -1,5 +1,5 @@
 import { TestBed } from '@angular/core/testing';
-import { BattleSettingsService } from './battle-settings.service';
+import { BattleSettingsService, DEFAULT_CAPTURE_SHORTCUT, isValidShortcut } from './battle-settings.service';
 import { DB_NAME } from './db';
 
 describe('BattleSettingsService (B3)', () => {
@@ -28,5 +28,29 @@ describe('BattleSettingsService (B3)', () => {
     expect(again.topN()).toBe(3);
     await again.setTopN(9);
     expect(again.topN()).toBe(5);
+  });
+
+  it('B4: keeps a valid capture shortcut and the game-window layouts per hand size', async () => {
+    const first = make();
+    await first.ready;
+    expect(first.shortcut()).toBe(DEFAULT_CAPTURE_SHORTCUT);
+    expect(await first.setShortcut('  Alt+F9 ')).toBe(true);
+    expect(await first.setShortcut('F9')).toBe(false);
+    await first.setGameLayout(5, 'layout-5');
+    await first.setGameLayout(6, 'layout-6');
+    await first.setGameLayout(6, null);
+    const again = make();
+    await again.ready;
+    expect(again.shortcut()).toBe('Alt+F9');
+    expect(again.gameLayouts()).toEqual({ 5: 'layout-5' });
+  });
+
+  it('B4: a shortcut needs a modifier and exactly one other key', () => {
+    expect(isValidShortcut('Ctrl+Shift+Space')).toBe(true);
+    expect(isValidShortcut('CmdOrCtrl+K')).toBe(true);
+    expect(isValidShortcut('Space')).toBe(false);
+    expect(isValidShortcut('Ctrl+Shift')).toBe(false);
+    expect(isValidShortcut('Ctrl+A+B')).toBe(false);
+    expect(isValidShortcut('Ctrl++')).toBe(false);
   });
 });

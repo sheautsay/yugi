@@ -66,10 +66,18 @@
         <div class="row">
           <button type="button" (click)="hand.set([])" [disabled]="hand().length === 0">{{ t.clear }}</button>
           <button type="button" (click)="draw()">{{ t.draw }}</button>
-          <button type="button" (click)="showShot.set(!showShot())">{{ showShot() ? t.closePaste : t.paste }}</button>
+          <button type="button" (click)="togglePaste()">{{ showShot() ? t.closePaste : t.paste }}</button>
         </div>
+        @if (canCapture) {
+          <div class="row">
+            <button type="button" class="primary" (click)="captureNow()" [disabled]="gameCapture.busy()">{{ t.capture(settings.shortcut()) }}</button>
+          </div>
+          @if (captureMessage(); as m) {
+            <p class="notice small" [class.bad]="m.bad" role="status">{{ m.text }}</p>
+          }
+        }
         @if (showShot()) {
-          <app-screenshot-recognizer [main]="deck()!.main" [cards]="cards()" [handSize]="handSize()" (confirmed)="applyRecognized($event)" />
+          <app-screenshot-recognizer [main]="deck()!.main" [cards]="cards()" [handSize]="handSize()" [capture]="captureInput()" (confirmed)="applyRecognized($event)" />
         }
 
         <details class="pool-box" [open]="hand().length < handSize()">

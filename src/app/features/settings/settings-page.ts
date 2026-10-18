@@ -18,10 +18,11 @@ import { UserDataService } from '../../core/user-data.service';
 import { RouterLink } from '@angular/router';
 import { CurrentDeckService } from '../../core/current-deck.service';
 import { BattleSettingsService } from '../../core/battle-settings.service';
+import { CaptureShortcutService } from '../../shared/recognition/game-capture.service';
 import { TEXT } from '../../core/texts';
 import { APP_VERSION } from '../../core/version';
 import { openExternal } from '../../shared/open-external';
-import { focusApp, hasExternalOpener } from '../../shared/platform-hooks';
+import { canCaptureGame, focusApp, hasExternalOpener } from '../../shared/platform-hooks';
 import { saveTextFile } from '../../shared/save-file';
 
 @Component({
@@ -44,6 +45,33 @@ export class SettingsPage {
   protected readonly t = TEXT;
   protected readonly battleText = TEXT.battle;
   protected readonly battle = inject(BattleSettingsService);
+  /** B4 (desktop): the capture shortcut and the remembered hand layouts of the game window. */
+  protected readonly canCapture = canCaptureGame();
+  protected readonly captureShortcut = inject(CaptureShortcutService);
+  protected readonly shortcutDraft = signal<string | null>(null);
+  protected readonly shortcutError = signal('');
+  protected readonly gameLayoutSizes = computed(() =>
+    ([5, 6] as const)
+      .filter((size) => this.battle.gameLayouts()[size])
+      .map((size) => `${size} 張`)
+      .join('、'),
+  );
+
+  protected async applyShortcut(): Promise<void> {
+    const draft = this.shortcutDraft();
+    if (draft === null) return;
+    if (!(await this.battle.setShortcut(draft))) {
+      this.shortcutError.set(this.battleText.shortcutInvalid);
+      return;
+    }
+    this.shortcutError.set('');
+    this.shortcutDraft.set(null);
+  }
+
+  protected async resetGameLayouts(): Promise<void> {
+    await this.battle.setGameLayout(5, null);
+    await this.battle.setGameLayout(6, null);
+  }
   protected readonly chatgptMessage = signal('');
   protected readonly signingIn = signal(false);
   protected readonly autoBackup = inject(AutoBackupService);

@@ -18,7 +18,8 @@ import { TEXT } from '../../core/texts';
 import { BoardPreview } from '../../shared/board-preview';
 import { CardTile } from '../../shared/card-tile';
 import { Icon } from '../../shared/icon';
-import { ScreenshotRecognizer } from '../../shared/recognition/screenshot-recognizer';
+import { CaptureRequests, GameCaptureService } from '../../shared/recognition/game-capture.service';
+import { GameCaptureInput, ScreenshotRecognizer } from '../../shared/recognition/screenshot-recognizer';
 import { BattleFtk } from './battle-ftk';
 
 // The battle mode's situation is fixed to the one every collected route assumes: empty boards, a normal summon
@@ -40,6 +41,8 @@ export class BattlePage {
   private readonly cardNames = inject(CardNamesService);
   protected readonly settings = inject(BattleSettingsService);
   protected readonly current = inject(CurrentDeckService);
+  protected readonly gameCapture = inject(GameCaptureService);
+  private readonly captureRequests = inject(CaptureRequests);
 
   protected readonly t = TEXT.battle;
   protected readonly f = TEXT.ftk;
@@ -56,6 +59,11 @@ export class BattlePage {
   protected readonly hand = signal<number[]>([]);
   protected readonly filter = signal('');
   protected readonly showShot = signal(false);
+  /** B4: the game capture handed to the recognizer when cards need confirming or the layout must be drawn. */
+  protected readonly captureInput = signal<GameCaptureInput | null>(null);
+  /** B4: outcome of the last one-key capture. */
+  protected readonly captureMessage = signal<{ text: string; bad: boolean } | null>(null);
+  protected readonly canCapture = this.gameCapture.available();
   protected readonly routes = signal<ComboRoute[]>([]);
   protected readonly cards = signal(new Map<number, CardRecord>());
   protected readonly loaded = signal(false);
@@ -105,6 +113,11 @@ export class BattlePage {
       this.cardData.version();
       void this.load();
     });
+    // B4: a press of the capture shortcut (possibly made before this page opened).
+    effect(() => {
+      this.captureRequests.tick();
+      if (this.loaded() && untracked(() => this.captureRequests.take())) void untracked(() => this.captureNow());
+    });
     // A new hand (or a different deck or goal) can change the list, so leave the open route.
     effect(() => {
       this.hand();
@@ -150,6 +163,45 @@ export class BattlePage {
   protected applyRecognized(hand: number[]): void {
     this.hand.set(hand);
     this.showShot.set(false);
+    this.captureInput.set(null);
+  }
+
+  protected togglePaste(): void {
+    this.showShot.update((open) => !open);
+    this.captureInput.set(null);
+  }
+
+  /** B4: capture the game window and recognize the hand with the remembered layout. */
+  protected async captureNow(): Promise<void> {
+    const deck = this.deck();
+    if (!deck || !this.deckCheck()?.queryable || this.gameCapture.busy()) return;
+    this.select(null);
+    this.captureMessage.set({ text: this.t.capturing, bad: false });
+    const result = await this.gameCapture.quick(deck.main, this.handSize(), this.name);
+    switch (result.kind) {
+      case 'error':
+        this.captureMessage.set({ text: result.message, bad: true });
+        return;
+      case 'done':
+        this.captureInput.set(null);
+        this.showShot.set(false);
+        this.hand.set(result.hand);
+        this.captureMessage.set({ text: this.t.captured(result.ms), bad: false });
+        return;
+      case 'needs-layout':
+        this.captureMessage.set({ text: result.reason, bad: false });
+        this.captureInput.set({ bitmap: result.bitmap, note: result.reason });
+        this.showShot.set(true);
+        return;
+      case 'confirm': {
+        const unsure = result.slots.filter((s) => s.status !== 'confident').length;
+        const note = this.t.captureConfirm(unsure);
+        this.captureMessage.set({ text: note, bad: false });
+        this.captureInput.set({ bitmap: result.bitmap, regions: result.regions, slots: result.slots, note });
+        this.showShot.set(true);
+        return;
+      }
+    }
   }
 
   protected select(id: string | null): void {
