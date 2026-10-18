@@ -8,7 +8,7 @@ import { join } from 'node:path';
 import { goto, launchApp } from './app.ts';
 
 const [signInMinutes = '45', refreshAfterMinutes = '62'] = process.argv.slice(2);
-const outDir = 'docs/validation/desktop-real-ai/refresh';
+const outDir = 'docs/dev/validation/desktop-real-ai/refresh';
 mkdirSync(outDir, { recursive: true });
 const progress = join(outDir, 'progress.log');
 const say = (m: string) => {

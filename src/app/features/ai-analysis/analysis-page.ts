@@ -24,7 +24,7 @@ import { CardDataPrompt } from '../../shared/card-data-prompt';
 import { MissingCards } from '../../shared/missing-cards';
 import { openExternal } from '../../shared/open-external';
 import { focusApp, hasExternalOpener } from '../../shared/platform-hooks';
-import { ComboViewer, ViewerMode } from '../../shared/combo/combo-viewer';
+import { ViewerMode } from '../../shared/combo/combo-viewer';
 import { ANALYSIS_PAGE } from './analysis-context';
 import { AnalysisHistory } from './analysis-history';
 import { AnalysisResults } from './analysis-results';
@@ -223,6 +223,8 @@ export class AnalysisPage {
     effect(() => {
       this.ai.settings();
       this.ai.apiKey();
+      // read for its dependency: the effect re-runs whenever the run phase changes
+      // eslint-disable-next-line @typescript-eslint/no-unused-expressions
       this.ai.state().phase;
       this.ai.chatgpt();
       this.ai.chatgptModels();

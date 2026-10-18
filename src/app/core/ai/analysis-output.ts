@@ -257,7 +257,6 @@ function zoneText(moves: AiRoute['steps'][number]['moves'], actors: number[], en
 
 /** Converts one AI route and runs the local data check (which decides draft vs unverified). */
 export function toCandidate(r: AiRoute, ctx: RunContext): Candidate {
-  const name = (id: number) => ctx.cards.get(id)?.nameEn ?? `ID ${id}`;
   const archetypes = r.handCardIds.map((id) => ctx.cards.get(id)?.archetype).filter((a): a is string => !!a);
   const archetype = archetypes.sort((a, b) => archetypes.filter((x) => x === b).length - archetypes.filter((x) => x === a).length)[0];
 

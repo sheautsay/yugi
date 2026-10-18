@@ -6,13 +6,13 @@
 import { execFileSync } from 'node:child_process';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { EDGE_SAMPLE } from '../src/app/core/neuron-deck.sample.ts';
+import { EDGE_SAMPLE } from '../src/testing/neuron-deck.sample';
 import { goto, launchApp, processes } from './app.ts';
 import { openAddDeck } from '../e2e/fixtures';
 
 const [mode = 'probe', modelSlug = '', deckName = '桌面驗收牌組'] = process.argv.slice(2);
 if (mode === 'send' && !modelSlug) throw new Error('send needs a model slug from the probe');
-const outDir = 'docs/validation/desktop-real-ai';
+const outDir = 'docs/dev/validation/desktop-real-ai';
 mkdirSync(outDir, { recursive: true });
 const stamp = new Date().toISOString().replace(/[:.]/g, '-');
 const redact = (s: string) => s.replace(/[^\s@：:]+@[^\s@]+\.[A-Za-z]{2,}/g, '<email>');

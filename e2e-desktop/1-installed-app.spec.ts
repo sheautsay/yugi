@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 import { MALISS, openAddDeck, toYdke } from '../e2e/fixtures';
 import { BRIDGE_EXE_NAME, alive, goto, launchApp, processes, waitUntil } from './app';
 
-// Win11 acceptance against the INSTALLED release build (docs/acceptance-desktop-v1*.md). REAL YGOPRODeck network.
+// Win11 acceptance against the INSTALLED release build (docs/dev/acceptance-desktop-v1*.md). REAL YGOPRODeck network.
 // Every test starts the app from its installed .exe, exactly like the desktop shortcut does.
 
 const ids = Object.values(MALISS);

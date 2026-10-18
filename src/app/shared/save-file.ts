@@ -21,5 +21,5 @@ function downloadTextFile(fileName: string, text: string, mime: string): void {
 }
 
 export function safeFileName(name: string): string {
-  return name.replace(/[\/:*?"<>|]/g, '_').trim() || 'export';
+  return name.replace(/[/:*?"<>|]/g, '_').trim() || 'export';
 }

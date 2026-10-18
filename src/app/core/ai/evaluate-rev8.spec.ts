@@ -3,9 +3,9 @@ import { ComboRoute } from '../models';
 import { RunContext, parseAiOutput, toCandidate } from './analysis-output';
 import { AnalysisGoal } from './analysis-goal';
 import { RouteEvaluation, addedValue, evaluateRoute, foldDuplicates, groupBySize, rankCandidates } from './evaluate';
-import { malissCards, malissDeck } from './maliss-deck.sample';
-import { C, SampleRoute, routeAllied, routeAlliedPlusTrap, routeAlliedPlusTwoTraps, routeAlliedTooFewMaterials, routeFirewallIntoAllied, routeMalissOnly, routeMalissPlusMtp, routeMalissPlusMtpUnderground, sampleAnswer, withRoles } from './maliss-routes.sample';
-import { REAL_RUN_RECORD } from './real-ai-run.sample';
+import { malissCards, malissDeck } from '../../../testing/ai/maliss-deck.sample';
+import { C, SampleRoute, routeAllied, routeAlliedPlusTrap, routeAlliedPlusTwoTraps, routeAlliedTooFewMaterials, routeFirewallIntoAllied, routeMalissOnly, routeMalissPlusMtp, routeMalissPlusMtpUnderground, sampleAnswer, withRoles } from '../../../testing/ai/maliss-routes.sample';
+import { REAL_RUN_RECORD } from '../../../testing/ai/real-ai-run.sample';
 import { STAGED_PROMPT_VERSION } from './staged';
 
 // CR-008 G50 / G52 on the user's real deck. Routes are HAND-WRITTEN test data (not model output).

@@ -1,6 +1,6 @@
 import { DEFAULT_GOAL } from './analysis-goal';
-import { malissCards, malissDeck } from './maliss-deck.sample';
-import { C, combo, samplePlan } from './maliss-routes.sample';
+import { malissCards, malissDeck } from '../../../testing/ai/maliss-deck.sample';
+import { C, combo, samplePlan } from '../../../testing/ai/maliss-routes.sample';
 import { AnalysisScope } from './prompt';
 import { CARD_ROLES, DEFAULT_STAGED, STAGED_LIMITS, STAGED_PROMPT_VERSION, buildComboPrompt, buildPlanPrompt, normalizeStaged, parsePlan, selectCombos, selectedSizes, stopReason } from './staged';
 

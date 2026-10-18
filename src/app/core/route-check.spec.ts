@@ -1,4 +1,4 @@
-import { IDS, testCards, testDeck } from './ai/test-deck.sample';
+import { IDS, testCards, testDeck } from '../../testing/ai/test-deck.sample';
 import { analysisLevel } from './analysis-level';
 import { deckFingerprint } from './deck';
 import { ComboRoute, ComboStep, PlayZone } from './models';

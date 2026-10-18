@@ -2,9 +2,9 @@
 // It must be reported as a refusal — not as "the answer is not valid JSON".
 import { AI_OUTPUT_JSON_SCHEMA } from './analysis-output';
 import { callChatGpt } from './chatgpt';
-import { mockAiOutput, responsesSse } from './mock-ai.sample';
+import { mockAiOutput, responsesSse } from '../../../testing/ai/mock-ai.sample';
 import { AiError, AiRequest, FetchLike } from './providers';
-import { IDS } from './test-deck.sample';
+import { IDS } from '../../../testing/ai/test-deck.sample';
 
 const request: AiRequest = { system: 'SYS', user: 'USER', schema: AI_OUTPUT_JSON_SCHEMA, maxOutputTokens: 32000 };
 const GOOD = JSON.stringify(mockAiOutput(IDS));

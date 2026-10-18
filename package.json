@@ -8,6 +8,7 @@
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
     "test:ci": "ng test --watch=false",
+    "lint": "eslint \"src/**/*.{ts,html}\"",
     "e2e": "playwright test --project=e2e",
     "e2e:real": "playwright test --project=real-network",
     "audit:g11": "node scripts/g11-audit.mjs",
@@ -43,12 +44,15 @@
     "@angular/compiler-cli": "^22.2.0",
     "@playwright/test": "1.64.0",
     "@tauri-apps/cli": "2.12.1",
+    "angular-eslint": "22.6.0",
     "esbuild": "0.28.2",
+    "eslint": "9.39.5",
     "fake-indexeddb": "6.2.5",
     "jsdom": "^30.0.0",
     "postject": "1.0.0-alpha.6",
     "prettier": "^3.8.1",
     "typescript": "~6.0.2",
+    "typescript-eslint": "8.71.2",
     "vitest": "^5.0.0"
   }
 }

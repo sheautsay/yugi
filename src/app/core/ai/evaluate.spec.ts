@@ -4,8 +4,8 @@ import { checkRoute } from '../route-check';
 import { RunContext, parseAiOutput, toCandidate } from './analysis-output';
 import { AnalysisGoal } from './analysis-goal';
 import { evaluateRoute, rankCandidates, targetCoverage } from './evaluate';
-import { malissCards, malissDeck } from './maliss-deck.sample';
-import { C, SampleRoute, routeAllied, routeAlliedTooFewMaterials, routeFirewall, routeFirewallIntoAllied, routeMalissOnly, sampleAnswer } from './maliss-routes.sample';
+import { malissCards, malissDeck } from '../../../testing/ai/maliss-deck.sample';
+import { C, SampleRoute, routeAllied, routeAlliedTooFewMaterials, routeFirewall, routeFirewallIntoAllied, routeMalissOnly, sampleAnswer } from '../../../testing/ai/maliss-routes.sample';
 
 // CR-006 G36 / G37 / G39 on the user's real deck. Routes are HAND-WRITTEN test data (not model output).
 const deck = malissDeck();

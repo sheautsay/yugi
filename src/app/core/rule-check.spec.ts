@@ -4,12 +4,11 @@ import { matchRoutes } from './matcher';
 import { ComboRoute } from './models';
 import { checkRoute } from './route-check';
 import { RunContext, parseAiOutput, toCandidate } from './ai/analysis-output';
-import { malissCards, malissDeck } from './ai/maliss-deck.sample';
+import { malissCards, malissDeck } from '../../testing/ai/maliss-deck.sample';
 import {
   C,
   SampleRoute,
   mv,
-  opening,
   routeAllied,
   routeAlliedTooFewMaterials,
   routeFirewall,
@@ -18,7 +17,7 @@ import {
   routeOcgReference,
   sampleAnswer,
   st,
-} from './ai/maliss-routes.sample';
+} from '../../testing/ai/maliss-routes.sample';
 
 // CR-006 G38 / N27 / N28: the partial rule check on the user's real deck and card texts.
 // Every route here is HAND-WRITTEN test data run through the normal AI conversion.

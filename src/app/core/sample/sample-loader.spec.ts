@@ -1,6 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { FETCH_FN, SLEEP_FN, toCardRecord } from '../card-api';
-import { MALISS_DECK_API_CARDS } from '../ai/maliss-deck-cards.sample';
+import { MALISS_DECK_API_CARDS } from '../../../testing/ai/maliss-deck-cards.sample';
 import { ComboRepository } from '../combo-repository';
 import { CurrentDeckService } from '../current-deck.service';
 import { AppDb, DB_NAME } from '../db';

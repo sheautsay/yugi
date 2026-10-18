@@ -1,6 +1,5 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { CardDataService } from '../card-data.service';
-import { ComboRepository } from '../combo-repository';
 import { checkDeck, cyrb53, deckFingerprint } from '../deck';
 import { CardRecord, ComboRoute, DeckRecord } from '../models';
 import { AiRunStore } from './ai-run-store.service';
@@ -32,7 +31,7 @@ import {
   selectedSizes,
   stopReason,
 } from './staged';
-import { AI_FETCH, AiCallOptions, AiError, AiRequest, AiResult } from './providers';
+import { AI_FETCH, AiError, AiRequest, AiResult } from './providers';
 
 // Public API of the analysis stays here; the pieces live next to it:
 //   ai-settings(.service)   settings, limits, per-tab key, daily usage

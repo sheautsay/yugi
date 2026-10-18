@@ -3,9 +3,9 @@ import { ComboRoute } from '../models';
 import { checkRoute } from '../route-check';
 import { endSnapshot } from './board-snapshot';
 import { addedValue, evaluateRoute, foldDuplicates, groupBySize, handText, rankCandidates, sharedPrefix, siblingOverlap } from './evaluate';
-import { malissCards, malissDeck } from './maliss-deck.sample';
-import { C } from './maliss-routes.sample';
-import { REAL_STAGED_RUN } from './real-ai-staged-run.sample';
+import { malissCards, malissDeck } from '../../../testing/ai/maliss-deck.sample';
+import { C } from '../../../testing/ai/maliss-routes.sample';
+import { REAL_STAGED_RUN } from '../../../testing/ai/real-ai-staged-run.sample';
 
 // CR-008 G47–G54. PROVENANCE: the fixture is the RECORDED output of ONE REAL phased (staged) analysis —
 // provider "ChatGPT account" through the local bridge, model gpt-6.1-sol, 2026-10-09 — on the user's real

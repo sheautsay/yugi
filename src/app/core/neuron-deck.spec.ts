@@ -3,7 +3,7 @@ import { checkDeck, countOf, totalCount } from './deck';
 import { detectDeckFormat } from './deck-import';
 import { CardRecord } from './models';
 import { deckCodeError, isNeuronDeckText, officialDeckSearchUrl, parseNeuronDeckText, resolveNeuronDeck } from './neuron-deck';
-import { EDGE_SAMPLE, EDGE_SAMPLE_CARDS } from './neuron-deck.sample';
+import { EDGE_SAMPLE, EDGE_SAMPLE_CARDS } from '../../testing/neuron-deck.sample';
 
 const CARDS: CardRecord[] = EDGE_SAMPLE_CARDS.map((c) => ({ ...toCardRecord(c, 'test'), formats: ['Master Duel'] }));
 const idOf = (name: string) => CARDS.find((c) => c.nameEn === name)!.cardId;

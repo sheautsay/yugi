@@ -1,9 +1,9 @@
 import { validateCombo } from '../combo';
 import { deckFingerprint } from '../deck';
 import { AI_OUTPUT_JSON_SCHEMA, RunContext, cleanText, parseAiOutput, toCandidate, toStarters } from './analysis-output';
-import { mockAiOutput } from './mock-ai.sample';
+import { mockAiOutput } from '../../../testing/ai/mock-ai.sample';
 import { buildPrompt, cardsWithoutText } from './prompt';
-import { IDS, testCards, testDeck } from './test-deck.sample';
+import { IDS, testCards, testDeck } from '../../../testing/ai/test-deck.sample';
 
 // CR-004 G23/G24/N19 with MOCKED model output (no AI service is called).
 const deck = testDeck();

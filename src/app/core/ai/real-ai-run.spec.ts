@@ -3,9 +3,9 @@ import { ComboRoute } from '../models';
 import { checkRoute } from '../route-check';
 import { AnalysisGoal } from './analysis-goal';
 import { addedValue, evaluateRoute, groupBySize, handText, rankCandidates, targetCoverage } from './evaluate';
-import { C } from './maliss-routes.sample';
-import { malissCards, malissDeck } from './maliss-deck.sample';
-import { REAL_RUN_RECORD } from './real-ai-run.sample';
+import { C } from '../../../testing/ai/maliss-routes.sample';
+import { malissCards, malissDeck } from '../../../testing/ai/maliss-deck.sample';
+import { REAL_RUN_RECORD } from '../../../testing/ai/real-ai-run.sample';
 
 // CR-007 G43 / G44. PROVENANCE: the fixture is the RECORDED output of ONE REAL model run — provider
 // "ChatGPT account" through the local bridge, model gpt-6.1-sol, 2026-10-09 — on the user's real

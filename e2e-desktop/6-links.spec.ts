@@ -4,7 +4,7 @@ import { goto, launchApp } from './app';
 // P0.16 (external links) on the INSTALLED app, with the real opener plugin script and the app's own link routing both
 // present. The IPC request that would open the system browser (fetch to http://ipc.localhost/plugin:opener|open_url)
 // is answered inside the page, counted and NOT executed, so nothing opens on this machine; opening for real is proven on
-// a clean machine (docs/validation/sandbox-win11-2026-10-10). `__TAURI_INTERNALS__.invoke` is read-only and WebView2
+// a clean machine (docs/dev/validation/sandbox-win11-2026-10-10). `__TAURI_INTERNALS__.invoke` is read-only and WebView2
 // serves ipc.localhost before Playwright's request routing sees it, so the page's own `fetch` is wrapped instead.
 
 const OPEN_URL = 'plugin:opener|open_url';
