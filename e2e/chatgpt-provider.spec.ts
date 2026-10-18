@@ -70,7 +70,7 @@ async function openAnalysisWithChatGpt(page: Page, deckName: string) {
   await expect(page.getByText(/已同步 \d+ 張卡片/)).toBeVisible();
   await page.goto('/decks');
   await page.locator('.deck-row', { hasText: deckName }).getByRole('link', { name: 'AI 展開分析' }).click();
-  await page.getByLabel('ChatGPT 帳號登入（使用你的 ChatGPT 方案額度）').check();
+  await page.getByLabel('ChatGPT 帳號登入（使用你的方案額度）').check();
 }
 
 test('G28–G32: sign in through the official page, pick a model from the account, analyse with the ChatGPT plan', async ({ page, context }) => {
@@ -82,11 +82,11 @@ test('G28–G32: sign in through the official page, pick a model from the accoun
   await openAnalysisWithChatGpt(page, 'ChatGPT 測試');
 
   // Bridge not running → how to start it; nothing can be sent.
-  await expect(page.getByText(/本機 ChatGPT 服務沒有啟動。請另開終端機，在專案資料夾執行 npm run chatgpt-bridge/)).toBeVisible();
+  await expect(page.getByText(/本機 ChatGPT 服務沒有啟動。請另開終端機執行 npm run chatgpt-bridge/)).toBeVisible();
   await expect(page.getByRole('button', { name: '開始分析' })).toBeDisabled();
   bridge.up = true;
   await page.getByRole('button', { name: '重新整理' }).click();
-  await expect(page.getByText('尚未登入 ChatGPT。')).toBeVisible();
+  await expect(page.getByText('尚未登入。按下按鈕後')).toBeVisible();
   await expect(page.getByText('請按「使用 ChatGPT 登入」以 ChatGPT 帳號登入')).toBeVisible();
 
   // "使用 ChatGPT 登入" opens the official authorization page in a new tab.
@@ -136,7 +136,7 @@ test('G28–G32: sign in through the official page, pick a model from the accoun
   // G32-1: sign out goes through the bridge.
   await page.getByRole('button', { name: '登出 ChatGPT' }).click();
   await expect(page.getByText('已登出，並已撤銷此 App 的授權。')).toBeVisible();
-  await expect(page.getByText('尚未登入 ChatGPT。')).toBeVisible();
+  await expect(page.getByText('尚未登入。按下按鈕後')).toBeVisible();
   expect(bridge.calls.some((c) => c.path === '/auth/logout' && c.method === 'POST')).toBe(true);
 });
 
@@ -146,7 +146,7 @@ test('N24 / N25: no plan-usage consent blocks the analysis; the usage limit offe
   bridge.signedIn = true;
   bridge.sharing = false;
   await openAnalysisWithChatGpt(page, '方案上限');
-  await expect(page.getByText('此登入沒有授權使用 ChatGPT 方案用量，不能用來分析。', { exact: false })).toBeVisible();
+  await expect(page.getByText('此登入沒有授權使用方案額度，不能用來分析。', { exact: false })).toBeVisible();
   await expect(page.getByLabel('模型（目前帳號可用）')).toHaveCount(0);
   await expect(page.getByRole('button', { name: '開始分析' })).toBeDisabled();
   expect(bridge.calls.filter((c) => c.path === '/models' || c.path === '/responses')).toEqual([]);

@@ -3,7 +3,7 @@ import { MALISS_DECK_API_CARDS } from '../src/app/core/ai/maliss-deck-cards.samp
 import { routeAllied, routeFirewall, routeMalissOnly, sampleAnswer } from '../src/app/core/ai/maliss-routes.sample';
 import { anthropicSse } from '../src/app/core/ai/mock-ai.sample';
 import { EDGE_SAMPLE } from '../src/app/core/neuron-deck.sample';
-import { mockCardSource } from './fixtures';
+import { mockCardSource, openAddDeck } from './fixtures';
 
 // CR-007 G41 / G42 with the user's real deck list. Every AI answer is MOCKED and built from
 // HAND-WRITTEN routes (not model output). All AI hosts are intercepted; no real AI service is contacted.
@@ -29,6 +29,7 @@ async function importRealDeck(page: Page, name: string) {
   await page.getByRole('button', { name: '下載／更新完整卡片資料' }).click();
   await expect(page.getByText(/已同步 \d+ 張卡片/)).toBeVisible();
   await page.goto('/decks');
+  await openAddDeck(page);
   await page.getByLabel('牌組代碼或 YDK 內容').fill(EDGE_SAMPLE);
   await page.getByRole('button', { name: '解析', exact: true }).click();
   await expect(page.getByText('牌表檢核通過，匯入後可用於起手查詢。')).toBeVisible();

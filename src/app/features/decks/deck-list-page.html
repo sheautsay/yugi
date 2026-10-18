@@ -21,7 +21,9 @@
       我的牌組 <span class="faint">（{{ rows().length }}）</span>
       <span class="info-tip" tabindex="0" role="note" [attr.aria-label]="t.banList.tip" [attr.data-tip]="t.banList.tip">ⓘ</span>
     </h2>
-    @if (rows().length === 0) {
+    @if (!loaded()) {
+      <div class="skeleton" style="height: 96px"></div>
+    } @else if (rows().length === 0) {
       <div class="empty-state">
         <strong>還沒有牌組</strong>
         <span class="muted">尚未建立任何牌組。請匯入 ydke:// 或 YDK，或建立空白牌組。</span>
@@ -101,7 +103,7 @@
     </div>
   </ng-template>
 
-  @if (rows().length === 0) {
+  @if (loaded() && rows().length === 0) {
     <section id="add-deck" class="add-deck" aria-labelledby="add-heading">
       <h2 id="add-heading" class="section-title">新增牌組</h2>
       <ng-container *ngTemplateOutlet="addForm" />

@@ -3,7 +3,7 @@ import { MALISS_DECK_API_CARDS } from '../src/app/core/ai/maliss-deck-cards.samp
 import { C, routeAllied, routeAlliedTooFewMaterials, routeFirewall, routeFirewallIntoAllied, routeMalissOnly, sampleAnswer } from '../src/app/core/ai/maliss-routes.sample';
 import { anthropicSse } from '../src/app/core/ai/mock-ai.sample';
 import { EDGE_SAMPLE } from '../src/app/core/neuron-deck.sample';
-import { mockCardSource, openAdvanced } from './fixtures';
+import { mockCardSource, openAddDeck, openAdvanced } from './fixtures';
 
 // CR-006 (G34–G40) with the user's real deck list (their Neuron paste) and the real card data of its
 // 41 cards — served by the MOCKED card source. Every AI answer is MOCKED and built from HAND-WRITTEN
@@ -30,6 +30,7 @@ async function importRealDeck(page: Page, name: string) {
   await page.getByRole('button', { name: '下載／更新完整卡片資料' }).click();
   await expect(page.getByText(/已同步 \d+ 張卡片/)).toBeVisible();
   await page.goto('/decks');
+  await openAddDeck(page);
   await page.getByLabel('牌組代碼或 YDK 內容').fill(EDGE_SAMPLE);
   await page.getByRole('button', { name: '解析', exact: true }).click();
   await expect(page.getByText(/主牌 40 張／額外 15 張／備牌 0 張/)).toBeVisible();

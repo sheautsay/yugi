@@ -41,6 +41,8 @@ export class DeckListPage {
   protected readonly newName = signal('');
   protected readonly t = TEXT;
   protected readonly addOpen = signal(false);
+  /** False until the first read of the local database finished, so the empty state does not flash. */
+  protected readonly loaded = signal(false);
   private readonly addDialog = viewChild<ElementRef<HTMLDialogElement>>('addDialog');
 
   constructor() {
@@ -62,6 +64,8 @@ export class DeckListPage {
       this.loadError.set('');
     } catch {
       this.loadError.set('無法開啟本機資料庫。請確認瀏覽器允許此網站儲存資料（非無痕模式），然後重新整理頁面。');
+    } finally {
+      this.loaded.set(true);
     }
   }
 

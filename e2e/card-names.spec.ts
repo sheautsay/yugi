@@ -1,5 +1,5 @@
 import { Page, expect, test } from '@playwright/test';
-import { MALISS, dumpUserData, mockCardSource, seedCombos, testComboRoute } from './fixtures';
+import { dumpUserData, MALISS, mockCardSource, openAddDeck, seedCombos, testComboRoute } from './fixtures';
 
 // rev9 (G55, G56, G57, G58, G59, G60, G63, G65, G66, G68). The Chinese names in this file are TEST FIXTURES written
 // for the test ("測試用…"); they are not translations of the real cards and they are not shipped with the app.
@@ -32,6 +32,7 @@ async function importNames(page: Page, content: string): Promise<void> {
 
 async function createDeck(page: Page, name: string): Promise<void> {
   await page.goto('/decks');
+  await openAddDeck(page);
   await page.getByLabel('牌組名稱', { exact: true }).fill(name);
   await page.getByRole('button', { name: '建立', exact: true }).click();
   await page.locator('.deck-row', { hasText: name }).getByRole('link', { name: '編輯' }).click();

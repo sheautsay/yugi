@@ -52,7 +52,7 @@ test('G9: decks and combos survive a full browser restart; a backup restores int
   expect(await dumpUserData(page)).toEqual(before);
 
   await page.goto('/settings');
-  await expect(page.getByText('清除瀏覽器資料、使用無痕模式或更換瀏覽器都可能讓資料消失')).toBeVisible();
+  await expect(page.getByText('清除瀏覽器資料或換電腦會消失')).toBeVisible();
   const [download] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: '匯出完整備份（JSON）' }).click()]);
   const backupPath = join(await newProfile(), 'backup.json');
   await download.saveAs(backupPath);

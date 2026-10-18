@@ -43,7 +43,7 @@ test('P0.15 (browser): "check Ollama" tells ready / service down / model missing
   await importAndSync(page, 'Ollama 檢查');
   const paths = await mockOllama(page, 'ready');
   await openAnalysis(page, 'Ollama 檢查');
-  await page.getByLabel('本機 Ollama（離線；需自行安裝並下載模型）').check();
+  await page.getByLabel('本機 Ollama（離線；需自行安裝）').check();
   await page.getByLabel('模型名稱').fill('qwen3:8b');
   await page.getByLabel('模型名稱').press('Tab');
   await expect(page.getByText('尚未檢查。')).toBeVisible();
@@ -66,7 +66,7 @@ test('P0.15 (browser): service not running and nothing installed are reported in
   await importAndSync(page, 'Ollama 離線');
   await mockOllama(page, 'down');
   await openAnalysis(page, 'Ollama 離線');
-  await page.getByLabel('本機 Ollama（離線；需自行安裝並下載模型）').check();
+  await page.getByLabel('本機 Ollama（離線；需自行安裝）').check();
   await page.getByRole('button', { name: '檢查 Ollama' }).click();
   await expect(page.locator('[data-ollama-state="service-down"]')).toContainText('ollama serve');
 

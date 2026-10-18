@@ -10,6 +10,7 @@ test('root redirects to the zh-TW home dashboard', async ({ page }) => {
 
 test('a deck saved to IndexedDB survives a page reload', async ({ page }) => {
   await page.goto('/decks');
+  await openAddDeck(page);
   await page.getByLabel('牌組名稱', { exact: true }).fill('E2E 測試牌組');
   await page.getByRole('button', { name: '建立', exact: true }).click();
   await expect(page.getByText('E2E 測試牌組', { exact: true })).toBeVisible();

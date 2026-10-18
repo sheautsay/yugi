@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { EDGE_SAMPLE } from '../src/app/core/neuron-deck.sample';
-import { MALISS, setAutoThumbnails, syntheticScreenshot, toYdke } from './fixtures';
+import { MALISS, openAddDeck, setAutoThumbnails, syntheticScreenshot, toYdke } from './fixtures';
 
 // REAL external source (YGOPRODeck API + images via the dev-server proxy). Run explicitly:
 //   npm run e2e:real
@@ -14,6 +14,7 @@ test('real YGOPRODeck: card data and images for the Maliss archetype download an
   };
   await setAutoThumbnails(page, false); // CR-002: this test covers the explicit download path
   await page.goto('/decks');
+  await openAddDeck(page);
   await page.getByLabel('牌組代碼或 YDK 內容').fill(toYdke(deck));
   await page.getByRole('button', { name: '解析', exact: true }).click();
   await page.getByRole('button', { name: '從 YGOPRODeck 下載缺少的卡片資料' }).click();
@@ -50,6 +51,7 @@ test('real card art: a synthetic screenshot built from real YGOPRODeck art is re
   };
 
   await page.goto('/decks');
+  await openAddDeck(page);
   await page.getByLabel('牌組代碼或 YDK 內容').fill(toYdke(deck));
   await page.getByRole('button', { name: '解析', exact: true }).click();
   await page.getByRole('button', { name: '從 YGOPRODeck 下載缺少的卡片資料' }).click();
@@ -99,6 +101,7 @@ test('real full sync: Master Duel pool downloads once, is searchable locally, re
 
   api.length = 0;
   await page.goto('/decks');
+  await openAddDeck(page);
   await page.getByLabel('牌組名稱', { exact: true }).fill('真實搜尋');
   await page.getByRole('button', { name: '建立', exact: true }).click();
   await page.locator('.deck-row', { hasText: '真實搜尋' }).getByRole('link', { name: '編輯' }).click();
@@ -119,6 +122,7 @@ test('real card data: the user\'s Edge deck list resolves to a valid 40 / 15 / 0
   await page.getByRole('button', { name: '下載／更新完整卡片資料' }).click();
   await expect(page.getByText(/已同步 \d+ 張卡片|已是最新版本/)).toBeVisible({ timeout: 180_000 });
   await page.goto('/decks');
+  await openAddDeck(page);
   await page.getByLabel('牌組代碼或 YDK 內容').fill(EDGE_SAMPLE);
   await page.getByRole('button', { name: '解析', exact: true }).click();
   await expect(page.getByText(/主牌 40 張／額外 15 張／備牌 0 張/)).toBeVisible({ timeout: 30_000 });

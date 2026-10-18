@@ -245,9 +245,18 @@ export async function seedCombos(page: Page, routes: unknown[]): Promise<void> {
   );
 }
 
+/** The add-deck form is inline while there are no decks and opens in a dialog afterwards. */
+export async function openAddDeck(page: Page): Promise<void> {
+  await page.locator('.deck-row, #add-deck').first().waitFor();
+  if (await page.locator('#add-deck').count()) return;
+  await page.getByRole('button', { name: '＋ 新增牌組' }).click();
+  await expect(page.locator('dialog.add-dialog[open]')).toBeVisible();
+}
+
 /** Imports TEST_DECK through the UI (paste ydke → download card data → confirm). */
 export async function importTestDeck(page: Page, name: string): Promise<void> {
   await page.goto('/decks');
+  await openAddDeck(page);
   await page.getByLabel('牌組代碼或 YDK 內容').fill(toYdke(TEST_DECK));
   await page.getByRole('button', { name: '解析', exact: true }).click();
   await page.getByRole('button', { name: '從 YGOPRODeck 下載缺少的卡片資料' }).click();

@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { MALISS, toYdke } from '../e2e/fixtures';
+import { MALISS, openAddDeck, toYdke } from '../e2e/fixtures';
 import { BRIDGE_EXE_NAME, alive, goto, launchApp, processes, waitUntil } from './app';
 
 // Win11 acceptance against the INSTALLED release build (docs/acceptance-desktop-v1*.md). REAL YGOPRODeck network.
@@ -82,6 +82,7 @@ test('P0.3 / DK5 / DK6: real card data and card images download through the app,
   try {
     const { page } = app;
     await goto(page, '/decks');
+    await openAddDeck(page);
     await page.getByLabel('牌組代碼或 YDK 內容').fill(toYdke(MALISS_DECK));
     await page.getByRole('button', { name: '解析', exact: true }).click();
     // First run: the card data is downloaded through the app. Later runs: it is already in the app's own cache.

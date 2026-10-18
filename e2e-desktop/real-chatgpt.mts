@@ -8,6 +8,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { EDGE_SAMPLE } from '../src/app/core/neuron-deck.sample.ts';
 import { goto, launchApp, processes } from './app.ts';
+import { openAddDeck } from '../e2e/fixtures';
 
 const [mode = 'probe', modelSlug = '', deckName = '桌面驗收牌組'] = process.argv.slice(2);
 if (mode === 'send' && !modelSlug) throw new Error('send needs a model slug from the probe');
@@ -60,6 +61,7 @@ try {
   await page.locator('.deck-row').first().waitFor();
   if (mode === 'import-real-deck') {
     // The user's real Edge deck list (40 / 15 / 0), through the app's own import flow (no AI request).
+    await openAddDeck(page);
     await page.getByLabel('牌組代碼或 YDK 內容').fill(EDGE_SAMPLE);
     await page.getByRole('button', { name: '解析', exact: true }).click();
     await page.getByText('牌表檢核通過，匯入後可用於起手查詢。').waitFor({ timeout: 30_000 });
@@ -84,7 +86,7 @@ try {
 
   const panel = page.locator('details.advanced');
   if (!(await panel.evaluate((el) => (el as HTMLDetailsElement).open))) await panel.locator('summary').click();
-  const oneShot = page.getByLabel('單次分析（一次請求，原本的方式）');
+  const oneShot = page.getByLabel('單次分析（一次請求）');
   evidence['oneShotBefore'] = await oneShot.isChecked();
   const bridgePid = bridgePidOf();
   evidence['bridgeRunningUnderApp'] = !!bridgePid;
