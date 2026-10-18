@@ -6,6 +6,7 @@ import { AiRunStore } from './ai-run-store.service';
 import { AiSettings, estimateTokens } from './ai-settings';
 import { AiSettingsService } from './ai-settings.service';
 import { AI_OUTPUT_JSON_SCHEMA, AI_OUTPUT_JSON_SCHEMA_V3, Candidate, parseAiOutput, toCandidate, toExplored, toStarters } from './analysis-output';
+import { FTK_ASSUMPTIONS, FTK_JSON_SCHEMA, FTK_PROMPT_VERSION, buildFtkPrompt, parseFtkOutput, toFtkCandidate } from './ftk-ai';
 import { goalForDeck } from './analysis-goal';
 import { AnalysisRun, ExploredEntry, RunState } from './analysis-types';
 import { BulkSavePlan, CandidateService } from './candidate.service';
@@ -133,7 +134,9 @@ export class AiAnalysisService {
     if (noText.length) reasons.push(`有 ${noText.length} 種卡沒有效果文字，請先下載完整卡片資料（設定 → 完整卡片資料庫）`);
     const noArrows = linkCardsWithoutArrows(deck, cards);
     if (noArrows.length) reasons.push(`有 ${noArrows.length} 種連結怪獸沒有連結箭頭資料（較早同步的卡片資料不含箭頭），請到「設定 → 完整卡片資料庫」按「強制重新下載」`);
-    if (settings.mode === 'staged') {
+    if (deck.ftk) {
+      // B7: an FTK deck is analysed in one request with its own instructions; the starter scope and the phased mode do not apply.
+    } else if (settings.mode === 'staged') {
       if (!selectedSizes(settings.scope).length) reasons.push('請至少選擇一種起手張數（單卡、雙卡或三卡展開）');
       const planCost = this.estimatePlan(deck, cards, settings) + ESTIMATED_PLAN_OUTPUT;
       if (planCost > settings.staged.tokenBudget) reasons.push(`Token 預算 ${settings.staged.tokenBudget} 不足以送出階段 A（約需 ${planCost} tokens），請提高預算`);
@@ -146,8 +149,9 @@ export class AiAnalysisService {
 
   cacheKey(deck: DeckRecord, cardDataVersion: string, settings = this.settings()): string {
     const model = providerAdapter(settings.provider).cacheKeyParts(settings);
-    const key =
-      settings.mode === 'staged'
+    const key = deck.ftk
+      ? JSON.stringify([FTK_PROMPT_VERSION, settings.provider, ...model, settings.maxOutputTokens, deckFingerprint(deck), cardDataVersion])
+      : settings.mode === 'staged'
         ? JSON.stringify([STAGED_PROMPT_VERSION, settings.provider, ...model, settings.maxOutputTokens, settings.scope, settings.staged, goalForDeck(settings.goal, deck), deckFingerprint(deck), cardDataVersion])
         : JSON.stringify([PROMPT_VERSION, settings.provider, ...model, settings.maxOutputTokens, settings.scope, goalForDeck(settings.goal, deck), deckFingerprint(deck), cardDataVersion]);
     return `ai1-${cyrb53(key).toString(16).padStart(14, '0')}`;
@@ -173,8 +177,8 @@ export class AiAnalysisService {
 
   /** Worst-case cost before sending (providers with a price list only). */
   estimate(deck: DeckRecord, cards: ReadonlyMap<number, CardRecord>, settings = this.settings()): { inputTokens: number; maxCostUsd?: number } {
-    const prompt = buildPrompt(deck, cards, settings.scope, settings.goal);
-    const inputTokens = estimateTokens(prompt.system + prompt.user + JSON.stringify(AI_OUTPUT_JSON_SCHEMA));
+    const prompt = deck.ftk ? buildFtkPrompt(deck, cards) : buildPrompt(deck, cards, settings.scope, settings.goal);
+    const inputTokens = estimateTokens(prompt.system + prompt.user + JSON.stringify(deck.ftk ? FTK_JSON_SCHEMA : AI_OUTPUT_JSON_SCHEMA));
     const maxCostUsd = providerAdapter(settings.provider).costUsd(this.modelName(settings), inputTokens, settings.maxOutputTokens);
     return { inputTokens, ...(settings.provider === 'anthropic' ? { maxCostUsd } : {}) };
   }
@@ -236,13 +240,13 @@ export class AiAnalysisService {
       deckVersion: deck.version,
       deckFingerprint: fingerprint,
       cardDataVersion,
-      assumptions: [...MD_ASSUMPTIONS],
+      assumptions: deck.ftk ? [...FTK_ASSUMPTIONS] : [...MD_ASSUMPTIONS],
       provider: settings.provider,
       model,
       params: adapter.runParams(settings),
       scope: { ...settings.scope },
       goal: goalForDeck(settings.goal, deck),
-      promptVersion: PROMPT_VERSION,
+      promptVersion: deck.ftk ? FTK_PROMPT_VERSION : PROMPT_VERSION,
       cacheKey,
       startedAt,
       finishedAt: startedAt,
@@ -250,8 +254,8 @@ export class AiAnalysisService {
       status: 'failed',
     };
 
-    const prompt = buildPrompt(deck, cards, settings.scope, settings.goal);
-    const request = { ...prompt, schema: AI_OUTPUT_JSON_SCHEMA, maxOutputTokens: settings.maxOutputTokens };
+    const prompt = deck.ftk ? buildFtkPrompt(deck, cards) : buildPrompt(deck, cards, settings.scope, settings.goal);
+    const request = { ...prompt, schema: deck.ftk ? FTK_JSON_SCHEMA : AI_OUTPUT_JSON_SCHEMA, maxOutputTokens: settings.maxOutputTokens };
     // Counted before sending, so failures and cancellations also count toward the daily limit.
     await this.addUsage({ requests: 1 });
     this.controller = new AbortController();
@@ -275,18 +279,29 @@ export class AiAnalysisService {
         await this.addUsage({ inputTokens: result.usage.inputTokens, outputTokens: result.usage.outputTokens, estimatedCostUsd: estimatedCostUsd ?? 0 });
       }
       run.servedModel = result.model;
-      const parsed = parseAiOutput(result.text);
-      if (!parsed.ok) throw new AiError('bad-format', parsed.error);
-
       const now = new Date().toISOString();
-      const name = (id: number) => cards.get(id)?.nameEn ?? `ID ${id}`;
-      const ctx = { runId: run.id, deck, deckFingerprint: fingerprint, cardDataVersion, provider: settings.provider, model, servedModel: result.model, promptVersion: PROMPT_VERSION, cards, now };
-      const { starters, extenders } = toStarters(parsed.output, deck, name);
-      run.summary = parsed.output.summary.slice(0, 4000);
-      run.starters = starters;
-      run.extenders = extenders;
-      run.candidates = parsed.output.routes.map((r) => toCandidate(r, ctx));
-      run.explored = toExplored(parsed.output);
+      if (deck.ftk) {
+        // B7: an FTK deck's answer is a set of branching plans; the local check decides damage, success and chance.
+        const ftk = parseFtkOutput(result.text);
+        if (!ftk.ok) throw new AiError('bad-format', ftk.error);
+        const ftkCtx = { runId: run.id, deck, deckFingerprint: fingerprint, cardDataVersion, provider: settings.provider, model, servedModel: result.model, promptVersion: FTK_PROMPT_VERSION, cards, now };
+        run.summary = ftk.output.summary.slice(0, 4000);
+        run.starters = [];
+        run.extenders = [];
+        run.candidates = ftk.output.plans.map((plan) => toFtkCandidate(plan, ftkCtx));
+        run.explored = [];
+      } else {
+        const parsed = parseAiOutput(result.text);
+        if (!parsed.ok) throw new AiError('bad-format', parsed.error);
+        const name = (id: number) => cards.get(id)?.nameEn ?? `ID ${id}`;
+        const ctx = { runId: run.id, deck, deckFingerprint: fingerprint, cardDataVersion, provider: settings.provider, model, servedModel: result.model, promptVersion: PROMPT_VERSION, cards, now };
+        const { starters, extenders } = toStarters(parsed.output, deck, name);
+        run.summary = parsed.output.summary.slice(0, 4000);
+        run.starters = starters;
+        run.extenders = extenders;
+        run.candidates = parsed.output.routes.map((r) => toCandidate(r, ctx));
+        run.explored = toExplored(parsed.output);
+      }
       run.status = 'succeeded';
     } catch (error) {
       const e =
@@ -345,6 +360,7 @@ export class AiAnalysisService {
    * to have covered every possible line.
    */
   async startStaged(deck: DeckRecord, options: { force?: boolean } = {}): Promise<AnalysisRun> {
+    if (deck.ftk) return this.start(deck, options); // B7: FTK decks have no phased mode
     if (this.running) throw new Error('已有分析正在進行');
     this.running = true;
     try {

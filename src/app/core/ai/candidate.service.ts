@@ -8,6 +8,7 @@ import { AppDb } from '../db';
 import { AiRunStore, runKey } from './ai-run-store.service';
 import { Candidate, withCheck } from './analysis-output';
 import type { AnalysisRun } from './analysis-types';
+import { checkFtkRoute, isFtkRoute } from '../ftk-check';
 import { analyzeCandidates, evaluateRoute } from './evaluate';
 
 /** B2: what "save all as Combos" would do, in numbers (the candidates that are not saved are listed by index). */
@@ -86,12 +87,26 @@ export class CandidateService {
     const existingIds = new Set(existing.map((c) => c.id));
     const savedSignatures = new Set(
       existing
+        .filter((c) => !isFtkRoute(c))
         .map((c) => evaluateRoute(c, deck, cards))
         .filter((e) => e.valid && e.signature)
         .map((e) => e.signature),
     );
-    const { ranked } = analyzeCandidates(run, deck, cards, run.goal, undefined, { fold: true });
     const plan: BulkSavePlan = { toSave: [], alreadySaved: 0, invalid: 0, sameEndBoard: 0 };
+    // B7: a run of an FTK deck holds plans with branches; they are judged by the plan check, best chance first.
+    if ((run.candidates ?? []).some((c) => isFtkRoute(c.route))) {
+      const rows = (run.candidates ?? []).map((candidate, index) => {
+        const check = checkFtkRoute(candidate.route, deck, { cards });
+        return { index, candidate, check, p: check.probability.ok ? check.probability.p : -1 };
+      });
+      for (const r of rows.sort((a, b) => b.p - a.p || a.index - b.index)) {
+        if (r.candidate.savedComboId && existingIds.has(r.candidate.savedComboId)) plan.alreadySaved++;
+        else if (!r.check.passed || r.candidate.schemaErrors.length) plan.invalid++;
+        else plan.toSave.push(r.index);
+      }
+      return plan;
+    }
+    const { ranked } = analyzeCandidates(run, deck, cards, run.goal, undefined, { fold: true });
     const taken = new Set<string>();
     for (const r of ranked) {
       const candidate = run.candidates![r.index];

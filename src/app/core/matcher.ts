@@ -1,6 +1,8 @@
 import { ParsedDeck, countOf, deckFingerprint } from './deck';
+import { allocateHand } from './hand-allocation';
 import { remainingInMain, tally } from './hand';
 import { CardRecord, ComboRoute, HandClause, MatchKind, MatchReasonCode, RouteConditions, RouteMatch, TurnOrder } from './models';
+import { checkFtkRoute, isFtkRoute } from './ftk-check';
 import { checkRoute } from './route-check';
 
 /** The player's situation; hand size follows `turnOrder` (rev1 R3/R4). */
@@ -18,6 +20,8 @@ export interface MatchOptions {
   /** Card data: AI routes are then also checked against the rule table (CR-006). */
   cards?: ReadonlyMap<number, CardRecord>;
 }
+
+export { allocateHand };
 
 export interface RouteResult {
   route: ComboRoute;
@@ -72,41 +76,6 @@ export function handRequirement(route: ComboRoute): number {
   return route.conditions.handAllOf.reduce((sum, c) => sum + c.count, 0);
 }
 
-/**
- * Assigns distinct hand cards to every clause slot (AND of ORs sharing one multiset), or null.
- * Backtracking over at most 6 cards; copies of the same ID are interchangeable, so each slot
- * tries each distinct ID once.
- */
-export function allocateHand(hand: readonly number[], clauses: readonly HandClause[]): Array<{ clauseIndex: number; cardIds: number[] }> | null {
-  const slots = clauses.flatMap((c, i) => Array<number>(c.count).fill(i));
-  if (slots.length > hand.length) return null;
-  const options = (i: number) => hand.filter((id) => clauses[i].anyOf.includes(id)).length;
-  slots.sort((a, b) => options(a) - options(b));
-
-  const used = hand.map(() => false);
-  const chosen: number[] = [];
-  const search = (s: number): boolean => {
-    if (s === slots.length) return true;
-    const tried = new Set<number>();
-    for (let h = 0; h < hand.length; h++) {
-      const id = hand[h];
-      if (used[h] || tried.has(id) || !clauses[slots[s]].anyOf.includes(id)) continue;
-      tried.add(id);
-      used[h] = true;
-      chosen[s] = h;
-      if (search(s + 1)) return true;
-      used[h] = false;
-    }
-    return false;
-  };
-  if (!search(0)) return null;
-
-  return clauses.map((_, clauseIndex) => ({
-    clauseIndex,
-    cardIds: slots.flatMap((slotClause, s) => (slotClause === clauseIndex ? [hand[chosen[s]]] : [])),
-  }));
-}
-
 /** Pure: never mutates its inputs; same inputs give the same result. */
 export function matchRoute(route: ComboRoute, deck: ParsedDeck, hand: readonly number[], context: MatchContext, options: MatchOptions = {}): RouteMatch {
   const name = options.name ?? ((id: number) => `ID ${id}`);
@@ -158,8 +127,10 @@ export function matchRoute(route: ComboRoute, deck: ParsedDeck, hand: readonly n
   if (route.verification.status === 'invalidated') add('UNVERIFIED', '此路線已標記為失效，不再建議使用');
   // CR-004 / G26: an AI route that no longer fits this deck list is never offered.
   if (route.analysis) {
-    for (const p of checkRoute(route, deck, { name, cards: options.cards }).problems) {
-      add('DECK_MISMATCH', `AI 路線不適用於目前牌組${p.step ? `（第 ${p.step} 步）` : ''}：${p.message}`);
+    // B7: a route with random steps / branches is checked way by way, not as one straight line.
+    const problems = isFtkRoute(route) ? checkFtkRoute(route, deck, { name, cards: options.cards }).problems : checkRoute(route, deck, { name, cards: options.cards }).problems;
+    for (const p of problems) {
+      add('DECK_MISMATCH', `AI 路線不適用於目前牌組${'branch' in p && p.branch ? `（分支：${p.branch}）` : ''}${p.step ? `（第 ${p.step} 步）` : ''}：${p.message}`);
     }
   }
   if (reasons.length) return result('unavailable');

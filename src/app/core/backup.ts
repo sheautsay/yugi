@@ -5,7 +5,9 @@ import { ComboRoute, DeckRecord, HandLayoutPreset } from './models';
 import { cardNoteSchema, deckSchema, issues, layoutSchema } from './schemas';
 
 export const BACKUP_FORMAT = 'ygo-combo-assistant/backup';
+/** 1: linear routes only. 2 (B7): also routes with random steps and branches; a backup is written as 2 only when it has one. */
 export const BACKUP_VERSION = 1;
+export const BACKUP_VERSION_V2 = 2;
 const MAX_BACKUP_LENGTH = 20 * 1024 * 1024;
 
 export interface UserData {
@@ -26,7 +28,7 @@ export interface BackupFile extends UserData {
 
 /** Full user data without card images or the card cache (F11). */
 export function buildBackup(data: UserData, now = new Date().toISOString(), cardNotes: CardNote[] = [], settings?: BackupSettings): BackupFile {
-  return { format: BACKUP_FORMAT, backupVersion: BACKUP_VERSION, exportedAt: now, ...data, ...(cardNotes.length ? { cardNotes } : {}), ...(settings ? { settings } : {}) };
+  return { format: BACKUP_FORMAT, backupVersion: data.combos.some((c) => c.schemaVersion === 2) ? BACKUP_VERSION_V2 : BACKUP_VERSION, exportedAt: now, ...data, ...(cardNotes.length ? { cardNotes } : {}), ...(settings ? { settings } : {}) };
 }
 
 export function parseBackup(json: string): { ok: true; data: UserData; exportedAt: string; cardNotes?: CardNote[]; settings?: BackupSettings } | { ok: false; errors: string[] } {
@@ -38,7 +40,7 @@ export function parseBackup(json: string): { ok: true; data: UserData; exportedA
     return { ok: false, errors: ['不是有效的 JSON 備份檔'] };
   }
   if (raw?.format !== BACKUP_FORMAT) return { ok: false, errors: ['不是本工具的備份檔'] };
-  if (raw.backupVersion !== BACKUP_VERSION) return { ok: false, errors: [`不支援的備份版本 ${String(raw.backupVersion)}（目前支援版本 ${BACKUP_VERSION}）`] };
+  if (raw.backupVersion !== BACKUP_VERSION && raw.backupVersion !== BACKUP_VERSION_V2) return { ok: false, errors: [`不支援的備份版本 ${String(raw.backupVersion)}（目前支援版本 ${BACKUP_VERSION}、${BACKUP_VERSION_V2}）`] };
   if (!Array.isArray(raw.decks) || !Array.isArray(raw.combos) || !Array.isArray(raw.layouts)) return { ok: false, errors: ['備份檔缺少 decks／combos／layouts'] };
 
   const errors: string[] = [];

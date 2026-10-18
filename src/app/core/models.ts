@@ -72,6 +72,8 @@ export type DeckSourceType = 'manual' | 'ydk' | 'ydke' | 'deck-code' | 'url';
 
 export interface DeckRecord {
   schemaVersion: 1;
+  /** B7: this deck is played as a first-turn kill (FTK) deck: the analysis, ranking and battle mode use the FTK goal. */
+  ftk?: boolean;
   id: string;
   name: string;
   format: 'master-duel';
@@ -134,10 +136,16 @@ export const ACTION_TYPES = [
   'banish',
   'add-to-hand',
   'select-material',
+  /** B7: results the player cannot choose (see {@link RandomReveal}); never name the cards that turn up. */
+  'draw',
+  'excavate',
   'other',
 ] as const;
 
 export type ActionType = (typeof ACTION_TYPES)[number];
+
+/** The action types of an ordinary (straight) route: everything except the random ones of B7. */
+export const LINEAR_ACTION_TYPES = ACTION_TYPES.filter((t) => t !== 'draw' && t !== 'excavate') as readonly ActionType[];
 
 /** Where a card is during a combo (CR-004 data check). "overlay" = attached as Xyz material. */
 export const PLAY_ZONES = ['deck', 'hand', 'extra', 'field', 'gy', 'banished', 'overlay'] as const;
@@ -151,6 +159,30 @@ export interface CardMove {
   to: PlayZone;
   /** The zone at the field end of the move (CR-006, optional): needed for Link arrow checks. */
   slot?: FieldSlot;
+}
+
+/**
+ * B7: a step whose result is random. Only the number of cards and where they go are recorded — which cards turn up is
+ * the next branch's condition, never part of the step. `draw` puts them in the hand; `excavate` (revealed cards) puts them
+ * in the zone named here, the Graveyard by default.
+ */
+export interface RandomReveal {
+  count: number;
+  to: 'hand' | 'gy' | 'banished';
+}
+
+/**
+ * B7: what follows a random step. Branches are tried in order and the first whose `when` holds is taken; `when: null` is
+ * the "otherwise" branch and must come last. `when` uses the same clauses as the opening hand: every clause needs its
+ * own card(s) among the cards that turned up (one of `anyOf`, `count` copies).
+ */
+export interface RouteBranch {
+  id: string;
+  label: string;
+  when: HandClause[] | null;
+  steps: ComboStep[];
+  /** What the author claims this branch ends in; the local check decides whether `success` is true. */
+  outcome?: 'success' | 'fail';
 }
 
 export interface ComboStep {
@@ -175,7 +207,27 @@ export interface ComboStep {
   effectRef?: string;
   /** CR-008: the model could not work this step out (non-empty = unfinished; the route cannot pass the data check). */
   unresolved?: string;
+  /** B7: set on `draw` / `excavate` steps. */
+  random?: RandomReveal;
+  /** B7: the continuations after a random step; such a step is the last of its list. */
+  branches?: RouteBranch[];
+  /**
+   * B7: the damage the author wrote for this step. NEVER used: the damage is computed locally from the card rule table;
+   * this is kept only to point out a mismatch.
+   */
+  claimedDamage?: number;
 }
+
+/** B7: the win condition of a first-turn kill route and the assumptions its damage count rests on. */
+export interface FtkInfo {
+  /** The opponent's Life Points the route has to take away (8000). */
+  targetDamage: number;
+  /** Cards in the opponent's Extra Deck that can be banished (a worst case is 0; 15 is the maximum). */
+  opponentExtraDeck: number;
+}
+
+export const FTK_TARGET_LP = 8000;
+export const FTK_DEFAULT_OPPONENT_EXTRA = 15;
 
 export interface EndBoardEntry {
   cardId: number;
@@ -193,7 +245,8 @@ export interface RouteVerificationInfo {
 }
 
 export interface ComboRoute {
-  schemaVersion: 1;
+  /** 1: a linear route. 2 (B7): may have random steps, branches and `ftk`; everything of version 1 is still valid. */
+  schemaVersion: 1 | 2;
   id: string;
   version: number;
   name: string;
@@ -203,6 +256,8 @@ export interface ComboRoute {
   conditions: RouteConditions;
   steps: ComboStep[];
   endBoard: EndBoardEntry[];
+  /** B7 (schemaVersion 2): present on first-turn kill routes. */
+  ftk?: FtkInfo;
   rankingWeight?: number;
   notes?: string;
   source?: { title?: string; url?: string; timeSeconds?: number };

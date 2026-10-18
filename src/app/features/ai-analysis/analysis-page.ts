@@ -11,10 +11,11 @@ import { ROLE_LABEL, STAGED_LIMITS, STOP_LABEL, StagedStatus } from '../../core/
 import { CLAUDE_MODELS, Effort } from '../../core/ai/providers';
 import { analysisLevel } from '../../core/analysis-level';
 import { CardDataService } from '../../core/card-data.service';
-import { EFFORT_LABEL, TEXT } from '../../core/texts';
+import { EFFORT_LABEL, TEXT, pct } from '../../core/texts';
 import { comboCardIds } from '../../core/combo';
 import { ComboRepository } from '../../core/combo-repository';
 import { checkDeck, deckFingerprint } from '../../core/deck';
+import { checkFtkRoute, isFtkRoute } from '../../core/ftk-check';
 import { DeckRepository } from '../../core/deck-repository';
 import { ANALYSIS_LEVEL_LABEL, PROVIDER_LABEL } from '../../core/labels';
 import { AnalysisLevel, CardRecord, ComboInfo, ComboRoute, DeckRecord } from '../../core/models';
@@ -145,11 +146,28 @@ export class AnalysisPage {
     const [lo, hi] = TOKENS_PER_ROUTE.map((t) => t * n);
     return { n, lo, hi, tight: s.provider !== 'chatgpt' && hi > s.maxOutputTokens };
   });
+  /** B7: the deck is a first-turn-kill deck (its plans branch; the goal is fixed). */
+  readonly pct = pct;
+  /** How many ways through a plan reach the kill. */
+  successCount = (check: { leaves: ReadonlyArray<{ success: boolean }> }) => check.leaves.filter((l) => l.success).length;
+  readonly isFtk = computed(() => !!this.deck()?.ftk);
+  /** B7: the plans of an FTK run, each checked way by way, best chance first. */
+  readonly ftkRows = computed(() => {
+    const run = this.selectedRun();
+    const deck = this.deck();
+    if (!run?.candidates || !deck || !run.candidates.some((c) => isFtkRoute(c.route))) return null;
+    const rows = run.candidates.map((candidate, index) => {
+      const check = checkFtkRoute(candidate.route, deck, { cards: this.cards(), name: this.name });
+      return { index, candidate, check, p: check.probability.ok ? check.probability.p : null, level: analysisLevel(candidate.route, deck, { cards: this.cards(), name: this.name }) ?? 'ai-candidate' };
+    });
+    return rows.sort((a, b) => (b.p ?? -1) - (a.p ?? -1) || a.index - b.index).map((r, i) => ({ ...r, rank: i + 1 }));
+  });
   /** CR-006 G36/G37/G39: candidates checked, evaluated and ranked against the deck as it is now. */
   readonly analysis = computed(() => {
     const run = this.selectedRun();
     const deck = this.deck();
     if (!run?.candidates || !deck) return null;
+    if (run.candidates.some((c) => isFtkRoute(c.route))) return null; // shown by ftkRows
     const goal = { kind: this.sortGoal() ?? run.goal?.kind ?? 'interruptions', preferredExtraIds: run.goal?.preferredExtraIds ?? [] };
     const result = analyzeCandidates(run, deck, this.cards(), goal, this.name);
     const routes = run.candidates.map((c) => c.route);

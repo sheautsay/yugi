@@ -1,5 +1,6 @@
 import { conditionErrors } from './matcher';
 import { ComboRoute, ComboStep } from './models';
+import { allSteps, branchConditionIds, stepLists, usesV2Features } from './route-tree';
 import { comboSchema, issues } from './schemas';
 
 export const COMBO_EXPORT_FORMAT = 'ygo-combo-assistant/combos';
@@ -42,7 +43,8 @@ export function comboCardIds(route: ComboRoute): number[] {
       ...(c.mustRemainInMain ?? []).map((r) => r.cardId),
       ...(c.mustExistInExtra ?? []).map((r) => r.cardId),
       ...(c.forbiddenInHand ?? []),
-      ...route.steps.flatMap((s) => [...s.actorCardIds, ...(s.targetCardIds ?? []), ...(s.materialCardIds ?? []), ...(s.moves ?? []).map((m) => m.cardId)]),
+      ...allSteps(route.steps).flatMap((s) => [...s.actorCardIds, ...(s.targetCardIds ?? []), ...(s.materialCardIds ?? []), ...(s.moves ?? []).map((m) => m.cardId)]),
+      ...branchConditionIds(route),
       ...route.endBoard.map((e) => e.cardId),
     ]),
   ];
@@ -64,13 +66,15 @@ export function validateCombo(input: unknown, options: { knownCardIds?: Readonly
   const route = parsed.data as ComboRoute;
   const errors = conditionErrors(route.conditions).filter((e) => !e.includes('前置情境'));
 
-  const ids = route.steps.map((s) => s.id);
+  const ids = allSteps(route.steps).map((s) => s.id);
   if (new Set(ids).size !== ids.length) errors.push('步驟 ID 重複');
-  if (route.steps.some((s, i) => s.order !== i + 1)) errors.push('步驟順序必須是 1..N 且連續');
+  if (stepLists(route.steps).some((list) => list.some((s, i) => s.order !== i + 1))) errors.push('步驟順序必須是 1..N 且連續');
+  errors.push(...branchErrors(route));
 
   const status = route.verification.status;
   if ((status !== 'draft' || options.requireSteps) && route.steps.length === 0) errors.push('步驟不可為空');
-  if (status !== 'draft' && route.endBoard.length === 0) errors.push('非草稿路線需要填寫預計終場');
+  // A first-turn-kill plan ends in the kill itself, not on a board.
+  if (status !== 'draft' && route.endBoard.length === 0 && !route.ftk) errors.push('非草稿路線需要填寫預計終場');
   if (status === 'verified') errors.push(...verificationErrors(route));
 
   if (options.knownCardIds) {
@@ -94,7 +98,7 @@ export function verificationErrors(route: ComboRoute): string[] {
 
 /** True when what was verified (conditions, steps, end board) differs between two versions. */
 export function routeContentChanged(a: ComboRoute, b: ComboRoute): boolean {
-  const content = (r: ComboRoute) => JSON.stringify([r.conditions, r.steps, r.endBoard]);
+  const content = (r: ComboRoute) => JSON.stringify([r.conditions, r.steps, r.endBoard, r.ftk ?? null]);
   return content(a) !== content(b);
 }
 
@@ -169,4 +173,34 @@ export function prepareComboImport(
     items.push({ route, notes, conflict: options.existingIds.has(route.id) });
   });
   return errors.length ? { ok: false, errors } : { ok: true, items };
+}
+
+/**
+ * B7: the rules of a version 2 route. Version 1 routes cannot use any of it; a random step is a `draw` / `excavate`
+ * step and the other way round; a step with branches is the last of its list and has an "otherwise" branch.
+ */
+export function branchErrors(route: ComboRoute): string[] {
+  const errors: string[] = [];
+  if (route.schemaVersion === 1 && usesV2Features(route)) errors.push('抽牌、分支與 FTK 資訊需要 schemaVersion 2');
+  if (route.ftk && route.ftk.targetDamage < 1) errors.push('FTK 的目標傷害必須大於 0');
+  const branchIds = new Set<string>();
+  for (const list of stepLists(route.steps)) {
+    list.forEach((s, i) => {
+      const where = `步驟「${s.title || s.order}」`;
+      const isRandom = s.actionType === 'draw' || s.actionType === 'excavate';
+      if (isRandom && !s.random) errors.push(`${where}是${s.actionType === 'draw' ? '抽牌' : '翻開牌組頂'}，需要填寫張數（random）`);
+      if (!isRandom && s.random) errors.push(`${where}有 random 但動作類型不是抽牌／翻開牌組頂`);
+      if (!s.branches?.length) return;
+      if (!s.random) errors.push(`${where}有分支，但不是結果未知的步驟（抽牌／翻開）`);
+      if (i !== list.length - 1) errors.push(`${where}有分支，必須是該段的最後一個步驟`);
+      s.branches.forEach((b, j) => {
+        if (branchIds.has(b.id)) errors.push(`分支 ID 重複：${b.id}`);
+        branchIds.add(b.id);
+        if (b.when === null && j !== s.branches!.length - 1) errors.push(`${where}的「否則」分支必須放在最後`);
+      });
+      if (s.branches.filter((b) => b.when === null).length > 1) errors.push(`${where}只能有一個「否則」分支`);
+      if (!s.branches.some((b) => b.when === null)) errors.push(`${where}缺少「否則」（都沒抽到）分支；沒有成功的情況也要寫成失敗分支`);
+    });
+  }
+  return errors;
 }

@@ -143,40 +143,45 @@
     }
   }
 
-  <fieldset>
-    <legend>分析方式</legend>
-    <label class="choice"><input type="radio" name="mode" [checked]="s.mode === 'one-shot'" (change)="pg.update({ mode: 'one-shot' })" />{{ pg.texts.ai.oneShot }}</label>
-    <label class="choice"><input type="radio" name="mode" [checked]="s.mode === 'staged'" (change)="pg.update({ mode: 'staged' })" />{{ pg.texts.ai.staged }}</label>
-    @if (s.mode === 'staged') {
-      <p class="muted">先請 AI 找出候選起手組合，再逐一寫出完整路線，最後由本機檢查比較；次數、Token 與時間用完就停止並保留已完成的結果。</p>
-    }
-  </fieldset>
-
-  <fieldset>
-    <legend>分析範圍（先攻・雙方空場・無干擾）</legend>
-    <label class="choice"><input type="checkbox" [checked]="s.scope.single" (change)="pg.scope({ single: $any($event.target).checked })" />單卡展開</label>
-    <label class="choice"><input type="checkbox" [checked]="s.scope.multi" (change)="pg.scope({ multi: $any($event.target).checked })" />雙卡展開</label>
-    <label class="choice"><input type="checkbox" [checked]="!!s.scope.triple" (change)="pg.scope({ triple: $any($event.target).checked })" />三卡展開</label>
-    @if (s.mode === 'one-shot') {
-      <label class="choice"><input type="checkbox" [checked]="s.scope.extenders" (change)="pg.scope({ extenders: $any($event.target).checked })" />常見延伸</label>
-    }
-  </fieldset>
-
-  <fieldset>
-    <legend>分析目標（搜尋偏好，不是必要條件）</legend>
-    @for (k of pg.goalKinds; track k) {
-      <label class="choice"><input type="radio" name="goal" [checked]="s.goal.kind === k" (change)="pg.goalKind(k)" />{{ pg.goalLabel[k] }}</label>
-    }
-    <fieldset class="preferred">
-      <legend>優先評估的額外牌組怪獸（偏好，不是必要條件）</legend>
-      @for (o of pg.extraOptions(); track o.cardId) {
-        <label class="choice"><input type="checkbox" [checked]="s.goal.preferredExtraIds.includes(o.cardId)" (change)="pg.prefer(o.cardId, $any($event.target).checked)" />{{ o.name }}</label>
-      } @empty {
-        <span class="muted">此牌組沒有額外牌組怪獸</span>
+  @if (pg.isFtk()) {
+    <p class="notice">{{ pg.texts.ftk.analysisNote }}</p>
+    <p class="muted small">{{ pg.texts.ftk.assumptions }}</p>
+  } @else {
+    <fieldset>
+      <legend>分析方式</legend>
+      <label class="choice"><input type="radio" name="mode" [checked]="s.mode === 'one-shot'" (change)="pg.update({ mode: 'one-shot' })" />{{ pg.texts.ai.oneShot }}</label>
+      <label class="choice"><input type="radio" name="mode" [checked]="s.mode === 'staged'" (change)="pg.update({ mode: 'staged' })" />{{ pg.texts.ai.staged }}</label>
+      @if (s.mode === 'staged') {
+        <p class="muted">先請 AI 找出候選起手組合，再逐一寫出完整路線，最後由本機檢查比較；次數、Token 與時間用完就停止並保留已完成的結果。</p>
       }
     </fieldset>
-    <p class="muted">偏好只影響搜尋方向與排序，不是必要條件。</p>
-  </fieldset>
+
+    <fieldset>
+      <legend>分析範圍（先攻・雙方空場・無干擾）</legend>
+      <label class="choice"><input type="checkbox" [checked]="s.scope.single" (change)="pg.scope({ single: $any($event.target).checked })" />單卡展開</label>
+      <label class="choice"><input type="checkbox" [checked]="s.scope.multi" (change)="pg.scope({ multi: $any($event.target).checked })" />雙卡展開</label>
+      <label class="choice"><input type="checkbox" [checked]="!!s.scope.triple" (change)="pg.scope({ triple: $any($event.target).checked })" />三卡展開</label>
+      @if (s.mode === 'one-shot') {
+        <label class="choice"><input type="checkbox" [checked]="s.scope.extenders" (change)="pg.scope({ extenders: $any($event.target).checked })" />常見延伸</label>
+      }
+    </fieldset>
+
+    <fieldset>
+      <legend>分析目標（搜尋偏好，不是必要條件）</legend>
+      @for (k of pg.goalKinds; track k) {
+        <label class="choice"><input type="radio" name="goal" [checked]="s.goal.kind === k" (change)="pg.goalKind(k)" />{{ pg.goalLabel[k] }}</label>
+      }
+      <fieldset class="preferred">
+        <legend>優先評估的額外牌組怪獸（偏好，不是必要條件）</legend>
+        @for (o of pg.extraOptions(); track o.cardId) {
+          <label class="choice"><input type="checkbox" [checked]="s.goal.preferredExtraIds.includes(o.cardId)" (change)="pg.prefer(o.cardId, $any($event.target).checked)" />{{ o.name }}</label>
+        } @empty {
+          <span class="muted">此牌組沒有額外牌組怪獸</span>
+        }
+      </fieldset>
+      <p class="muted">偏好只影響搜尋方向與排序，不是必要條件。</p>
+    </fieldset>
+  }
 
   <details class="disclosure advanced" [open]="pg.advancedOpen()" (toggle)="pg.advancedOpen.set($any($event.target).open)">
     <summary>進階設定</summary>

@@ -5,6 +5,9 @@ import type { Effort } from './ai/providers';
  * messages refer to, disclaimers, labels). Change a term here and every screen follows.
  * Interface language is Traditional Chinese; card names and format names (ydke://, YDK) stay as they are.
  */
+/** A chance as a percentage with one decimal (0.02857 → 2.9%). */
+export const pct = (p: number): string => `${(p * 100).toFixed(p > 0 && p < 0.001 ? 2 : 1)}%`;
+
 export const TEXT = {
   disclaimer: {
     /** Shown once on first launch (dismissible) and again under 設定 → 關於程式. */
@@ -87,6 +90,32 @@ export const TEXT = {
     next: '下一步',
     finalBoard: '最終終場',
     noSnapshot: '這條路線沒有卡片移動資料，無法畫出終場，只列文字終場。',
+  },
+  ftk: {
+    goalLabel: 'F 先攻 FTK（第一回合用效果傷害打到 0）',
+    deckLabel: '這是先攻 FTK 牌組',
+    deckNote: '先攻第一回合以抽牌與效果傷害擊殺的牌組。AI 分析會改用另一套指示，輸出「依抽到的卡分支」的計畫；成功率由本機精確計算，不看 AI 的說法。',
+    analysisNote: 'FTK 牌組：分析目標固定為 F（先攻 FTK），一次請求，沒有單卡／雙卡範圍與分階段設定。',
+    assumptions: '假設無干擾：對手的手坑可能直接讓計畫失敗，成功率不包含這個風險；假設對手額外牌組有 15 張可被除外的卡。',
+    chance: '成功率',
+    chanceNote: '依目前牌組與起手，沿分支樹精確計算（超幾何分布）。',
+    unavailable: '無法計算',
+    branchTitle: '抽牌後的分支',
+    branchProb: (mass: number, success: number) => `出現機率 ${pct(mass)}・之後成功率 ${pct(success)}`,
+    killed: '打到 0',
+    notKilled: (lp: number) => `對手 LP 還剩 ${lp}`,
+    claimedWrong: '這條路徑有檢查未通過的步驟',
+    successLeaves: (n: number, total: number) => `${n} / ${total} 條路徑可以打到 0`,
+    revealTitle: (count: number) => `輸入實際抽到／翻開的 ${count} 張卡`,
+    revealGo: '確認，走對應的分支',
+    revealUndo: '重新輸入抽到的卡',
+    lpLine: (opp: number, self: number) => `對手 LP ${opp}・自己 LP ${self}`,
+    deadBranch: '這條分支沒有成功的可能',
+    bestBranch: '建議走',
+    startChance: '目前成功率',
+    ended: '這條路徑到此結束',
+    ftkRank: '依成功率排序（同分時需要手牌少、步驟少者優先）',
+    bestChoice: '建議走的分支',
   },
   share: {
     button: '分享碼',

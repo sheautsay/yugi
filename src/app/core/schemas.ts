@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { ACTION_TYPES, FIELD_SLOTS, PLAY_ZONES } from './models';
+import { ACTION_TYPES, ComboStep, FIELD_SLOTS, PLAY_ZONES, RouteBranch } from './models';
 
 // Runtime validation for everything that enters storage from outside (JSON import, backup
 // restore). Every object is `.strict()`: unknown keys — e.g. "script", "onload" — are rejected.
@@ -69,12 +69,15 @@ export const deckSchema = z.strictObject({
   extra: z.array(cardCountSchema).max(60),
   side: z.array(cardCountSchema).max(60),
   source: z.strictObject({ type: z.enum(['manual', 'ydk', 'ydke', 'deck-code', 'url']), ref: text(300).optional() }).optional(),
+  ftk: z.boolean().optional(),
   importWarnings: z.array(text(500)).max(200).optional(),
   createdAt: isoDateTime,
   updatedAt: isoDateTime,
 });
 
-const stepSchema = z.strictObject({
+const handClause = z.strictObject({ anyOf: z.array(cardId).min(1, '候選卡不可為空').max(30), count: z.number().int().min(1).max(6) });
+
+const stepBase = {
   id,
   order: z.number().int().min(1),
   actionType: z.enum(ACTION_TYPES),
@@ -94,7 +97,22 @@ const stepSchema = z.strictObject({
   effectRef: z.string().regex(/^\d{1,10}#\d{1,2}$/, '效果代號格式不正確').optional(),
   /** CR-008: why the step could not be worked out (non-empty = unfinished). */
   unresolved: text(500).optional(),
-});
+  /** B7 (schemaVersion 2): random result, branches and the author's own damage claim (never used). */
+  random: z.strictObject({ count: z.number().int().min(1).max(10), to: z.enum(['hand', 'gy', 'banished']) }).optional(),
+  claimedDamage: z.number().int().min(0).max(1_000_000).optional(),
+};
+
+/** Steps nest through `branches` (B7), so the schema is recursive; the depth and width are limited. */
+const stepSchema: z.ZodType<ComboStep> = z.lazy(() => z.strictObject({ ...stepBase, branches: z.array(branchSchema).max(12).optional() })) as unknown as z.ZodType<ComboStep>;
+const branchSchema: z.ZodType<RouteBranch> = z.lazy(() =>
+  z.strictObject({
+    id,
+    label: required(120),
+    when: z.array(handClause).min(1).max(6).nullable(),
+    steps: z.array(stepSchema).max(100),
+    outcome: z.enum(['success', 'fail']).optional(),
+  }),
+) as unknown as z.ZodType<RouteBranch>;
 
 const fingerprint = z.string().regex(/^fp1-[0-9a-f]{14}$/, '牌表識別碼格式不正確');
 
@@ -129,7 +147,8 @@ const analysisSchema = z.strictObject({
 });
 
 export const comboSchema = z.strictObject({
-  schemaVersion: z.literal(1),
+  /** 1 = linear route; 2 (B7) = may have random steps, branches and `ftk`. Both are valid. */
+  schemaVersion: z.union([z.literal(1), z.literal(2)]),
   id,
   version: z.number().int().min(1),
   name: required(120),
@@ -151,6 +170,7 @@ export const comboSchema = z.strictObject({
   }),
   steps: z.array(stepSchema).max(200),
   endBoard: z.array(z.strictObject({ cardId, zone: required(60), count, note: text(500).optional() })).max(30),
+  ftk: z.strictObject({ targetDamage: z.number().int().min(1).max(100_000), opponentExtraDeck: z.number().int().min(0).max(15) }).optional(),
   rankingWeight: z.number().int().min(-1000).max(1000).optional(),
   notes: text(4000).optional(),
   source: z

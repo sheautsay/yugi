@@ -36,10 +36,26 @@
     @if (message()) {
       <p class="notice" role="status">{{ message() }}</p>
     }
-    @if (r.analysis) {
-      <app-route-analysis-panel [route]="r" [deck]="analysisDeck()" [cards]="cards()" [busy]="busy()" (recheck)="recheck()" />
-    }
+    @if (isFtk()) {
+      <section class="card stack" aria-labelledby="ftk-plan">
+        <h2 id="ftk-plan">先攻 FTK 計畫</h2>
+        @if (ftkCheck(); as c) {
+          @if (c.probability.ok) {
+            <p><strong>{{ f.chance }}：{{ pct(c.probability.p) }}</strong>（{{ f.successLeaves(c.leaves.filter((l) => l.success).length, c.leaves.length) }}）</p>
+          }
+          @for (p of c.problems; track $index) {
+            <p class="notice bad small">{{ p.branch ? '分支「' + p.branch + '」：' : '' }}{{ p.step ? '第 ' + p.step + ' 步：' : '' }}{{ p.message }}</p>
+          }
+        }
+        <p class="muted small">{{ f.assumptions }}</p>
+        <app-ftk-tree [route]="r" [cards]="cards()" [leaves]="ftkCheck()?.leaves ?? []" />
+      </section>
+    } @else {
+      @if (r.analysis) {
+        <app-route-analysis-panel [route]="r" [deck]="analysisDeck()" [cards]="cards()" [busy]="busy()" (recheck)="recheck()" />
+      }
 
-    <app-combo-viewer [route]="r" [cards]="cards()" [deck]="analysisDeck()" [backLink]="backLink()" [(mode)]="mode" />
+      <app-combo-viewer [route]="r" [cards]="cards()" [deck]="analysisDeck()" [backLink]="backLink()" [(mode)]="mode" />
+    }
   }
 </div>

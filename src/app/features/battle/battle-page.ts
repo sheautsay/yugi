@@ -19,6 +19,7 @@ import { BoardPreview } from '../../shared/board-preview';
 import { CardTile } from '../../shared/card-tile';
 import { Icon } from '../../shared/icon';
 import { ScreenshotRecognizer } from '../../shared/recognition/screenshot-recognizer';
+import { BattleFtk } from './battle-ftk';
 
 // The battle mode's situation is fixed to the one every collected route assumes: empty boards, a normal summon
 // available, no interruption. A route that needs something else is simply not offered.
@@ -27,7 +28,7 @@ const CONTEXT = { emptyBoard: true, normalSummonAvailable: true, noInterruption:
 /** B3: pick the hand, see the strongest collected routes for it, follow one step by step. Built for a narrow (~420px) window. */
 @Component({
   selector: 'app-battle-page',
-  imports: [RouterLink, BoardPreview, CardTile, Icon, ScreenshotRecognizer],
+  imports: [RouterLink, BoardPreview, CardTile, Icon, ScreenshotRecognizer, BattleFtk],
   templateUrl: './battle-page.html',
   styleUrl: './battle-page.css',
   host: { '(document:keydown)': 'onKey($event)' },
@@ -41,6 +42,10 @@ export class BattlePage {
   protected readonly current = inject(CurrentDeckService);
 
   protected readonly t = TEXT.battle;
+  protected readonly f = TEXT.ftk;
+  /** B7: the deck is a first-turn-kill deck (always going first; plans are ranked by their chance). */
+  protected readonly ftk = computed(() => !!this.deck()?.ftk);
+  protected readonly ftkOpen = signal(false);
   protected readonly goalKinds = GOAL_KINDS;
   protected readonly goalLabel = GOAL_LABEL;
   protected readonly topNs = BATTLE_TOP_N;
@@ -79,7 +84,7 @@ export class BattlePage {
   /** All routes ranked for the hand; `null` until the deck is usable and the hand is complete. */
   protected readonly ranking = computed<BattleEntry[] | null>(() => {
     const deck = this.deck();
-    if (!deck || !this.deckCheck()?.queryable || !this.handCheck().complete) return null;
+    if (!deck || deck.ftk || !this.deckCheck()?.queryable || !this.handCheck().complete) return null;
     const mainIds = new Set(deck.main.map((c) => c.cardId));
     const relevant = this.routes().filter((r) => r.conditions.handAllOf?.some((cl) => cl.anyOf?.some((id) => mainIds.has(id))));
     const context: MatchContext = { turnOrder: this.turnOrder(), ...CONTEXT };
@@ -124,7 +129,7 @@ export class BattlePage {
   }
 
   protected setTurn(order: TurnOrder): void {
-    this.turnOrder.set(order);
+    this.turnOrder.set(this.ftk() ? 'first' : order);
     this.hand.update((h) => h.slice(0, HAND_SIZE[order]));
   }
 

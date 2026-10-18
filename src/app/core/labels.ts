@@ -46,6 +46,8 @@ export const ACTION_LABEL: Record<ActionType, string> = {
   banish: '除外',
   'add-to-hand': '加入手牌',
   'select-material': '選擇素材',
+  draw: '抽牌',
+  excavate: '翻開牌組頂',
   other: '其他',
 };
 
