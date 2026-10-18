@@ -1,0 +1,19 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "battle",
+  "description": "B5: the compact battle window. It only shows the battle mode: card images from the image host, nothing else on the network, no files, no links.",
+  "windows": [
+    "battle"
+  ],
+  "permissions": [
+    "core:default",
+    {
+      "identifier": "http:default",
+      "allow": [
+        {
+          "url": "https://images.ygoprodeck.com/*"
+        }
+      ]
+    }
+  ]
+}

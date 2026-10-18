@@ -13,8 +13,27 @@
   } @else {
     <header class="bar">
       <h1>{{ t.title }}</h1>
-      <a class="deck-name" [routerLink]="['/decks', deck()!.id]">{{ deck()!.name }}</a>
+      @if (compact) {
+        <span class="deck-name">{{ deck()!.name }}</span>
+      } @else {
+        <a class="deck-name" [routerLink]="['/decks', deck()!.id]">{{ deck()!.name }}</a>
+      }
     </header>
+    @if (canOpenWindow) {
+      <div class="row">
+        <button type="button" (click)="openWindow()">{{ t.openWindow }}</button>
+        <span class="muted small">{{ t.openWindowNote }}</span>
+      </div>
+      @if (windowError()) {
+        <p class="notice bad small" role="alert">{{ windowError() }}</p>
+      }
+    }
+    @if (compact) {
+      <label class="choice small">
+        <input type="checkbox" [checked]="settings.onTop()" (change)="settings.setOnTop($any($event.target).checked)" />
+        {{ t.onTop }}
+      </label>
+    }
 
     @if (!deckCheck()?.queryable) {
       <p class="notice warn" role="alert">{{ t.draftDeck }}</p>

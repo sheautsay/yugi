@@ -144,7 +144,8 @@ export class CaptureShortcutService {
     const hooks = platformHooks();
     if (this.started || !hooks.setCaptureShortcut || !hooks.onCaptureShortcut) return;
     this.started = true;
-    effect(() => {
+    // The compact battle window only listens: the main window owns the registration.
+    if (!hooks.compactWindow) effect(() => {
       const accelerator = this.battle.enabled() ? this.battle.shortcut() : null;
       void hooks.setCaptureShortcut!(accelerator).then(
         () => this.error.set(''),

@@ -15,6 +15,12 @@ export interface PlatformHooks {
   setCaptureShortcut?: (accelerator: string | null) => Promise<void>;
   /** B4: calls `handler` each time the capture shortcut is pressed; returns a function that stops listening. */
   onCaptureShortcut?: (handler: () => void) => () => void;
+  /** B5: this page runs in the compact battle window (no sidebar, no background jobs). */
+  compactWindow?: boolean;
+  /** B5: opens the compact battle window (or brings it forward). */
+  openBattleWindow?: (onTop: boolean) => Promise<void>;
+  /** B5: keeps the compact battle window above the game, or not. */
+  setBattleOnTop?: (onTop: boolean) => Promise<void>;
 }
 
 /** A captured window as raw RGBA pixels (4 bytes per pixel, row by row). */
@@ -42,6 +48,11 @@ export function focusApp(): void {
 
 export function hasExternalOpener(): boolean {
   return !!installed.openExternal;
+}
+
+/** B5: true inside the compact battle window. */
+export function isCompactWindow(): boolean {
+  return !!installed.compactWindow;
 }
 
 /** B4: true when the host can capture the game window (the Windows app). */

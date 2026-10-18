@@ -9,6 +9,11 @@
   min-height: 100vh;
 }
 
+/* B5: the compact battle window shows only the page. */
+.shell.compact {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 .sidebar {
   display: flex;
   flex-direction: column;

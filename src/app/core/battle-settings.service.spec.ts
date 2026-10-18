@@ -53,4 +53,14 @@ describe('BattleSettingsService (B3)', () => {
     expect(isValidShortcut('Ctrl+A+B')).toBe(false);
     expect(isValidShortcut('Ctrl++')).toBe(false);
   });
+
+  it('B5: the compact window stays on top unless the user turns it off', async () => {
+    const first = make();
+    await first.ready;
+    expect(first.onTop()).toBe(true);
+    await first.setOnTop(false);
+    const again = make();
+    await again.ready;
+    expect(again.onTop()).toBe(false);
+  });
 });

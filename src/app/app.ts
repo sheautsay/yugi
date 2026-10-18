@@ -6,6 +6,7 @@ import { CurrentDeckService } from './core/current-deck.service';
 import { BattleSettingsService } from './core/battle-settings.service';
 import { TEXT } from './core/texts';
 import { Icon } from './shared/icon';
+import { isCompactWindow } from './shared/platform-hooks';
 import { CaptureShortcutService } from './shared/recognition/game-capture.service';
 
 interface NavItem {
@@ -43,6 +44,9 @@ export class App {
   protected readonly t = TEXT;
   private readonly battle = inject(BattleSettingsService);
 
+  /** B5: running in the compact battle window (only the battle page, no sidebar, no background jobs). */
+  protected readonly compact = isCompactWindow();
+
   /** First-launch note about what the tool does not do; dismissed once, then only under 設定 → 關於程式. */
   protected readonly showDisclaimer = signal(!disclaimerSeen());
 
@@ -78,7 +82,8 @@ export class App {
 
   constructor() {
     // Desktop only: does nothing unless the host provides a backup folder.
-    inject(AutoBackupService).start();
+    // Not in the compact battle window: the main window already does it.
+    if (!this.compact) inject(AutoBackupService).start();
     // Desktop only (B4): the system-wide capture shortcut of the battle mode.
     inject(CaptureShortcutService).start();
     let first = true;

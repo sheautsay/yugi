@@ -20,6 +20,7 @@ import { CardTile } from '../../shared/card-tile';
 import { Icon } from '../../shared/icon';
 import { CaptureRequests, GameCaptureService } from '../../shared/recognition/game-capture.service';
 import { GameCaptureInput, ScreenshotRecognizer } from '../../shared/recognition/screenshot-recognizer';
+import { isCompactWindow, platformHooks } from '../../shared/platform-hooks';
 import { BattleFtk } from './battle-ftk';
 
 // The battle mode's situation is fixed to the one every collected route assumes: empty boards, a normal summon
@@ -32,7 +33,7 @@ const CONTEXT = { emptyBoard: true, normalSummonAvailable: true, noInterruption:
   imports: [RouterLink, BoardPreview, CardTile, Icon, ScreenshotRecognizer, BattleFtk],
   templateUrl: './battle-page.html',
   styleUrl: './battle-page.css',
-  host: { '(document:keydown)': 'onKey($event)' },
+  host: { '(document:keydown)': 'onKey($event)', '(window:focus)': 'onFocus()' },
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class BattlePage {
@@ -64,6 +65,11 @@ export class BattlePage {
   /** B4: outcome of the last one-key capture. */
   protected readonly captureMessage = signal<{ text: string; bad: boolean } | null>(null);
   protected readonly canCapture = this.gameCapture.available();
+  /** B5: this page runs in the compact battle window. */
+  protected readonly compact = isCompactWindow();
+  /** B5: the main window of the desktop app can open the compact battle window. */
+  protected readonly canOpenWindow = !this.compact && !!platformHooks().openBattleWindow;
+  protected readonly windowError = signal('');
   protected readonly routes = signal<ComboRoute[]>([]);
   protected readonly cards = signal(new Map<number, CardRecord>());
   protected readonly loaded = signal(false);
@@ -113,6 +119,13 @@ export class BattlePage {
       this.cardData.version();
       void this.load();
     });
+    // B5: the compact window follows the "stay on top" setting.
+    if (this.compact) {
+      effect(() => {
+        const onTop = this.settings.onTop();
+        void platformHooks().setBattleOnTop?.(onTop).catch(() => undefined);
+      });
+    }
     // B4: a press of the capture shortcut (possibly made before this page opened).
     effect(() => {
       this.captureRequests.tick();
@@ -166,6 +179,23 @@ export class BattlePage {
     this.captureInput.set(null);
   }
 
+  /** B5: the other window may have changed the deck, the Combos or the settings while this one was in the background. */
+  protected onFocus(): void {
+    if (!this.loaded()) return;
+    void this.settings.reload();
+    void this.load();
+  }
+
+  /** B5: opens (or brings forward) the compact battle window that can stay above the game. */
+  protected async openWindow(): Promise<void> {
+    this.windowError.set('');
+    try {
+      await platformHooks().openBattleWindow?.(this.settings.onTop());
+    } catch (error) {
+      this.windowError.set(typeof error === 'string' ? error : error instanceof Error ? error.message : '無法開啟實戰小視窗');
+    }
+  }
+
   protected togglePaste(): void {
     this.showShot.update((open) => !open);
     this.captureInput.set(null);
@@ -189,14 +219,14 @@ export class BattlePage {
         this.captureMessage.set({ text: this.t.captured(result.ms), bad: false });
         return;
       case 'needs-layout':
-        this.captureMessage.set({ text: result.reason, bad: false });
+        this.captureMessage.set(null); // the recognizer below shows the reason
         this.captureInput.set({ bitmap: result.bitmap, note: result.reason });
         this.showShot.set(true);
         return;
       case 'confirm': {
         const unsure = result.slots.filter((s) => s.status !== 'confident').length;
         const note = this.t.captureConfirm(unsure);
-        this.captureMessage.set({ text: note, bad: false });
+        this.captureMessage.set(null); // the recognizer below shows the note
         this.captureInput.set({ bitmap: result.bitmap, regions: result.regions, slots: result.slots, note });
         this.showShot.set(true);
         return;
