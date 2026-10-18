@@ -1,11 +1,12 @@
 import { expect, test } from '@playwright/test';
-import { MALISS, TEST_DECK, importTestDeck, mockCardSource, setAutoThumbnails, toYdk, toYdke } from './fixtures';
+import { importTestDeck, MALISS, mockCardSource, openAddDeck, setAutoThumbnails, TEST_DECK, toYdk, toYdke } from './fixtures';
 
 // Card source is MOCKED here (see fixtures.ts); these tests prove UI behaviour only.
 
 test('G3: ydke import shows a draft preview, resolves cards on request, writes only on confirm', async ({ page }) => {
   const { apiCalls } = await mockCardSource(page);
   await page.goto('/decks');
+  await openAddDeck(page);
   await page.getByLabel('牌組代碼或 YDK 內容').fill(`\n  ${toYdke(TEST_DECK)}  \n`);
   await page.getByRole('button', { name: '解析', exact: true }).click();
 
@@ -42,6 +43,7 @@ test('G1/G3: .ydk file upload with BOM + CRLF keeps zones and counts; cancel wri
 
 test('N1: invalid YDK lines are reported with line numbers and never import', async ({ page }) => {
   await page.goto('/decks');
+  await openAddDeck(page);
   await page.getByLabel('牌組代碼或 YDK 內容').fill('#main\n32061192\nnot-a-card\n-1\n#extar\n');
   await page.getByRole('button', { name: '解析', exact: true }).click();
   const alert = page.getByRole('alert');
@@ -53,6 +55,7 @@ test('N1: invalid YDK lines are reported with line numbers and never import', as
 
 test('N11: an unsupported in-game style code is not guessed', async ({ page }) => {
   await page.goto('/decks');
+  await openAddDeck(page);
   await page.getByLabel('牌組代碼或 YDK 內容').fill('MDXK-7F3Q-9ZPA');
   await page.getByRole('button', { name: '解析', exact: true }).click();
   await expect(page.getByRole('alert')).toContainText('遊戲內牌組代碼無法直接解碼'); // CR-003

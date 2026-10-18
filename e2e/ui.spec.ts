@@ -1,5 +1,5 @@
 import { Browser, Page, expect, test } from '@playwright/test';
-import { TOKENS, importTestDeck, mockCardSource, seedCombos, testComboRoute, toYdke } from './fixtures';
+import { importTestDeck, mockCardSource, openAddDeck, seedCombos, testComboRoute, TOKENS, toYdke } from './fixtures';
 
 // CR-012 UI/UX acceptance (docs/acceptance-ui-v1.md) on the browser build, card source MOCKED. The same design checks run
 // against the installed Windows app in e2e-desktop/5-ui.spec.ts (production build inside WebView2).
@@ -78,6 +78,7 @@ test('UI3-style shell: the current page is marked in the navigation and the shor
   const nav = page.getByRole('navigation', { name: '主要導覽' });
   await expect(nav.getByRole('link', { name: '牌組', exact: true })).toHaveAttribute('aria-current', 'page');
   // With one deck it is already the current one; add a second (newest) deck, then choose the first explicitly.
+  await openAddDeck(page);
   await page.getByLabel('牌組名稱', { exact: true }).fill('第二副牌組');
   await page.getByRole('button', { name: '建立', exact: true }).click();
   await expect(page.locator('.deck-row', { hasText: '第二副牌組' }).getByText('目前使用')).toBeVisible();
@@ -241,6 +242,7 @@ test('UI13: a long draft reason on the home page wraps instead of widening the p
   await page.goto('/decks');
   // 41 cards the local card data does not know: the draft reason lists their IDs.
   const ids = Array.from({ length: 41 }, (_, i) => 90_100_001 + i);
+  await openAddDeck(page);
   await page.getByLabel('牌組代碼或 YDK 內容').fill(toYdke({ main: ids.map((id): [number, number] => [id, 1]), extra: [], side: [] }));
   await page.getByRole('button', { name: '解析', exact: true }).click();
   await page.getByLabel('新牌組名稱').fill('長原因草稿');

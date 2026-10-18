@@ -88,7 +88,7 @@ export function verificationErrors(route: ComboRoute): string[] {
   if (!v.verifiedAt || !/^\d{4}-\d{2}-\d{2}$/.test(v.verifiedAt) || Number.isNaN(Date.parse(v.verifiedAt))) errors.push('已驗證需要實測日期（YYYY-MM-DD）');
   if (!v.verifiedBy?.trim()) errors.push('已驗證需要驗證者');
   if (!v.evidenceNote?.trim()) errors.push('已驗證需要驗證證據說明（例如影片或截圖位置）');
-  if (!v.deckFingerprint || !/^fp1-[0-9a-f]{14}$/.test(v.deckFingerprint)) errors.push('已驗證需要實測所用牌表的指紋');
+  if (!v.deckFingerprint || !/^fp1-[0-9a-f]{14}$/.test(v.deckFingerprint)) errors.push('已驗證需要實測所用牌表識別碼');
   return errors;
 }
 

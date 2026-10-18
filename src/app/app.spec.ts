@@ -19,11 +19,20 @@ describe('App shell', () => {
   it('renders the Traditional Chinese navigation', async () => {
     const fixture = TestBed.createComponent(App);
     await fixture.whenStable();
-    const links = [...(fixture.nativeElement as HTMLElement).querySelectorAll('nav a')].map((a) => a.textContent?.trim());
+    const links = [...(fixture.nativeElement as HTMLElement).querySelectorAll('nav a, nav .nav-disabled')].map((a) => a.textContent?.trim());
     // CR-012 (user-requested navigation: 首頁／牌組／起手查詢／AI 展開分析／Combo 管理／設定). The original three
     // destinations keep their exact labels and order; see docs/acceptance-changes.md CR-012 補記 3.
     expect(links).toEqual(['首頁', '牌組', '起手查詢', 'AI 展開分析', 'Combo 管理', '設定']);
     expect(links.filter((l) => ['牌組', 'Combo 管理', '設定'].includes(l!))).toEqual(['牌組', 'Combo 管理', '設定']);
+  });
+
+  it('shows the deck-only destinations as disabled (not links) while there is no deck', async () => {
+    const fixture = TestBed.createComponent(App);
+    await fixture.whenStable();
+    const root = fixture.nativeElement as HTMLElement;
+    expect([...root.querySelectorAll('nav .nav-disabled')].map((n) => n.textContent?.trim())).toEqual(['起手查詢', 'AI 展開分析']);
+    expect(root.querySelector('nav .nav-disabled')?.getAttribute('aria-disabled')).toBe('true');
+    expect(root.querySelector('.nav-hint')).toBeNull();
   });
 
   const pages: Array<[string, string]> = [

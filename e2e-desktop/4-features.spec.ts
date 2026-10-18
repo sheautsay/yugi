@@ -4,7 +4,7 @@ import { existsSync, readFileSync, realpathSync, rmSync } from 'node:fs';
 import { request as httpRequest } from 'node:http';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { MALISS, toYdk, toYdke } from '../e2e/fixtures';
+import { MALISS, openAddDeck, toYdk, toYdke } from '../e2e/fixtures';
 import { buildBackup } from '../src/app/core/backup';
 import { newDeck } from '../src/app/core/deck';
 import { goto, launchApp, outsideProject } from './app';
@@ -72,6 +72,7 @@ test('DK5: the full Master Duel card pool syncs through the app (about 24 MB) an
     await expect(done).toBeVisible({ timeout: 300_000 });
     console.log(`full sync: ${(await done.textContent())?.trim()} in ${Math.round((Date.now() - started) / 1000)} s`);
     await goto(page, '/decks');
+    await openAddDeck(page);
     await page.getByLabel('牌組名稱', { exact: true }).fill(`搜尋驗收 ${RUN}`);
     await page.getByRole('button', { name: '建立', exact: true }).click();
     await page.locator('.deck-row', { hasText: `搜尋驗收 ${RUN}` }).getByRole('link', { name: '編輯' }).click();
@@ -92,6 +93,7 @@ test('DK4: decks — import ydke:// and a YDK file, edit, save, and export throu
     const { page } = app;
     await goto(page, '/decks');
     // ydke://
+    await openAddDeck(page);
     await page.getByLabel('牌組代碼或 YDK 內容').fill(toYdke(legalDeck()));
     await page.getByRole('button', { name: '解析', exact: true }).click();
     const dl = page.getByRole('button', { name: '從 YGOPRODeck 下載缺少的卡片資料' });

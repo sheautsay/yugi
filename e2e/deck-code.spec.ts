@@ -1,6 +1,6 @@
 import { BrowserContext, Page, expect, test } from '@playwright/test';
 import { EDGE_SAMPLE, EDGE_SAMPLE_CARDS } from '../src/app/core/neuron-deck.sample';
-import { mockCardSource } from './fixtures';
+import { mockCardSource, openAddDeck } from './fixtures';
 
 // G21 — Master Duel deck code, assisted import. YGOPRODeck is MOCKED (the 41 sample cards are real
 // passcodes/names). The official site is STUBBED at context level: the test never contacts KONAMI.
@@ -27,6 +27,7 @@ async function setup(page: Page, context: BrowserContext, options: { sync?: bool
 }
 
 async function pasteList(page: Page, text = EDGE_SAMPLE) {
+  await openAddDeck(page);
   await page.getByLabel('牌組代碼或 YDK 內容').fill(text);
   await page.getByRole('button', { name: '解析', exact: true }).click();
 }
@@ -95,6 +96,7 @@ test('N18: unknown names and partial copies never import; downloading card data 
 
 test('G21-8/9: offline import works from local data; replacing an existing deck needs confirmation', async ({ page, context }) => {
   await setup(page, context);
+  await openAddDeck(page);
   await page.getByLabel('牌組名稱', { exact: true }).fill('原有牌組');
   await page.getByRole('button', { name: '建立', exact: true }).click();
   await expect(page.locator('.deck-row', { hasText: '原有牌組' })).toBeVisible();

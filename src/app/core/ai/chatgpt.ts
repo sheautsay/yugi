@@ -85,7 +85,7 @@ export function chatGptError(status: number, error: BridgeErrorBody): AiError {
   switch (error.code) {
     case 'not_signed_in':
     case 'reauth_required':
-      return new AiError('auth', `ChatGPT 登入已失效或尚未登入，請按「Continue with ChatGPT」重新登入`);
+      return new AiError('auth', `ChatGPT 登入已失效或尚未登入，請按「使用 ChatGPT 登入」重新登入`);
     case 'sharing_disabled':
       return new AiError('permission', '此登入沒有授權使用 ChatGPT 方案用量，請重新登入並同意使用方案用量');
     case 'subscription_sharing_usage_limit_exceeded':

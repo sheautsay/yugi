@@ -152,11 +152,7 @@ export class YgoProDeckClient {
     if (!response.ok) throw new CardApiError(`卡圖下載失敗（HTTP ${response.status}）`);
     const blob = await response.blob();
     if (!blob.type.startsWith('image/')) {
-      throw new CardApiError(
-        this.imageBase === CARD_IMAGE_BASE
-          ? '卡圖下載失敗：伺服器未回傳圖片。卡圖下載需以 npm start 啟動的本機伺服器（含圖片代理）。'
-          : '卡圖下載失敗：伺服器未回傳圖片。',
-      );
+      throw new CardApiError('卡圖下載失敗：伺服器未回傳圖片，請確認網路後再試。');
     }
     return blob;
   }

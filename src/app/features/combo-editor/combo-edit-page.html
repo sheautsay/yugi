@@ -181,7 +181,7 @@
             </select>
           </label>
         </div>
-        <p class="muted">牌表指紋：{{ d.verification.deckFingerprint ?? '（未選擇）' }}</p>
+        <p class="muted">牌表識別碼：{{ d.verification.deckFingerprint ?? '（未選擇）' }}</p>
       }
       <label>驗證證據／說明<textarea rows="2" [value]="d.verification.evidenceNote ?? ''" (input)="d.verification.evidenceNote = opt($any($event.target).value); touch()"></textarea></label>
     </section>

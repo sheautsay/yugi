@@ -1,5 +1,5 @@
 import { Page, expect, test } from '@playwright/test';
-import { mockCardSource, setAutoThumbnails } from './fixtures';
+import { mockCardSource, openAddDeck, setAutoThumbnails } from './fixtures';
 
 // G17–G20 with a MOCKED full card source (fixture FULL_DATASET: 97 Master Duel cards, 99 in all).
 
@@ -11,6 +11,7 @@ async function sync(page: Page, expected: RegExp | string, timeout = 5_000) {
 
 async function newDeckEditor(page: Page, name: string) {
   await page.goto('/decks');
+  await openAddDeck(page);
   await page.getByLabel('牌組名稱', { exact: true }).fill(name);
   await page.getByRole('button', { name: '建立', exact: true }).click();
   await page.locator('.deck-row', { hasText: name }).getByRole('link', { name: '編輯' }).click();

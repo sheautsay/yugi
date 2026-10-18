@@ -96,7 +96,7 @@ const stepSchema = z.strictObject({
   unresolved: text(500).optional(),
 });
 
-const fingerprint = z.string().regex(/^fp1-[0-9a-f]{14}$/, '牌表指紋格式不正確');
+const fingerprint = z.string().regex(/^fp1-[0-9a-f]{14}$/, '牌表識別碼格式不正確');
 
 /** CR-004: provenance of an AI route. Nothing here can raise a route's trust level. */
 const analysisSchema = z.strictObject({

@@ -1,6 +1,6 @@
 import { BrowserContext, Page, Route, expect, test } from '@playwright/test';
 import { anthropicSse, mockAiOutput, ollamaNdjson } from '../src/app/core/ai/mock-ai.sample';
-import { MALISS, dumpUserData, importTestDeck, mockCardSource } from './fixtures';
+import { dumpUserData, importTestDeck, MALISS, mockCardSource, openAddDeck } from './fixtures';
 
 // CR-004 (G22–G27). Every AI answer here is MOCKED: api.anthropic.com and localhost:11434 are
 // intercepted at the browser-context level, so no real or paid AI service is ever contacted.
@@ -123,7 +123,7 @@ test('G22–G25: mocked Claude analysis → structured result, separate levels, 
   // G25-2: the same player for a candidate — both modes share the current step; moves are shown.
   await candidates(page).nth(0).getByRole('button', { name: '查看完整展開' }).click();
   await expect(page.getByText('目前層級：資料完整性通過')).toBeVisible();
-  await expect(page.locator('.ladder li', { hasText: '規則引擎驗證' })).toContainText('尚未整合（BLOCKED）');
+  await expect(page.locator('.ladder li', { hasText: '規則引擎驗證' })).toContainText('尚未提供');
   await expect(page.locator('.ladder li', { hasText: 'Master Duel 實測確認' })).toContainText('未達成');
   await page.getByRole('button', { name: '逐步教學' }).click();
   await expect(page.locator('.progress')).toHaveText('第 1 / 4 步');
@@ -263,6 +263,7 @@ test('N21 / G22-2: missing card text or a failed deck check blocks the analysis 
   await expect(page.getByRole('button', { name: '開始分析' })).toBeDisabled();
 
   await page.goto('/decks');
+  await openAddDeck(page);
   await page.getByLabel('牌組名稱', { exact: true }).fill('空白牌組');
   await page.getByRole('button', { name: '建立', exact: true }).click();
   await openAnalysis(page, '空白牌組');
@@ -277,7 +278,7 @@ test('local Ollama provider (mocked local server): no cloud request, no API cost
   const ai = await mockAi(context, () => ({ status: 200, body: ollamaNdjson(GOOD, { model: 'qwen-test' }), type: 'application/x-ndjson' }));
   await importAndSync(page, '本機模型');
   await openAnalysis(page, '本機模型');
-  await page.getByLabel('本機 Ollama（離線；需自行安裝並下載模型）').check();
+  await page.getByLabel('本機 Ollama（離線；需自行安裝）').check();
   await page.getByLabel('模型名稱').fill('qwen-test');
   await page.getByLabel('模型名稱').press('Tab');
   await expect(page.getByText('本機執行，不產生 API 費用。')).toBeVisible();

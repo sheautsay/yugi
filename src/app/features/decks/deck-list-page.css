@@ -101,3 +101,40 @@
     grid-template-columns: 64px minmax(0, 1fr);
   }
 }
+
+.info-tip {
+  display: inline-grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  margin-left: var(--space-1);
+  border-radius: 50%;
+  color: var(--faint);
+  font-size: var(--fs-sm);
+  cursor: help;
+}
+
+.add-dialog {
+  width: min(1100px, calc(100vw - 32px));
+  max-height: calc(100vh - 48px);
+  padding: var(--space-4);
+  border: 1px solid var(--border-strong);
+  border-radius: 12px;
+  background: var(--bg, #0b1322);
+  color: var(--text);
+}
+
+.add-dialog::backdrop {
+  background: rgba(0, 0, 0, 0.6);
+}
+
+.dialog-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-3);
+}
+
+.dialog-head h2 {
+  margin: 0;
+}

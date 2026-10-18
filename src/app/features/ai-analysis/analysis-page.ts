@@ -12,6 +12,7 @@ import { ROLE_LABEL, STAGED_LIMITS, STOP_LABEL, StagedStatus } from '../../core/
 import { CLAUDE_MODELS, Effort } from '../../core/ai/providers';
 import { analysisLevel } from '../../core/analysis-level';
 import { CardDataService } from '../../core/card-data.service';
+import { EFFORT_LABEL, TEXT } from '../../core/texts';
 import { comboCardIds } from '../../core/combo';
 import { ComboRepository } from '../../core/combo-repository';
 import { checkDeck, deckFingerprint } from '../../core/deck';
@@ -70,6 +71,8 @@ export class AnalysisPage {
   protected readonly advancedOpen = signal(false);
   private pollTimer?: ReturnType<typeof setTimeout>;
   protected readonly efforts: Effort[] = ['low', 'medium', 'high', 'xhigh', 'max'];
+  protected readonly effortLabel = EFFORT_LABEL;
+  protected readonly t = TEXT;
   protected readonly limits = SETTING_LIMITS;
   protected readonly phaseLabel = PHASE_LABEL;
   protected readonly levelLabel = ANALYSIS_LEVEL_LABEL;
@@ -304,7 +307,7 @@ export class AnalysisPage {
   }
 
   /**
-   * "Continue with ChatGPT": the official sign-in page opens in a new tab. The tab is opened
+   * "使用 ChatGPT 登入": the official sign-in page opens in a new tab. The tab is opened
    * synchronously (popup rules) and detached from this page before it is sent to OpenAI.
    */
   protected async signInChatGpt(): Promise<void> {
@@ -339,7 +342,7 @@ export class AnalysisPage {
         return;
       }
       if (Date.now() - started < 5 * 60 * 1000) this.poll(started);
-      else this.chatgptMessage.set('等待登入逾時，請再按一次「Continue with ChatGPT」。');
+      else this.chatgptMessage.set('等待登入逾時，請再按一次「使用 ChatGPT 登入」。');
     }, 2000);
   }
 

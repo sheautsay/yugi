@@ -3,6 +3,7 @@ import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@a
 import { NavigationEnd, Router, RouterLink, RouterOutlet } from '@angular/router';
 import { AutoBackupService } from './core/auto-backup.service';
 import { CurrentDeckService } from './core/current-deck.service';
+import { TEXT } from './core/texts';
 import { Icon } from './shared/icon';
 
 interface NavItem {
@@ -10,8 +11,18 @@ interface NavItem {
   icon: string;
   link: () => string[];
   active: (url: string) => boolean;
-  /** Shown under the label when the item needs a deck and none exists yet. */
-  hint?: () => string;
+  /** Shown disabled (with a tooltip) while no deck exists. */
+  needsDeck?: boolean;
+}
+
+const DISCLAIMER_KEY = 'ygo.disclaimerSeen';
+
+function disclaimerSeen(): boolean {
+  try {
+    return localStorage.getItem(DISCLAIMER_KEY) === '1';
+  } catch {
+    return false;
+  }
 }
 
 @Component({
@@ -25,13 +36,17 @@ export class App {
   private readonly router = inject(Router);
   private readonly location = inject(Location);
   protected readonly current = inject(CurrentDeckService);
+  protected readonly t = TEXT;
+
+  /** First-launch note about what the tool does not do; dismissed once, then only under 設定 → 關於程式. */
+  protected readonly showDisclaimer = signal(!disclaimerSeen());
 
   /** Current URL without query or fragment. */
   protected readonly url = signal(this.router.url);
   /** True once the user navigated inside the app, so "上一頁" has somewhere to go. */
   protected readonly canGoBack = signal(false);
 
-  private readonly deckId = computed(() => this.current.deck()?.id ?? null);
+  protected readonly deckId = computed(() => this.current.deck()?.id ?? null);
   private readonly inDeck = (url: string, tail: string) => /^\/decks\/[^/]+\//.test(url) && url.endsWith(tail);
 
   protected readonly nav: NavItem[] = [
@@ -42,14 +57,14 @@ export class App {
       icon: 'hand',
       link: () => (this.deckId() ? ['/decks', this.deckId()!, 'hand'] : ['/decks']),
       active: (u) => this.inDeck(u, '/hand'),
-      hint: () => (this.deckId() ? '' : '先建立或匯入牌組'),
+      needsDeck: true,
     },
     {
       label: 'AI 展開分析',
       icon: 'ai',
       link: () => (this.deckId() ? ['/decks', this.deckId()!, 'analysis'] : ['/decks']),
       active: (u) => this.inDeck(u, '/analysis'),
-      hint: () => (this.deckId() ? '' : '先建立或匯入牌組'),
+      needsDeck: true,
     },
     { label: 'Combo 管理', icon: 'combos', link: () => ['/combos'], active: (u) => u.startsWith('/combos') },
     { label: '設定', icon: 'settings', link: () => ['/settings'], active: (u) => u.startsWith('/settings') },
@@ -76,5 +91,14 @@ export class App {
 
   protected back(): void {
     this.location.back();
+  }
+
+  protected dismissDisclaimer(): void {
+    this.showDisclaimer.set(false);
+    try {
+      localStorage.setItem(DISCLAIMER_KEY, '1');
+    } catch {
+      // storage unavailable: the note simply returns next launch
+    }
   }
 }

@@ -3,7 +3,7 @@ import { MALISS_DECK_API_CARDS } from '../src/app/core/ai/maliss-deck-cards.samp
 import { C, combo, routeAllied, routeAlliedPlusTrap, routeAlliedPlusTwoTraps, routeFirewall, routeFirewallIntoAllied, sampleAnswer, samplePlan, withRoles } from '../src/app/core/ai/maliss-routes.sample';
 import { anthropicSse } from '../src/app/core/ai/mock-ai.sample';
 import { EDGE_SAMPLE } from '../src/app/core/neuron-deck.sample';
-import { mockCardSource, openAdvanced } from './fixtures';
+import { mockCardSource, openAddDeck, openAdvanced } from './fixtures';
 
 // CR-008 (G47–G52, G54) with the user's real deck list. Every AI answer is MOCKED and built from
 // HAND-WRITTEN routes (not model output). All AI hosts are intercepted; no real or paid AI service
@@ -46,6 +46,7 @@ async function importRealDeck(page: Page, name: string) {
   await page.getByRole('button', { name: '下載／更新完整卡片資料' }).click();
   await expect(page.getByText(/已同步 \d+ 張卡片/)).toBeVisible();
   await page.goto('/decks');
+  await openAddDeck(page);
   await page.getByLabel('牌組代碼或 YDK 內容').fill(EDGE_SAMPLE);
   await page.getByRole('button', { name: '解析', exact: true }).click();
   await expect(page.getByText('牌表檢核通過，匯入後可用於起手查詢。')).toBeVisible();
@@ -185,7 +186,7 @@ test('G48-5/6: the request limit stops the loop; finished work stays; the rest i
 test('G54: the one-shot mode is still the default and still sends exactly one request', async ({ page, context }) => {
   const calls = await mockQueue(context, [sampleAnswer([routeAllied()])]);
   await importRealDeck(page, '瑪麗絲（rev8 單次）');
-  await expect(page.getByLabel('單次分析（一次請求，原本的方式）')).toBeChecked();
+  await expect(page.getByLabel('單次分析（一次請求）')).toBeChecked();
   await expect(page.getByLabel('最大候選起手組合數')).toHaveCount(0);
   await page.getByLabel('Claude API Key').fill(KEY);
   await page.getByRole('button', { name: '開始分析' }).click();

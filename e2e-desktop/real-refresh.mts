@@ -1,4 +1,4 @@
-// CG1 on the INSTALLED app with a REAL sign-in: wait for the user to sign in (they click "Continue with ChatGPT" in the
+// CG1 on the INSTALLED app with a REAL sign-in: wait for the user to sign in (they click "使用 ChatGPT 登入" in the
 // app window this script opens), then — after the one-hour access token has expired — open the AI page, which needs a
 // token and therefore makes the bundled service refresh it for real. Records whether the refresh succeeded, the
 // credential file's timestamp/size and the service's non-secret event log. Sends NO AI analysis request.
@@ -34,7 +34,7 @@ try {
   const status = page.locator('#set-chatgpt p').first();
   const readStatus = async () => redact((await status.innerText()).trim());
   say(`app open at Settings; credentials before: ${JSON.stringify(authInfo())}; status: ${await readStatus()}`);
-  say('WAITING for the user to press "Continue with ChatGPT" in the app window and finish the official sign-in');
+  say('WAITING for the user to press "使用 ChatGPT 登入" in the app window and finish the official sign-in');
 
   const signInDeadline = Date.now() + Number(signInMinutes) * 60_000;
   let signedInAt = 0;

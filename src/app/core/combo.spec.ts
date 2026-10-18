@@ -93,7 +93,7 @@ describe('validateCombo — G8 verification status', () => {
   it('"verified" requires date, verifier, evidence, deck fingerprint and steps', () => {
     expect(validateCombo(verified()).ok).toBe(true);
     const errors = validateCombo(valid({ verification: { status: 'verified' } })).errors;
-    expect(errors).toEqual(expect.arrayContaining(['已驗證需要實測日期（YYYY-MM-DD）', '已驗證需要驗證者', '已驗證需要驗證證據說明（例如影片或截圖位置）', '已驗證需要實測所用牌表的指紋']));
+    expect(errors).toEqual(expect.arrayContaining(['已驗證需要實測日期（YYYY-MM-DD）', '已驗證需要驗證者', '已驗證需要驗證證據說明（例如影片或截圖位置）', '已驗證需要實測所用牌表識別碼']));
     expect(validateCombo({ ...verified(), steps: [] }).errors).toContain('沒有步驟的路線不能設為已驗證');
     expect(validateCombo({ ...verified(), verification: { ...verified().verification, verifiedAt: '昨天' } }).ok).toBe(false);
   });
