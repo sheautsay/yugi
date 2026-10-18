@@ -106,11 +106,15 @@
               <li>{{ e }}</li>
             }
           </ul>
+          <app-missing-cards [ids]="p.check.unresolvedIds" />
         </div>
       }
       @if (p.check.unresolvedIds.length) {
+        @if (hasCardData() === false) {
+          <app-card-data-prompt heading="先下載卡片資料，才能辨識這副牌組" />
+        }
         <div class="row">
-          <button type="button" (click)="downloadCards()" [disabled]="busy()">
+          <button type="button" [class.ghost]="hasCardData() === false" (click)="downloadCards()" [disabled]="busy()">
             {{ busy() ? '下載中…' : '從 YGOPRODeck 下載缺少的卡片資料' }}
           </button>
         </div>

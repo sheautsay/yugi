@@ -159,3 +159,10 @@
   flex: 1 1 200px;
   min-width: 0;
 }
+
+.quick-steps { list-style: none; margin: 0 0 var(--space-4, 16px); padding: 0; display: grid; gap: 10px; }
+.quick-steps li { display: flex; gap: 12px; align-items: flex-start; padding: 12px 14px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); }
+.quick-steps li.done { opacity: 0.8; }
+.step-mark { flex: none; display: inline-grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; background: var(--surface-2); font-weight: 700; }
+.quick-steps li.done .step-mark { background: var(--ok); color: #0b1220; }
+.step-body { display: flex; flex-direction: column; gap: 6px; align-items: flex-start; min-width: 0; }

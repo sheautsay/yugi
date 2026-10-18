@@ -93,6 +93,25 @@ describe('CardDataService.syncAll — G17', () => {
     expect(urls[1]).toBe('https://db.ygoprodeck.com/api/v7/cardinfo.php?misc=yes');
   });
 
+  it('downloadAll tracks progress and tells the views whether any card data exists', async () => {
+    const { service } = setup();
+    await service.refreshTotal();
+    expect(service.hasData()).toBe(false);
+    const result = await service.downloadAll();
+    expect(result?.status).toBe('synced');
+    expect(service.hasData()).toBe(true);
+    expect(service.fullDownload()).toEqual({ busy: false, message: '已下載 3 張卡片資料。', failed: false });
+  });
+
+  it('downloadAll keeps the failure in place and leaves hasData false', async () => {
+    const { service } = setup({ cards: () => json(500, {}) });
+    await service.refreshTotal();
+    await service.downloadAll();
+    expect(service.fullDownload().failed).toBe(true);
+    expect(service.fullDownload().message).toContain('已快取的資料不受影響');
+    expect(service.hasData()).toBe(false);
+  });
+
   it('searching after a sync never calls the API', async () => {
     const { service, urls } = setup();
     await service.syncAll('master-duel');

@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { AiAnalysisService } from '../../core/ai/analysis.service';
 import { CardDataService, SyncInfo } from '../../core/card-data.service';
@@ -9,13 +9,14 @@ import { DeckCheck, checkDeck, deckCardIds } from '../../core/deck';
 import { VERIFICATION_LABEL } from '../../core/labels';
 import { CardRecord, ComboRoute } from '../../core/models';
 import { localDateTime } from '../../core/time';
+import { CardDataPrompt } from '../../shared/card-data-prompt';
 import { CardTile } from '../../shared/card-tile';
 import { Icon } from '../../shared/icon';
 
 /** First screen (CR-012): the current deck, quick actions, ChatGPT connection, recent combos and card data. */
 @Component({
   selector: 'app-home-page',
-  imports: [RouterLink, CardTile, Icon],
+  imports: [RouterLink, CardTile, Icon, CardDataPrompt],
   templateUrl: './home-page.html',
   styleUrl: './home-page.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -45,13 +46,19 @@ export class HomePage {
     return [...deck.main].sort((a, b) => b.count - a.count)[0].cardId;
   });
 
+  protected readonly hasCardData = this.cardData.hasData;
+
   constructor() {
-    void this.load();
+    effect(() => {
+      this.cardData.version();
+      void this.load();
+    });
   }
 
   private async load(): Promise<void> {
     try {
       const deck = await this.current.refresh();
+      void this.cardData.refreshTotal();
       const [routes, sync, count] = await Promise.all([this.combos.list(), this.cardData.syncInfo(), this.cardData.count()]);
       this.comboCount.set(routes.length);
       this.recent.set([...routes].sort((a, b) => (b.updatedAt ?? '').localeCompare(a.updatedAt ?? '')).slice(0, 5));

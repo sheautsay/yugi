@@ -247,6 +247,6 @@ test('UI13: a long draft reason on the home page wraps instead of widening the p
   await page.getByRole('button', { name: '確認匯入' }).click();
   await expect(page.getByRole('status').filter({ hasText: '已匯入「長原因草稿」' })).toBeVisible();
   await page.goto('/home');
-  await expect(page.getByText(/^草稿：41 種卡片尚未識別/)).toBeVisible();
+  await expect(page.getByText(/^草稿：41 種卡片缺少資料/)).toBeVisible();
   await layoutCheck(page, '/home with a long draft reason @ 1280x720');
 });

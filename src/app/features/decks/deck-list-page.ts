@@ -1,9 +1,11 @@
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, effect, inject, signal } from '@angular/core';
 import { CardNamesService } from '../../core/card-names.service';
 import { RouterLink } from '@angular/router';
 import { CurrentDeckService } from '../../core/current-deck.service';
 import { localDateTime } from '../../core/time';
+import { CardDataPrompt } from '../../shared/card-data-prompt';
 import { CardTile } from '../../shared/card-tile';
+import { MissingCards } from '../../shared/missing-cards';
 import { CardDataService } from '../../core/card-data.service';
 import { DeckCheck, checkDeck, deckCardIds, newDeck } from '../../core/deck';
 import { DeckRepository } from '../../core/deck-repository';
@@ -17,7 +19,7 @@ interface DeckRow {
 
 @Component({
   selector: 'app-deck-list-page',
-  imports: [RouterLink, DeckImportPanel, CardTile],
+  imports: [RouterLink, DeckImportPanel, CardTile, CardDataPrompt, MissingCards],
   templateUrl: './deck-list-page.html',
   styleUrl: './deck-list-page.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -37,7 +39,11 @@ export class DeckListPage {
   protected readonly newName = signal('');
 
   constructor() {
-    void this.reload();
+    // Reloads once at start and again whenever card data is downloaded, so drafts re-check themselves.
+    effect(() => {
+      this.cardData.version();
+      void this.reload();
+    });
   }
 
   protected async reload(): Promise<void> {

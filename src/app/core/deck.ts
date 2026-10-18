@@ -159,7 +159,7 @@ export function checkDeck(deck: ParsedDeck, cards: ReadonlyMap<number, CardRecor
   }
 
   const unresolvedIds = [...perCard.keys()].filter((id) => !cards.has(id));
-  if (unresolvedIds.length) errors.push(`${unresolvedIds.length} 種卡片尚未識別（ID：${unresolvedIds.join('、')}）`);
+  if (unresolvedIds.length) errors.push(`${unresolvedIds.length} 種卡片缺少資料`);
 
   for (const { cardId } of deck.main) {
     if (cards.get(cardId)?.isExtraDeckType) errors.push(`主牌含額外牌組怪獸「${label(cardId, cards.get(cardId))}」`);

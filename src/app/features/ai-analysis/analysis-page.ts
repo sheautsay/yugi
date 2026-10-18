@@ -21,6 +21,8 @@ import { AnalysisLevel, CardRecord, ComboInfo, ComboRoute, DeckRecord } from '..
 import { checkRoute } from '../../core/route-check';
 import { localDateTime } from '../../core/time';
 import { BoardPreview } from '../../shared/board-preview';
+import { CardDataPrompt } from '../../shared/card-data-prompt';
+import { MissingCards } from '../../shared/missing-cards';
 import { openExternal } from '../../shared/open-external';
 import { focusApp, hasExternalOpener } from '../../shared/platform-hooks';
 import { ComboViewer, ViewerMode } from '../combo-viewer/combo-viewer';
@@ -39,7 +41,7 @@ const PHASE_LABEL: Record<Phase, string> = {
 /** CR-004: AI deck combo analysis for one deck (route /decks/:deckId/analysis). */
 @Component({
   selector: 'app-analysis-page',
-  imports: [RouterLink, NgTemplateOutlet, BoardPreview, ComboViewer, RouteAnalysisPanel],
+  imports: [RouterLink, NgTemplateOutlet, BoardPreview, ComboViewer, RouteAnalysisPanel, CardDataPrompt, MissingCards],
   templateUrl: './analysis-page.html',
   styleUrl: './analysis-page.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -49,6 +51,7 @@ export class AnalysisPage {
   private readonly decks = inject(DeckRepository);
   private readonly combos = inject(ComboRepository);
   private readonly cardData = inject(CardDataService);
+  protected readonly hasCardData = this.cardData.hasData;
   private readonly router = inject(Router);
 
   readonly deckId = input.required<string>();
@@ -207,6 +210,11 @@ export class AnalysisPage {
 
   constructor() {
     effect(() => void this.load(this.deckId()));
+    effect(() => {
+      this.cardData.version();
+      void this.cardData.refreshTotal();
+      void this.refreshLists();
+    });
     effect(() => {
       this.ai.settings();
       this.ai.apiKey();

@@ -19,7 +19,7 @@ test('real YGOPRODeck: card data and images for the Maliss archetype download an
   await page.getByRole('button', { name: '從 YGOPRODeck 下載缺少的卡片資料' }).click();
   await expect(page.getByRole('status')).toContainText('已下載 12 張卡片資料');
   // Only the deck-size rule remains (12 cards is a deliberate partial deck).
-  await expect(page.getByText('尚未識別')).toHaveCount(0);
+  await expect(page.getByText('缺少資料')).toHaveCount(0);
   await expect(page.getByText('主牌 9 張（需 40–60 張）')).toBeVisible();
 
   await page.getByLabel('新牌組名稱').fill('真實資料檢查');

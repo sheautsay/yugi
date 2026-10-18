@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, inject, input, output, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, input, output, signal, untracked } from '@angular/core';
 import { CardNamesService } from '../../core/card-names.service';
 import { CardDataService } from '../../core/card-data.service';
 import { DECK_ZONES, DeckCheck, ParseIssue, ParsedDeck, ZONE_LABEL, checkDeck, deckCardIds, newDeck } from '../../core/deck';
@@ -8,7 +8,9 @@ import { CardRecord, DeckRecord } from '../../core/models';
 import { deckCodeError, officialDeckSearchUrl, parseNeuronDeckText, resolveNeuronDeck } from '../../core/neuron-deck';
 import { SettingsService } from '../../core/settings.service';
 import { MAX_YDK_LENGTH } from '../../core/ydk';
+import { CardDataPrompt } from '../../shared/card-data-prompt';
 import { CardTile } from '../../shared/card-tile';
+import { MissingCards } from '../../shared/missing-cards';
 import { openExternal } from '../../shared/open-external';
 import { hasExternalOpener } from '../../shared/platform-hooks';
 
@@ -27,7 +29,7 @@ const PREVIEW_PER_ZONE = 12;
 
 @Component({
   selector: 'app-deck-import-panel',
-  imports: [CardTile],
+  imports: [CardTile, CardDataPrompt, MissingCards],
   templateUrl: './deck-import-panel.html',
   styleUrl: './deck-import-panel.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -62,6 +64,26 @@ export class DeckImportPanel {
   protected readonly errors = signal<ParseIssue[]>([]);
   protected readonly preview = signal<Preview | null>(null);
   protected readonly busy = signal(false);
+  protected readonly hasCardData = this.cardData.hasData;
+
+  constructor() {
+    // Card data may arrive from the full download while a preview is open: re-check the preview against it.
+    effect(() => {
+      this.cardData.version();
+      untracked(() => {
+        void this.cardData.refreshTotal();
+        void this.recheckPreview();
+      });
+    });
+  }
+
+  private async recheckPreview(): Promise<void> {
+    const preview = this.preview();
+    if (!preview?.check.unresolvedIds.length) return;
+    const cards = await this.cardData.getMany(deckCardIds(preview.deck));
+    if (cards.size === preview.cards.size) return;
+    this.preview.set({ ...preview, cards, check: checkDeck(preview.deck, cards, this.cardNames.nameLabel) });
+  }
   protected readonly downloadMessage = signal('');
 
   protected readonly canConfirm = computed(() => !!this.preview() && (this.target() !== 'new' || !!this.deckName().trim()));

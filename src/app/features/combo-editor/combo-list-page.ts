@@ -7,6 +7,7 @@ import { VERIFICATION_LABEL } from '../../core/labels';
 import { ComboRoute } from '../../core/models';
 import { localDate } from '../../core/time';
 import { safeFileName, saveTextFile } from '../../shared/save-file';
+import { SampleLoader } from '../sample/sample-loader';
 
 type ConflictChoice = 'keep-both' | 'overwrite' | 'skip';
 
@@ -19,6 +20,7 @@ type ConflictChoice = 'keep-both' | 'overwrite' | 'skip';
 export class ComboListPage {
   private readonly repo = inject(ComboRepository);
   private readonly cardData = inject(CardDataService);
+  private readonly sample = inject(SampleLoader);
 
   protected readonly statusLabel = VERIFICATION_LABEL;
   protected readonly combos = signal<ComboRoute[]>([]);
@@ -37,6 +39,18 @@ export class ComboListPage {
 
   private async reload(): Promise<void> {
     this.combos.set(await this.repo.list());
+  }
+
+  /** Loads the bundled sample deck and routes through the normal import validation. */
+  protected async loadSample(): Promise<void> {
+    this.busy.set(true);
+    try {
+      const result = await this.sample.load();
+      this.message.set(result.ok ? result.message : `無法載入範例：${result.message}`);
+      await this.reload();
+    } finally {
+      this.busy.set(false);
+    }
   }
 
   protected async onFile(event: Event): Promise<void> {

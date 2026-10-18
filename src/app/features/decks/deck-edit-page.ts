@@ -10,13 +10,15 @@ import { DeckRepository } from '../../core/deck-repository';
 import { CardRecord, DeckRecord, DeckZone } from '../../core/models';
 import { checkRoute } from '../../core/route-check';
 import { toYdke } from '../../core/ydke';
+import { CardDataPrompt } from '../../shared/card-data-prompt';
 import { CardTile } from '../../shared/card-tile';
+import { MissingCards } from '../../shared/missing-cards';
 import { CardAdjust, CardBrowser } from './card-browser';
 import { safeFileName, saveTextFile } from '../../shared/save-file';
 
 @Component({
   selector: 'app-deck-edit-page',
-  imports: [RouterLink, CardTile, CardBrowser],
+  imports: [RouterLink, CardTile, CardBrowser, CardDataPrompt, MissingCards],
   templateUrl: './deck-edit-page.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })

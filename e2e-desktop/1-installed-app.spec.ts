@@ -90,7 +90,7 @@ test('P0.3 / DK5 / DK6: real card data and card images download through the app,
       await download.click();
       await expect(page.getByRole('status')).toContainText('已下載 12 張卡片資料', { timeout: 60_000 });
     }
-    await expect(page.getByText('尚未識別')).toHaveCount(0);
+    await expect(page.getByText('缺少資料')).toHaveCount(0);
     await page.getByLabel('新牌組名稱').fill(DECK);
     await page.getByRole('button', { name: '確認匯入' }).click();
     await expect(page.getByRole('status')).toContainText(`已匯入「${DECK}」`);

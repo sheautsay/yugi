@@ -63,7 +63,7 @@ describe('checkDeck — G3 deck rules', () => {
     const result = checkDeck(deck, cards);
     expect(result.unresolvedIds).toEqual([1000, 9000]);
     expect(result.queryable).toBe(false);
-    expect(result.errors.join()).toContain('2 種卡片尚未識別');
+    expect(result.errors.join()).toContain('2 種卡片缺少資料');
   });
 
   it('flags extra-deck monsters in main and non-extra cards in extra, without moving them', () => {
