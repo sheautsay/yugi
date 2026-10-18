@@ -7,14 +7,14 @@ import { ComboRepository } from '../../core/combo-repository';
 import { DeckRepository } from '../../core/deck-repository';
 import { VERIFICATION_LABEL } from '../../core/labels';
 import { CardRecord, ComboRoute, DeckRecord } from '../../core/models';
-import { RouteAnalysisPanel } from '../ai-analysis/route-analysis-panel';
-import { ComboViewer, ViewerMode } from './combo-viewer';
+import { RouteAnalysisPanel } from '../../shared/combo/route-analysis-panel';
+import { ComboViewer, ViewerMode } from '../../shared/combo/combo-viewer';
 
 @Component({
   selector: 'app-combo-detail-page',
   imports: [RouterLink, ComboViewer, RouteAnalysisPanel],
   templateUrl: './combo-detail-page.html',
-  styleUrl: './combo-detail-page.css',
+  styleUrl: '../../shared/combo/combo-viewer.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ComboDetailPage {

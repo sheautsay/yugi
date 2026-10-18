@@ -1,0 +1,49 @@
+@if (pg.affected().length) {
+  <section class="card stack" aria-labelledby="affected-heading">
+    <h2 id="affected-heading">此牌組已存成 Combo 的 AI 路線</h2>
+    <ul class="plain stack">
+      @for (a of pg.affected(); track a.route.id) {
+        <li class="item">
+          <div class="row">
+            <a [routerLink]="['/combos', a.route.id]">{{ a.route.name }}</a>
+            @if (a.passed) {
+              <span class="badge ok">{{ a.changed ? '仍通過資料驗證（牌組已變更，需重新確認）' : '資料完整性通過' }}</span>
+            } @else {
+              <span class="badge bad">已不適用</span>
+            }
+          </div>
+          @for (p of a.problems; track $index) {
+            <p class="muted">{{ p }}</p>
+          }
+          @if (a.changed) {
+            <button type="button" (click)="pg.recheckSaved(a.route)" [disabled]="pg.busy()">重新驗證並記錄</button>
+          }
+        </li>
+      }
+    </ul>
+  </section>
+}
+
+<section class="card stack" aria-labelledby="history-heading">
+  <h2 id="history-heading">分析紀錄</h2>
+  @if (pg.runs().length === 0) {
+    <p class="muted">尚未分析過此牌組。</p>
+  }
+  <ul class="plain stack">
+    @for (run of pg.runs(); track run.id) {
+      <li class="item" [class.selected]="run.id === pg.selectedRunId()">
+        <div class="row">
+          <button type="button" (click)="pg.selectRun(run.id)">{{ pg.time(run.startedAt) }}</button>
+          <span class="badge" [class.ok]="run.status === 'succeeded'" [class.bad]="run.status !== 'succeeded'">
+            {{ run.status === 'succeeded' ? '成功' : run.status === 'cancelled' ? '已取消' : '失敗' }}
+          </span>
+          @if (run.deckFingerprint !== pg.fingerprint()) {
+            <span class="badge warn">牌組已變更</span>
+          }
+          <button type="button" class="danger" (click)="pg.deleteRun(run)">刪除</button>
+        </div>
+        <p class="muted">{{ pg.providerLabel[run.provider] }}・{{ run.model }}・牌組版本 {{ run.deckVersion }}</p>
+      </li>
+    }
+  </ul>
+</section>

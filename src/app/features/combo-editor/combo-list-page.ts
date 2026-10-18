@@ -7,7 +7,7 @@ import { VERIFICATION_LABEL } from '../../core/labels';
 import { ComboRoute } from '../../core/models';
 import { localDate } from '../../core/time';
 import { safeFileName, saveTextFile } from '../../shared/save-file';
-import { SampleLoader } from '../sample/sample-loader';
+import { SampleLoader } from '../../core/sample/sample-loader';
 
 type ConflictChoice = 'keep-both' | 'overwrite' | 'skip';
 

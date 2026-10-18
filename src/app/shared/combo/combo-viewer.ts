@@ -6,9 +6,9 @@ import { CardRecord, ComboRoute, DeckRecord } from '../../core/models';
 import { checkRoute } from '../../core/route-check';
 import { sourceUrlProblem } from '../../core/schemas';
 import { StepNavigator } from '../../core/step-navigator';
-import { BoardPreview } from '../../shared/board-preview';
-import { CardTile } from '../../shared/card-tile';
-import { hasExternalOpener } from '../../shared/platform-hooks';
+import { BoardPreview } from '../board-preview';
+import { CardTile } from '../card-tile';
+import { hasExternalOpener } from '../platform-hooks';
 import { FlowView } from './flow-view';
 import { StepView } from './step-view';
 
@@ -22,7 +22,7 @@ export type ViewerMode = 'flow' | 'steps';
   selector: 'app-combo-viewer',
   imports: [BoardPreview, CardTile, FlowView, StepView],
   templateUrl: './combo-viewer.html',
-  styleUrl: './combo-detail-page.css',
+  styleUrl: './combo-viewer.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { '(document:keydown)': 'onKeydown($event)' },
 })
